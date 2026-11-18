@@ -1,0 +1,24 @@
+# 강의 자료 (public 저장소 제외)
+mini-pjt.pdf
+
+# 비밀 정보
+.env
+.env.*
+!.env.example
+
+# Ouroboros 로컬 상태
+.ouroboros/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# 실행 산출물
+logs/
+data/generated/
+
+# 에디터
+.vscode/

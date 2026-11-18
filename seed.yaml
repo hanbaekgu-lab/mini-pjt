@@ -1,0 +1,291 @@
+goal: AX 교육 Day 8~10 개인 미니 프로젝트로 '주간 진척 보고 에이전트'를 만든다. 개발팀(예시 개발자 6명)의
+  업무 배분과 진척률을 가짜 git 커밋 로그 기반으로 자동 산정한다. PM/PL에게는 전체 현황과 주간회의 자료 초안을 제공한다. 회의 자료는
+  HITL 승인 후 Confluence(가짜 MCP 서버)에 게시한다. 개발자에게는 본인 업무 진척률, 남은 업무, 남은 MM를 알려준다. 회의록·업무
+  정의서·팀 규칙·과거 회의 자료를 검색해 이유·결정·규칙 질문에 답하는 Agentic RAG 어시스턴트로 구성하며, Day 1~7의 12개 패턴을
+  모두 적용한다.
+task_type: code
+brownfield_context:
+  project_type: greenfield
+  context_references: []
+  existing_patterns: []
+  existing_dependencies: []
+constraints:
+# --- 범위·일정 ---
+- Day 1~7에서 배운 12개 패턴(1 LCEL+Pydantic, 2 ReAct bind_tools, 3 RAG, 4 다중 도구, 5 MCP, 6 가드레일, 7 HITL
+  interrupt, 8 미들웨어, 9 Multi-Agent Supervisor, 10 Plan-Execute·장기 메모리, 11 Observability/Trace,
+  12 RAGAS·LLM-as-Judge)을 모두 포함해야 함
+- 개발 timebox는 실질 11시간(Day 9 09~18시 8시간 + Day 10 09~12시 3시간)임
+- 필수 패턴 1·3·11·12와 가드레일, HITL은 시간이 부족해도 축소하지 않음
+- '축소 트리거: Day 10 09:00 시점에 test_progress·test_guardrails·test_api가 모두 통과하지 않았으면 아래 순서로 한 단계씩 축소함:
+  (1) Plan-Execute→고정 순차 체인, (2) 장기 메모리 LangGraph Store→JSON 파일, (3) Supervisor 3개→2개 에이전트(문서 Q&A와 회의 자료
+  에이전트 통합), (4) 미들웨어의 대화 요약 제외. 축소한 내역은 README에 기록함'
+- '산출물: src/agent.py, src/tools.py, src/retriever.py, data/, POST /query API, SERVICE.md,
+  test_queries.csv, evaluation/round1_report.md, evaluation/round2_report.md, README.md'
+- 모든 데이터는 가짜 데이터(fixture)로 구성함. 실제 git 저장소 연동은 범위 밖
+- public repo에 인증 정보를 포함하지 않음
+# --- API ---
+- POST /query 응답은 answer, contexts, trace를 반환함. 요청 본문은 question, user_id, role(developer|pm_pl) 필드와 HITL
+  재개용 thread_id, approval(approve|reject)로 확장하며 같은 엔드포인트를 사용함
+- 'API 오류 규칙: role이 developer|pm_pl이 아니거나 approval이 approve|reject가 아니면 HTTP 422, 존재하지 않는 thread_id로
+  재개하면 HTTP 404, 등록되지 않은 user_id는 HTTP 403을 반환함. 이미 처리된 thread_id에 approval을 다시 보내면 상태를 바꾸지 않고
+  기존 결과를 그대로 반환함(멱등)'
+- 사용자 식별은 인증 없는 데모 수준이며, 요청 본문의 role 값 위조 자체는 범위 밖임(자연어로 역할을 주장하는 시도만 가드레일 대상)
+# --- 진척 계산 ---
+- 커밋-업무 매핑 키는 커밋 메시지의 업무 ID(형식 TASK-\d{3})임. ID가 없거나 형식이 틀린 커밋은 '미연결'로 별도 표시함
+- 개발자 식별은 커밋 작성자 이메일을 개발자 정보와 연결해서 함. 실제 이메일 값으로 내부 처리하고 마스킹은 출력 단계에서만 적용함
+- 진척률은 하위 작업 완료 비율을 업무별 계획 MM으로 가중해 계산함. 하위 작업 완료는 커밋 메시지의 완료 표시로 판정하고, 커밋 수는 진척률에
+  넣지 않고 근거로만 표시함
+- 남은 MM = 계획 MM × (1 − 진척률). 진척률·MM 등 숫자는 도구(함수)가 결정적으로 계산하고 LLM은 설명만 함
+- '''이번 주''는 실제 현재 날짜가 아니라 fixture에 고정한 기준 주(2026-11-16 월 ~ 2026-11-22 일)로 계산함'
+- 업무 상태와 커밋이 불일치하면 업무 상태를 우선하고 불일치는 경고로 표시함
+# --- RAG·코퍼스 ---
+- RAG는 수치가 아닌 이유·결정·규칙 질문을 담당함
+- '평가용 코퍼스는 data/corpus/에 고정 스냅샷으로 둠: 한국어 가짜 문서 15~20건(주간회의록 4~6주(결정사항/블로커/액션아이템 섹션
+  고정), 번호 매긴 완료 조건이 있는 업무 정의서, 팀 규칙(커밋 규칙·MM 산정 가이드·회의록 템플릿)). 간접 인젝션 테스트용으로 숨은 지시가
+  담긴 회의록 1건을 포함함'
+- 에이전트가 게시한 회의 자료는 data/generated/에 저장하고 런타임 검색 인덱스에만 추가하며 평가 시에는 제외함. 같은 페이지를 다시 게시하면
+  인덱스의 이전 버전을 교체하고 중복 추가하지 않음
+- 개발자 역할의 RAG 답변에서는 다른 개발자의 진척 수치를 제외하고, 결정사항·블로커 등 팀 공용 내용만 보여줌
+# --- 가드레일 ---
+- '가드레일 1: 역할별 조회 범위(PM/PL은 전체, 개발자는 본인만, RAG 경로 포함). 권한 상승 시도를 포함한 위반은 거절하며, 거절 문구는
+  ''해당 정보는 조회 권한이 없습니다''로 고정해 대상자 존재 여부를 드러내지 않음'
+- '가드레일 2: 이메일·전화번호 PII는 모든 역할의 최종 답변, trace, Confluence 게시물에서 마스킹함. 마스킹은 미들웨어 한 곳에서만 처리함'
+- '가드레일 3: 질문 속 직접 프롬프트 인젝션은 거절함. 검색 문서 속 간접 인젝션은 해당 청크만 제외하고 원 질문에 답함. 시스템 프롬프트는
+  노출하지 않음'
+- '가드레일 4: 승인 없는 Confluence 게시를 금지함. 초안을 보여주고 승인 대기(HITL)하며 PM/PL만 승인할 수 있음'
+- '가드레일 5: 사람 평가·순위 매기기는 모든 역할에서 거절하고 업무 단위 현황으로 대체 안내함'
+- 권한 체크는 프롬프트가 아니라 도구 실행 전 코드 계층에서 강제함
+# --- 패턴 구현 ---
+- Confluence 연동은 기본적으로 가짜 MCP 서버(stdio, 설정 가능한 로컬 폴더에 마크다운 쓰기)이며 tool 스키마는 get_page,
+  create_page, search_pages임. 실제 API는 CONFLUENCE_MODE=real일 때만 쓰는 어댑터로 분리함
+- MCP 호출과 LLM 호출은 10초 타임아웃, 최대 2회 재시도(미들웨어)이며 최종 실패 시 오류를 answer에 명시하고 게시하지 않음
+- Multi-Agent Supervisor는 LLM 라우팅으로 진척 / 문서 Q&A / 회의 자료 에이전트 중 하나를 선택하고 라우팅을 trace에 노출함
+- 회의 자료 생성 흐름(진척 수집 → 지난 액션아이템 확인 → 초안 → 승인 → 게시)에 Plan-Execute를 적용함
+- 장기 메모리(LangGraph Store)에는 주차별 액션아이템 진행 상태만 저장함. 평가 실행 전에는 고정 스냅샷으로 초기화함
+- 미들웨어는 PII 마스킹, 긴 대화 요약, 재시도를 담당함
+- Trace는 LangSmith를 기본으로 하고 API 키가 없으면 로컬 JSON 로그(logs/trace/)로 대체함. API 응답의 trace 필드에도 포함함
+# --- 평가 ---
+- 'test_queries.csv는 20건 고정: positive 8, negative 4, edge 5, guardrail 3. 열은 id, category, input, expected_traits,
+  forbidden, expected_tools, note에 RAGAS용 reference(정답 문장), reference_doc_ids, explanatory(true|false)를 추가함'
+- RAGAS 정답(reference)은 해당 주차 회의록의 블로커·액션아이템 문장과 근거 문서 ID로 사전 고정함. 도구 계산 결과도 contexts에 포함하고,
+  수치 정확성은 exact-match로 별도 검사함
+- '케이스 통과 판정: expected_traits 충족(LLM-as-Judge) AND forbidden 미위반 AND expected_tools 호출. 3회 실행 중 2회 이상
+  통과하면 pass'
+- 에이전트와 judge는 같은 모델을 temperature=0으로 쓰고, judge 프롬프트는 evaluation/judge_prompt.md로 버전 고정해 1·2차에 동일
+  적용함. RAGAS 지표는 faithfulness, context_recall이며 모델명과 RAGAS 버전은 README에 명시함
+- 1차 평가 baseline은 dense-only 검색이며 평가 전에 README에 사전 명시·고정함
+- 2차 평가는 동일 테스트 세트·동일 judge로 3회 실행함. 개선 레버는 1차 실패 유형에 맞춰 적용함(검색 누락→하이브리드 BM25+벡터+리랭킹,
+  질문 모호→쿼리 확장, 주차 혼입→주차·업무 ID 메타데이터 필터, 근거는 맞는데 오답→인용 규칙 및 '문서에 없으면 모른다' 프롬프트)
+# --- SERVICE.md ---
+- SERVICE.md에 사용자·문제·가치(예시 개발자 6명 팀, PM/PL 회의자료 주 3시간→5분, 개발자 수기 입력 주 30분→0분, 주 약 5시간 55분
+  절감을 '추정치'로 표기하고 일반식 2시간 55분 + 개발자 수 × 30분 병기, 비시간 가치 포함), 사내 기여 확장 3단계(팀 시범 운영→사내
+  표준화→타 팀 템플릿 배포, 수익화 제외), 도구·데이터, 가드레일 정책 5건, 성공 기준을 기술함
+- SERVICE.md에 '보고 부담을 줄이는 도구이며 개인 평가에는 사용하지 않음'과 인증 없는 데모 수준임을 명시함
+acceptance_criteria:
+- description: 제출 산출물이 갖춰져 있다. src/agent.py, src/tools.py, src/retriever.py, data/corpus/, README.md가 존재하고,
+    test_queries.csv는 정확히 20건(positive 8, negative 4, edge 5, guardrail 3)이며 reference·reference_doc_ids·explanatory
+    열을 가진다. SERVICE.md는 '추정', '개인 평가에는 사용하지 않', '사내 표준화'를 포함한다
+  semantic_ac_key: ac_185518e0e5329875
+  verify_command: python -m pytest -q tests/test_deliverables.py
+  expected_artifacts:
+  - tests/test_deliverables.py
+  - test_queries.csv
+  - SERVICE.md
+  - README.md
+- description: 사용자가 진척을 물으면 fixture 기준 주(2026-11-16~22)의 업무별·개발자별 진척률과 남은 MM가 사전 고정 정답과 100%
+    일치하고, 미연결 커밋(ID 없음·형식 오류)과 상태-커밋 불일치 경고가 함께 표시된다
+  semantic_ac_key: ac_438bdaac6dcc313c
+  verify_command: python -m pytest -q tests/test_progress.py
+  expected_artifacts:
+  - tests/test_progress.py
+- description: 클라이언트는 POST /query 하나로 질의하고 answer, contexts, trace를 받는다. 잘못된 role·approval은 422, 없는
+    thread_id는 404, 미등록 user_id는 403을 받는다
+  semantic_ac_key: ac_ccb3744f4bd948cf
+  verify_command: python -m pytest -q tests/test_api.py
+  expected_artifacts:
+  - tests/test_api.py
+- description: 회의 자료는 PM/PL이 승인해야만 Confluence에 게시된다. 승인 대기 응답에 thread_id가 있고, PM/PL의 approve로 게시,
+    reject로 미게시가 되며, 개발자의 승인 시도는 거절되고, 같은 thread_id의 중복 승인은 상태를 바꾸지 않는다
+  semantic_ac_key: ac_a30fd0eb002c423a
+  verify_command: python -m pytest -q tests/test_hitl.py
+  expected_artifacts:
+  - tests/test_hitl.py
+- description: 게시된 회의 자료는 결정사항·블로커·액션아이템 섹션을 포함하고 문서 내 진척 수치가 도구 결과와 일치하며, Confluence(가짜 MCP
+    서버)에서 get_page·search_pages로 다시 조회되고 런타임 검색 대상이 된다(재게시 시 중복 없이 교체). 평가용 코퍼스에는 들어가지 않는다
+  semantic_ac_key: ac_9bf157039717284d
+  verify_command: python -m pytest -q tests/test_meeting_material.py tests/test_mcp_confluence.py
+  expected_artifacts:
+  - tests/test_meeting_material.py
+  - tests/test_mcp_confluence.py
+- description: 가드레일 5개 정책이 모두 동작한다. 개발자의 타인 정보 조회(RAG 경로 포함)와 권한 상승 시도는 '해당 정보는 조회 권한이
+    없습니다'로 거절된다. 이메일·전화번호는 답변·trace·게시물에서 마스킹된다. 직접 인젝션은 거절되고, 간접 인젝션 청크는 제외된 채 원
+    질문에 답한다. 개인 순위·평가 요청은 거절된다
+  semantic_ac_key: ac_809cabab56352c0b
+  verify_command: python -m pytest -q tests/test_guardrails.py
+  expected_artifacts:
+  - tests/test_guardrails.py
+- description: 모든 응답에서 trace를 확인할 수 있다. trace에는 Supervisor 라우팅 결과(진척/문서 Q&A/회의 자료)와 도구 호출이
+    담기고, LangSmith 키가 없어도 로컬 trace 기록이 남는다. MCP·LLM 호출이 타임아웃되면 재시도 후 오류가 answer에 명시되고 게시는
+    일어나지 않는다
+  semantic_ac_key: ac_7bb0eee3fb595145
+  verify_command: python -m pytest -q tests/test_trace.py
+  expected_artifacts:
+  - tests/test_trace.py
+- description: 평가 리포트가 성공 기준을 충족함을 보인다. evaluation/round1_report.md(사전 고정 dense-only baseline)와
+    round2_report.md가 있고, 각 리포트의 결과 JSON에서 2차 통과 16건 이상, 1차 대비 통과 3건 이상 증가, 수치 exact-match 100%,
+    가드레일 차단 100%, 설명형 케이스 faithfulness ≥ 0.85, context recall ≥ 0.80이 확인된다
+  semantic_ac_key: ac_464c603e4c0929fa
+  verify_command: python -m pytest -q tests/test_eval_reports.py
+  expected_artifacts:
+  - evaluation/round1_report.md
+  - evaluation/round2_report.md
+  - evaluation/round1_results.json
+  - evaluation/round2_results.json
+  - tests/test_eval_reports.py
+assumptions:
+- 테스트 파일은 tests/ 아래 두며 실제 파일명은 작업자가 바꿀 수 있음
+- API 서버는 FastAPI로 구현하고 기능 테스트는 TestClient와 mock LLM을 써서 API 키 없이 실행함. 평가(evaluation/)만 실제 LLM을
+  사용하고, tests/test_eval_reports.py는 저장된 결과 JSON만 읽어 판정함
+- 가짜 Confluence MCP 서버의 쓰기 폴더는 설정 가능한 경로이며, 테스트는 임시 디렉터리를 사용함
+- 커밋 완료 표시 형식은 '[TASK-012-3][done]'처럼 예시를 따르지만 정확한 문법은 작업자가 정함
+- 'PII 마스킹 출력 형식(예: k***@sds.com)은 작업자가 정함'
+- 구체 모델명은 교육에서 제공된 API 기준으로 README에 명시함
+ontology_schema:
+  name: WeeklyProgressReportAgent
+  description: 팀 프로젝트의 업무·하위 작업·커밋·개발자·회의 문서를 연결해 진척률을 계산하고, 역할별 권한 아래 질의응답과 HITL
+    승인 기반 회의 자료 게시를 수행하며, 그 품질을 평가하는 도메인 모델
+  fields:
+  - name: developer
+    type: object
+    description: 개발자 정보(developer_id, 이름, 이메일, role)
+    required: true
+  - name: role
+    type: string
+    description: 사용자 역할 developer | pm_pl. 조회 범위와 승인 권한을 결정함
+    required: true
+  - name: task
+    type: object
+    description: 업무(task_id 예 TASK-012, 담당자, 계획 MM, 상태, 하위 작업 목록)
+    required: true
+  - name: subtask
+    type: object
+    description: 하위 작업(subtask_id 예 TASK-012-3, 완료 여부)
+    required: true
+  - name: commit
+    type: object
+    description: 커밋 로그(hash, 작성자 이메일, 일시, 메시지, 연결된 task_id 또는 미연결, 완료 표시)
+    required: true
+  - name: reference_week
+    type: object
+    description: fixture에 고정한 기준 주(2026-11-16 ~ 2026-11-22, 월~일)
+    required: true
+  - name: progress_rate
+    type: number
+    description: 계획 MM 가중 하위 작업 완료 비율로 결정적 계산된 진척률
+    required: true
+  - name: remaining_mm
+    type: number
+    description: 계획 MM × (1 − 진척률)
+    required: true
+  - name: mismatch_warnings
+    type: array
+    description: 업무 상태와 커밋 간 불일치 경고 및 미연결 커밋 목록
+    required: true
+  - name: corpus_document
+    type: object
+    description: RAG 문서(doc_id, 유형 회의록|업무정의서|팀규칙|Confluence회의자료, 주차, 관련 task_id, 본문, 출처 corpus|generated)
+    required: true
+  - name: retrieved_context
+    type: object
+    description: 검색 또는 도구 결과로 응답 contexts에 담기는 근거(doc_id, text)
+    required: true
+  - name: meeting_material
+    type: object
+    description: 주간 회의 자료 초안(결정사항, 블로커, 액션아이템, 진척 수치)
+    required: true
+  - name: hitl_state
+    type: object
+    description: 승인 흐름 상태(thread_id, pending|approved|rejected, 승인자)
+    required: true
+  - name: confluence_page
+    type: object
+    description: 가짜 MCP 서버의 페이지(page_id, 제목, 본문 마크다운, 게시 일시)
+    required: true
+  - name: action_item_memory
+    type: object
+    description: 장기 메모리에 저장되는 주차별 액션아이템 진행 상태
+    required: true
+  - name: supervisor_route
+    type: string
+    description: Supervisor가 선택한 에이전트 progress | docs_qa | meeting_material
+    required: true
+  - name: trace
+    type: array
+    description: 단계별 실행 기록(step, input, output). 라우팅·도구 호출 포함, PII 마스킹 적용
+    required: true
+  - name: query_request
+    type: object
+    description: POST /query 요청(question, user_id, role, thread_id, approval)
+    required: true
+  - name: query_response
+    type: object
+    description: POST /query 응답(answer, contexts, trace, thread_id, 승인 대기 여부)
+    required: true
+  - name: guardrail_policy
+    type: object
+    description: 가드레일 정책(이름, 위반 예, 응답 방식 거절|마스킹|승인 대기)
+    required: true
+  - name: test_query
+    type: object
+    description: 평가 질의(id, category, input, expected_traits, forbidden, expected_tools, reference, reference_doc_ids, explanatory)
+    required: true
+  - name: eval_result
+    type: object
+    description: 평가 회차 결과(round, 케이스별 pass, 통과 건수, faithfulness, context_recall, exact-match율, 가드레일 차단율)
+    required: true
+evaluation_principles:
+- name: numeric_determinism
+  description: 진척률·남은 MM는 도구가 결정적으로 계산하고 fixture 정답과 100% exact-match여야 함
+  weight: 0.9
+- name: guardrail_enforcement
+  description: 5개 가드레일 정책이 코드 계층에서 100% 강제되고, 고정 거절 문구와 PII 마스킹이 지켜짐
+  weight: 0.9
+- name: grounded_answers
+  description: 이유·결정·규칙 답변이 검색 근거에 충실하고(faithfulness ≥ 0.85) 근거 문서를 회수함(context recall ≥ 0.80)
+  weight: 0.8
+- name: hitl_safety
+  description: PM/PL 승인 없이는 Confluence 게시가 일어나지 않고, thread_id로 재개가 가능하며 중복 승인에 멱등함
+  weight: 0.8
+- name: measured_improvement
+  description: 고정된 dense-only baseline 대비 2차에서 동일 조건으로 통과 3건 이상 개선을 재현 가능하게 보여줌
+  weight: 0.7
+- name: pattern_coverage
+  description: 12개 패턴이 모두 실제 기능에 연결되고 trace로 확인 가능함
+  weight: 0.6
+- name: service_doc_sharpness
+  description: SERVICE.md의 사용자·문제·가치가 구체 수치와 함께 뾰족하며, 개인 평가 미사용 원칙이 명시됨
+  weight: 0.7
+exit_conditions:
+- name: all_criteria_met
+  description: 모든 acceptance criteria 통과
+  criteria: tests/ 아래 모든 verify_command가 통과하고, 2차 평가 결과가 성공 기준을 충족함
+- name: timebox_reached
+  description: 실질 11시간 개발 기간 소진
+  criteria: 축소 트리거에 따라 비필수 패턴을 축소한 상태에서 필수 패턴 1·3·11·12, 가드레일, HITL이 동작하고 산출물이 모두 제출 가능함
+- name: blocking_bug
+  description: 수치 exact-match 실패 또는 가드레일 우회가 발견됨
+  criteria: 버그로 분류해 수정될 때까지 평가 개선 작업을 중단함
+metadata:
+  seed_id: seed_50f7c51da60d
+  version: 1.1.0
+  created_at: '2026-11-18T07:26:15.837365Z'
+  revised_at: '2026-11-18'
+  revision_note: refinement pass 1 — 인터뷰 이후 사용자 결정 반영(이름, 수치, 사내 표준화, 최종 점검 후속 결정 5건) + QA 제안 4건 적용
+  ambiguity_score: 0.139
+  gate_forced: false
+  interview_id: interview_20261118_060344
+  parent_seed_id: null
+  generation_mode: normal
+  degraded: false
+  unresolved_slots: []
+  recovery_reason: null

@@ -1,0 +1,31 @@
+{
+  "_note": "사전 고정 정답. 손계산: 진척률=하위작업 완료비율(상태 '완료'는 100%), 개발자/팀=계획 MM 가중. 진척률 소수 4자리, MM 소수 2자리.",
+  "tasks": {
+    "TASK-007": {"progress": 1.0, "remaining_mm": 0.0},
+    "TASK-012": {"progress": 0.4, "remaining_mm": 2.4},
+    "TASK-013": {"progress": 0.25, "remaining_mm": 1.5},
+    "TASK-014": {"progress": 1.0, "remaining_mm": 0.0},
+    "TASK-015": {"progress": 0.4, "remaining_mm": 1.5},
+    "TASK-016": {"progress": 0.5, "remaining_mm": 1.5},
+    "TASK-017": {"progress": 0.0, "remaining_mm": 1.5},
+    "TASK-018": {"progress": 0.75, "remaining_mm": 0.5},
+    "TASK-019": {"progress": 0.0, "remaining_mm": 1.0},
+    "TASK-020": {"progress": 0.8, "remaining_mm": 0.5},
+    "TASK-021": {"progress": 1.0, "remaining_mm": 0.0}
+  },
+  "developers": {
+    "dev01": {"progress": 0.35, "remaining_mm": 3.9},
+    "dev02": {"progress": 0.7273, "remaining_mm": 1.5},
+    "dev03": {"progress": 0.6667, "remaining_mm": 1.0},
+    "dev04": {"progress": 0.5, "remaining_mm": 1.5},
+    "dev05": {"progress": 0.5, "remaining_mm": 2.0},
+    "dev06": {"progress": 0.8333, "remaining_mm": 0.5}
+  },
+  "team": {"progress": 0.5755, "remaining_mm": 10.4},
+  "unlinked_hashes": ["c021", "c022", "c028", "c032", "c035"],
+  "mismatch_tasks": {
+    "TASK-007": "STATUS_DONE_SUBTASKS_INCOMPLETE",
+    "TASK-014": "SUBTASKS_DONE_STATUS_NOT_DONE",
+    "TASK-017": "NOT_STARTED_BUT_HAS_COMMITS"
+  }
+}

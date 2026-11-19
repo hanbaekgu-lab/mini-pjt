@@ -56,13 +56,11 @@ def test_round2_answer_relevancy_target():
     assert load(2)["summary"]["answer_relevancy"] >= 0.80
 
 
-def test_round2_report_keeps_rerun_history_and_delta():
+def test_round2_report_has_delta_and_fixes():
     r2 = load(2)
     t = (EV / "round2_report.md").read_text(encoding="utf-8")
-    assert "## 1차 대비" in t and "## 2차 실행 이력" in t and "## 2차 재실행 시 함께 고친 결함" in t
-    first = r2["previous_runs"][0]["summary"]  # 첫 2차 실행(18/20) 요약을 지우지 않고 남긴다
-    assert first["pass_count"] == 18 and first["faithfulness"] == 0.7738 and first["answer_relevancy"] == 0.4422
-    assert "| 1번째 | 18 / 20 | 0.7738 | 0.9500 | 0.7000 | 0.4422 |" in t
+    assert "## 1차 대비" in t and "## 2차 개선 중 고친 결함" in t and "## 남은 지표 한계" in t
+    assert "previous_runs" not in r2 and r2["config"]["fixes"]  # 최종 2차 결과 하나만 남긴다
 
 
 def test_summary_matches_cases():

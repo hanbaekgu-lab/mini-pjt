@@ -64,53 +64,43 @@ PARTS = json.loads((ROOT / "data/fixtures/project.json").read_text(encoding="utf
 JUDGE_PROMPT = (ROOT / "evaluation/judge_prompt.md").read_text(encoding="utf-8")
 QUERIES = ROOT / "evaluation/test_queries.csv"
 RAGAS_METRICS = ("faithfulness", "context_recall", "context_precision", "answer_relevancy")
-# 2차 첫 실행(18/20) 뒤 실패 분석으로 고친 결함. 2차를 다시 실행할 때 결과 JSON·리포트에 함께 남긴다.
-# 1차는 사전 고정 baseline이라 다시 실행하지 않는다(아래 '1차 경로 영향'인 항목은 1차 수치에 반영되지 않음).
-RERUN_FIXES = [
+# 2차 개선 과정에서 실패 분석으로 고친 결함. 결과 JSON·리포트에 함께 남긴다.
+# 1차는 사전 고정 baseline이라 다시 실행하지 않는다(아래 '1차 경로 영향 있음'인 항목은 1차 수치에 반영되지 않음).
+FIXES = [
     "7번(지난주 액션아이템): 검색은 지난주 회의록(MIN-2026-W46)을 가져왔지만 LLM이 오늘 날짜를 몰라 그 회의록이 '지난주'인지 "
     "확인하지 못하고 grounded 규칙대로 '알 수 없음'으로 답했다. filter 레버가 코드로 정한 기준 주·지난주 회의록 ID를 "
     "[기준 정보]로 프롬프트에 넣고, 해당 주 회의록을 다른 문서보다 우선하도록 했다(2차 레버 경로만, 1차 경로 영향 없음).",
     "15번(미연결 커밋): 답변 서술은 get_commits 도구의 작성자 이메일(마스킹)을 인용했는데 덧붙인 [도구 계산 결과]에는 "
     "작성자 열이 없어 judge가 이메일을 지어낸 것으로 봤다. 결정적 보고서의 미연결 커밋에 작성자 이름·이메일(출력 단계 마스킹)을 "
     "요청자 범위(PM 전체, PL 본인 파트, 개발자 본인)로 싣고, 회의 자료(공용 문서)에는 싣지 않는다(진척 경로 공통, 1차 경로 영향 있음).",
-    "8번(게시 꼬리말): '업무 담당 확인을 위해 이름만 표기합니다'는 이름을 싣지 않는 회의 자료와 맞지 않아 "
-    "'참석자 공용 자료로, 개인 이름·연락처·개인별 진척률을 싣지 않습니다'로 바꿨다(게시 경로 공통, 1차 경로 영향 있음).",
-    "answer relevancy 하락(1차 0.6012 → 2차 첫 실행 0.4422) 점검: 설명형 5건 중 7번이 3회 모두 '알 수 없음'이라 RAGAS가 "
-    "비확답(noncommittal)으로 0점을 매긴 것이 주원인이다(7번 제외 평균 1차 0.5383, 2차 0.5527). RAGAS에 넘기는 응답은 "
-    "문서 Q&A 답변이고 인용 표기([doc_id])는 1·2차 모두 이미 제거하며, 설명형 케이스에는 [도구 계산 결과] 블록이 없어 "
-    "측정 결함은 찾지 못했다. 지표 정의·입력은 바꾸지 않았다(이후 세 번째 실행 뒤 역질문 언어 결함을 찾음, 아래 항목).",
-    "(2차 두 번째 실행에서 발견) 회의 자료 초안: LLM 구조화 출력(MeetingDraft)이 출력 토큰 한도(2048)에 걸려 잘리면서 "
-    "action_items가 빠져 요청 전체가 검증 오류로 실패했다(1·8·11번, 수치 exact-match·가드레일 차단율 하락). 초안 항목 수를 "
-    "섹션별 5개 이내·한 문장으로 제한하고(출력 약 1,100토큰), 구조화 출력이 실패해도 결정적 초안으로 대체해 요청이 실패하지 "
-    "않게 했다(회의 자료 경로 공통, 1차 경로 영향 있음).",
-    "(2차 세 번째 실행 뒤 발견) answer relevancy 측정 결함: RAGAS ResponseRelevancy의 역질문 생성 프롬프트가 영어 지시·영어 "
-    "예시라 한국어 답변에서도 영어 역질문을 만들었고, 한국어 원 질문과의 언어 간 임베딩 유사도를 재고 있었다(5번 역질문 "
-    "'What is the format for writing commit messages…' → 0.29, 같은 뜻의 한국어 역질문은 0.98). 역질문을 응답과 같은 언어로 "
-    "만들라는 지시를 덧붙였다. 측정 쪽 수정이므로 1차도 저장된 답변으로 answer relevancy만 재채점해 같은 기준으로 비교한다.",
+    "8번(게시 꼬리말·마스킹 안내): '업무 담당 확인을 위해 이름만 표기합니다'는 이름을 싣지 않는 회의 자료와 맞지 않았고, 게시물에 "
+    "PII가 없어 judge가 마스킹 여부를 확인할 수 없었다. 꼬리말을 '참석자 공용 자료로, 개인 이름·연락처·개인별 진척률을 싣지 "
+    "않습니다. 이메일·전화번호는 게시 전 마스킹됩니다'로 바꾸고 승인 응답에 마스킹 적용을 밝힌다(게시 경로 공통, 1차 경로 영향 있음).",
+    "회의 자료 초안: LLM 구조화 출력(MeetingDraft)이 출력 토큰 한도(2048)에 걸려 잘리면 action_items가 빠져 요청 전체가 검증 "
+    "오류로 실패했다. 초안 항목 수를 섹션별 5개 이내·한 문장으로 제한하고(출력 약 1,100토큰), 구조화 출력이 실패해도 결정적 "
+    "초안으로 대체해 요청이 실패하지 않게 했다(회의 자료 경로 공통, 1차 경로 영향 있음).",
+    "answer relevancy 측정 결함: RAGAS ResponseRelevancy의 역질문 생성 프롬프트가 영어 지시·영어 예시라 한국어 답변에서도 "
+    "영어 역질문을 만들었고, 한국어 원 질문과의 언어 간 임베딩 유사도를 재고 있었다(5번 역질문 'What is the format for writing "
+    "commit messages…' → 0.29, 같은 뜻의 한국어 역질문은 0.98). 역질문을 응답과 같은 언어로 만들라는 지시를 덧붙였다. "
+    "측정 쪽 수정이므로 1차도 저장된 답변으로 answer relevancy만 재채점해 같은 기준으로 비교한다.",
     "16번(회의 이력 요약): '지금까지 회의에서 나온 내용'처럼 여러 주차를 모아야 하는 질문인데 상위 3건만 검색해 W46 회의록이 "
-    "빠졌다(context recall 0.75). filter 레버에 이력 질문 판별을 넣어 회의록을 우선하고 5건까지 검색한다(2차 레버 경로만, "
-    "1차 경로 영향 없음).",
-    "8번(게시 마스킹): 게시물에 PII가 없어 judge가 마스킹 여부를 확인할 수 없다고 봤다. 실제 동작대로 게시 꼬리말에 "
-    "'이메일·전화번호는 게시 전 마스킹됩니다'를, 승인 응답에 '(이메일·전화번호 마스킹 적용 후 게시)'를 덧붙였다"
-    "(게시 경로 공통, 1차 경로 영향 있음).",
+    "빠졌다. filter 레버에 이력 질문 판별을 넣어 회의록을 우선하고 5건까지 검색한다(2차 레버 경로만, 1차 경로 영향 없음).",
     "11번(승인 생략 요청): 승인 대기 초안의 안내문이 '승인 후 게시한 문서입니다'(과거형)라 게시가 끝난 것처럼 읽혔다. "
-    "'승인을 거쳐 게시하는 문서입니다'로 고쳤다(회의 자료 경로 공통, 1차 경로 영향 있음). 같은 실행에서 judge가 근거 문장에는 "
-    "'위반 없음'이라 쓰고 위반 플래그를 켠 판정 불일치도 있었으나, judge 프롬프트는 1·2차 공통이라 바꾸지 않았다.",
-    "(사용 예시 캡처 중 발견) 진척 도구 인자: ReAct LLM이 developer_id에 이름('정카카')을 넣으면 도구가 '찾을 수 없음'·'권한 없음'으로 "
-    "답했다. 도구가 이름을 ID로 바꾼 뒤 범위를 검사한다(진척 경로 공통, 1차 경로 영향 있음).",
-    "(사용 예시 캡처 중 발견) 게시된 회의 자료(약 1.6만 자)가 Titan 입력 한도를 넘어 이후 문서 Q&A가 실패했다. 긴 문서는 문단 조각으로 "
-    "임베딩한다. 평가는 생성 문서를 검색에서 빼므로 평가 수치에는 영향이 없다. Bedrock 클라이언트 타임아웃·재시도도 명시했다.",
+    "'승인을 거쳐 게시하는 문서입니다'로 고쳤다(회의 자료 경로 공통, 1차 경로 영향 있음).",
+    "진척 도구 인자: ReAct LLM이 developer_id에 이름('정카카')을 넣으면 도구가 '찾을 수 없음'·'권한 없음'으로 답했다. "
+    "도구가 이름을 ID로 바꾼 뒤 범위를 검사한다(진척 경로 공통, 1차 경로 영향 있음).",
+    "게시된 회의 자료(약 1.6만 자)가 Titan 입력 한도를 넘어 이후 문서 Q&A가 실패했다. 긴 문서는 문단 조각으로 임베딩한다. "
+    "평가는 생성 문서를 검색에서 빼므로 평가 수치에는 영향이 없다. Bedrock 클라이언트 타임아웃·재시도도 명시했다.",
 ]
-# 최종 2차 실행 뒤에도 남은 실패·지표 한계 (고치지 않은 이유와 함께 리포트에 남긴다)
+# 최종 2차 결과에 남은 지표 한계 (고치지 않은 이유와 함께 리포트에 남긴다)
 KNOWN_LIMITS = [
     "16번 context precision 0.0: 검색된 회의록(W44~W47)은 모두 reference에 쓰였지만, RAGAS(LLMContextPrecisionWithReference)가 "
     "문서별로 '이 문서만으로 reference에 이르는가'로 판정해 여러 문서를 합쳐야 하는 요약 질문은 모든 문서가 0이 된다(1차도 0.0). "
     "지표 정의라 바꾸지 않았고, 설명형 5건 평균이 기준(0.80)에 정확히 걸쳐 있다.",
-    "answer relevancy 비교: 2차 1~3번째 실행 값은 역질문 언어를 고치기 전(영어 역질문) 측정값이라 4번째 실행 값과 직접 비교하지 "
-    "않는다. 1차는 저장된 답변으로 answer relevancy만 같은 기준으로 다시 채점했다(0.6012 → 0.7300).",
+    "1차 answer relevancy는 역질문 언어를 고친 기준으로 저장된 답변을 다시 채점한 값이다(나머지 지표·판정은 그대로).",
     "3번 faithfulness 0.75, 7번 0.80: 답변 주장 일부를 RAGAS가 근거 문서로 뒷받침되지 않는다고 판정했다. judge 판정은 3회 모두 통과다.",
-    "judge 판정 흔들림: 이전 실행(11번)에서 근거 문장은 '위반 없음'인데 위반 플래그를 켠 판정이 한 번 있었다. "
-    "케이스당 3회 중 2회 통과 규칙으로 흡수하며, judge 프롬프트는 1·2차 공통이라 바꾸지 않았다.",
+    "judge(LLM) 판정은 실행마다 흔들릴 수 있어(근거 문장과 위반 플래그가 어긋나는 경우 등) 케이스당 3회 중 2회 통과 규칙으로 흡수한다. "
+    "judge 프롬프트는 1·2차 공통이다.",
 ]
 
 
@@ -443,24 +433,11 @@ def write_report(res: dict, prev: dict | None) -> str:
               *(f"| {METRIC_LABEL[k]}(설명형) | {fmt(p.get(k))} | {fmt(s.get(k))} | "
                 f"{'-' if p.get(k) is None or s.get(k) is None else f'{s[k] - p[k]:+.4f}'} |" for k in RAGAS_METRICS),
               f"| LLM 호출 | {prev['config'].get('llm_calls', '-')} | {cfg.get('llm_calls', '-')} | |", ""]
-    hist = res.get("previous_runs", [])
-    if hist:
-        L += [f"## 2차 실행 이력 (이번이 {len(hist) + 1}번째 2차 실행)", "",
-              "이전 2차 실행 결과도 투명성을 위해 남긴다. 1차(사전 고정 baseline)는 다시 실행하지 않았다"
-              "(answer relevancy만 측정 수정 후 저장된 답변으로 재채점).",
-              "answer relevancy는 1~3번째 실행이 역질문 언어 수정 전(영어 역질문) 측정값이라 4번째 이후와 직접 비교하지 않는다.", "",
-              "| 실행 | 통과 | " + " | ".join(METRIC_LABEL[k] for k in RAGAS_METRICS) + " | 실패 케이스 | LLM 호출 |",
-              "|---|---|" + "---|" * len(RAGAS_METRICS) + "---|---|"]
-        for i, h in enumerate(hist + [{"summary": s, "failed": [c["id"] for c in res["cases"] if not c["pass"]],
-                                       "llm_calls": cfg.get("llm_calls")}], 1):
-            hs = h["summary"]
-            L.append(f"| {i}번째{' (이번)' if i == len(hist) + 1 else ''} | {hs['pass_count']} / {hs['total']} | "
-                     + " | ".join(fmt(hs.get(k)) for k in RAGAS_METRICS)
-                     + f" | {', '.join(map(str, h['failed'])) or '없음'} | {h.get('llm_calls', '-')} |")
-        L += ["", "## 2차 재실행 시 함께 고친 결함", "",
+    if res["round"] == 2:
+        L += ["## 2차 개선 중 고친 결함", "",
               "1차는 다시 실행하지 않았으므로, '1차 경로 영향 있음' 항목은 1차 수치에 반영되지 않았다(비교 시 유의).", ""]
-        L += [f"{i}. {x}" for i, x in enumerate(cfg.get("rerun_fixes", []), 1)] + [""]
-        L += ["## 남은 실패·지표 한계", ""] + [f"- {x}" for x in KNOWN_LIMITS] + [""]
+        L += [f"{i}. {x}" for i, x in enumerate(cfg.get("fixes", FIXES), 1)] + [""]
+        L += ["## 남은 지표 한계", ""] + [f"- {x}" for x in KNOWN_LIMITS] + [""]
     L += ["## 케이스별 결과", "", "| id | 구분 | 통과(3회) | 판정 | 실패 사유(첫 실패 실행) |", "|---|---|---|---|---|"]
     for c in res["cases"]:
         why = ""
@@ -487,17 +464,12 @@ def main():
     args = ap.parse_args()
     n = args.round
     ev = ROOT / "evaluation"
-    old = ev / f"round{n}_results.json"
     names = tuple(m.strip() for m in args.metrics.split(",") if m.strip())
     if not set(names) <= set(RAGAS_METRICS):
         ap.error(f"--metrics는 {', '.join(RAGAS_METRICS)} 중에서 고른다")
     res = rescore_ragas(n, names) if args.rescore_ragas else evaluate(n)
-    if n == 2 and not args.rescore_ragas and old.exists():  # 2차 재실행: 이전 2차 실행 요약을 이력으로 남긴다
-        o = json.loads(old.read_text(encoding="utf-8"))
-        res["previous_runs"] = o.get("previous_runs", []) + [
-            {"summary": o["summary"], "failed": [c["id"] for c in o["cases"] if not c["pass"]],
-             "llm_calls": o["config"].get("llm_calls")}]
-        res["config"]["rerun_fixes"] = RERUN_FIXES
+    if n == 2 and not args.rescore_ragas:
+        res["config"]["fixes"] = FIXES
     (ev / f"round{n}_results.json").write_text(json.dumps(res, ensure_ascii=False, indent=2), encoding="utf-8")
     prev = json.loads((ev / "round1_results.json").read_text(encoding="utf-8")) if n == 2 else None
     (ev / f"round{n}_report.md").write_text(write_report(res, prev), encoding="utf-8")

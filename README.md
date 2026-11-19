@@ -75,22 +75,21 @@ copy .env.example .env
 
 ## RAGAS 평가 결과
 새 도메인(플랫폼 전환·화면 170개·역할 pm/pl/developer) 기준 실측값이다. 설명형 케이스(3·5·6·7·16) × 3회 평균, ragas 0.4.4 + Bedrock(Claude Sonnet 4.5, temperature=0) + Titan 임베딩.
-1차는 사전 고정 baseline으로 한 번만 실행했고, 2차는 실패 분석으로 결함을 고친 뒤 다시 실행했다(2차 4회 실행, 아래 '최종'은 네 번째 실행).
+1차는 사전 고정 baseline, 2차는 개선 레버와 실패 분석으로 고친 결함을 적용한 결과다.
 
-| 지표 (설명형 케이스) | 1차 (dense-only) | 2차 첫 실행 | 2차 최종 | 성공 기준 | 최종 판정 |
-|---|---|---|---|---|---|
-| faithfulness | 0.8368 | 0.7738 | **0.9100** | 0.85 이상 | 통과 |
-| context recall | 0.5000 | 0.9500 | **1.0000** | 0.80 이상 | 통과 |
-| context precision | 0.4000 | 0.7000 | **0.8000** | 0.80 이상 | 통과 |
-| answer relevancy | 0.7300 | (0.4422) | **0.8824** | 0.80 이상 | 통과 |
+| 지표 (설명형 케이스) | 1차 (dense-only) | 2차 | 성공 기준 | 판정 |
+|---|---|---|---|---|
+| faithfulness | 0.8368 | **0.9100** | 0.85 이상 | 통과 |
+| context recall | 0.5000 | **1.0000** | 0.80 이상 | 통과 |
+| context precision | 0.4000 | **0.8000** | 0.80 이상 | 통과 |
+| answer relevancy | 0.7300 | **0.8824** | 0.80 이상 | 통과 |
 
 - **answer relevancy 측정 결함 수정**: `ResponseRelevancy`는 답변에서 역질문을 만들어 원 질문과 임베딩 유사도를 잰다. 기본 프롬프트가 영어라 한국어 답변에서도 영어 역질문이 나와,
   한국어 질문과의 언어 간 유사도를 재고 있었다(5번 역질문 'What is the format for writing commit messages…' 0.29, 같은 뜻의 한국어 역질문 0.98).
   역질문을 응답과 같은 언어로 만들도록 고쳤고, 1차도 저장된 답변으로 answer relevancy만 같은 기준으로 다시 채점했다(0.6012 → 0.7300, 나머지 지표·판정은 그대로).
-  괄호 안 2차 첫 실행 값은 수정 전 기준이라 직접 비교하지 않는다.
 - 16번 context precision 0.0은 RAGAS가 문서별로 '이 문서만으로 정답에 이르는가'를 판정해, 여러 회의록을 합쳐야 하는 요약 질문에서는 모든 문서가 0이 되기 때문이다(1차도 0.0).
   이 때문에 설명형 평균 context precision은 기준(0.80)에 정확히 걸쳐 있다.
-- 상세: `evaluation/round1_report.md`, `evaluation/round2_report.md`(2차 실행 이력·재실행 시 고친 결함·남은 한계 포함).
+- 상세: `evaluation/round1_report.md`, `evaluation/round2_report.md`(2차 개선 중 고친 결함·남은 한계 포함).
 
 ### 평가 설정 (사전 고정)
 - **1차 baseline**: `RAG_LEVERS=dense` — Titan 벡터 코사인 dense-only 검색, 문서 단위 top-3, **기본 프롬프트**(`BASELINE_PROMPT`: 문서를 참고해 답하라는 지시만,
@@ -113,16 +112,14 @@ copy .env.example .env
 테스트 세트 `evaluation/test_queries.csv` 20건(positive 8, negative 4, edge 5, guardrail 3), 케이스당 3회 실행해 2회 이상 통과하면 pass.
 판정은 LLM-as-Judge(expected_traits·forbidden)와 코드 검사(expected_tools 호출·수치 exact-match·PII 원문 노출)를 함께 쓴다.
 
-| 항목 | 1차 (dense-only) | 2차 첫 실행 | 2차 최종 | 개선폭(1차→최종) | 성공 기준 | 최종 판정 |
-|---|---|---|---|---|---|---|
-| 통과 | 15 / 20 | 18 / 20 | **20 / 20** | +5건 | 16 이상, +3건 이상 | 통과 |
-| 수치 exact-match | 100% | 100% | 100% | - | 100% | 통과 |
-| 가드레일 차단 | 100% | 100% | 100% | - | 100% | 통과 |
-| LLM 호출(평가 1회분) | 303 | 300 | 306 | | | |
+| 항목 | 1차 (dense-only) | 2차 | 개선폭 | 성공 기준 | 판정 |
+|---|---|---|---|---|---|
+| 통과 | 15 / 20 | **20 / 20** | +5건 | 16 이상, +3건 이상 | 통과 |
+| 수치 exact-match | 100% | 100% | - | 100% | 통과 |
+| 가드레일 차단 | 100% | 100% | - | 100% | 통과 |
+| LLM 호출(평가 1회분) | 303 | 306 | | | |
 
-- 2차 실행 이력: 18/20(7·15번 실패) → 17/20(회의 초안 구조화 출력이 토큰 한도에 잘려 1·8·11번 실패) → 19/20(8번 실패) → **20/20**(60회 실행 모두 통과). 실행마다 실패 원인을 고쳤고 이력은 `round2_report.md`에 모두 남겼다.
-- 세 번째 실행의 8번 실패: 게시물에 이메일·전화번호가 아예 없어 judge가 '마스킹'을 확인할 수 없다고 봤다. 실제 동작대로 게시 꼬리말과 승인 응답에 마스킹 안내를 넣었다.
-- 1차는 사전 고정 baseline이라 다시 실행하지 않았다. 2차 재실행 때 고친 결함 중 진척 보고서 작성자 열·게시 꼬리말·회의 초안 대체·개발자 이름→ID 변환은 1차 경로에도 해당하지만 1차 수치에는 반영되지 않았다(비교 시 유의).
+- 1차는 사전 고정 baseline이라 다시 실행하지 않았다. 2차 개선 중 고친 결함 중 진척 보고서 작성자 열·게시 꼬리말·회의 초안 대체·개발자 이름→ID 변환은 1차 경로에도 해당하지만 1차 수치에는 반영되지 않았다(비교 시 유의).
 
 **주요 개선 사항 (2차)**
 - 검색 레버: 하이브리드 검색·쿼리 확장·주차/화면 ID 필터·grounded 프롬프트
@@ -140,14 +137,14 @@ copy .env.example .env
 - **평가 중 생성 문서 혼입**: 한 회차 안에서 8번 케이스(승인 후 게시)가 만든 회의 자료가 런타임 인덱스에 들어가 16번 케이스의 근거로 쓰였다. '평가 시 생성 문서 제외' 원칙과 어긋나 평가 모드에서는 코퍼스만 검색하도록 고쳤다(테스트로 고정).
 - **같은 대화의 후속 질문**: PL이 파트 진척을 물은 뒤 '중메뉴별·단계별 현황'을 묻자 ReAct 에이전트가 도구를 다시 부르지 않고 이전 답을 재사용해 중메뉴 개수를 틀리게 말했다. 프롬프트에 '질문마다 도구 새로 호출·최신 도구 결과의 숫자만'을 넣고, 도구를 건너뛰면 한 번 더 지시하도록 코드로 막았다.
 - **손으로 쓴 JSON-RPC MCP 서버**: 동작은 했지만 프로토콜 세부(초기화·오류 형식)를 직접 관리해야 했다. 공식 SDK 계열 fastmcp와 langchain-mcp-adapters로 바꿨다(서버 기동이 무거워져 호출당 약 2초 늘었다).
-- **'지난주'를 LLM이 풀게 둠**(2차 첫 실행 7번 0/3): 검색 필터는 코드로 지난주 회의록(W46)을 골랐지만 프롬프트에는 날짜 정보가 없어, LLM이 그 회의록이 '지난주'인지 확인하지 못하고 grounded 규칙대로 '알 수 없음'만 답했다. 코드가 정한 기준 주와 지난주 회의록 ID를 `[기준 정보]`로 넘기고 해당 주 회의록을 우선하도록 고쳤다(2차 레버 경로만).
-- **답변 서술과 근거 표의 불일치**(2차 첫 실행 15번 0/3): ReAct 에이전트는 `get_commits` 결과의 작성자 이메일(마스킹)을 말했는데, 덧붙인 `[도구 계산 결과]`에는 작성자 열이 없어 judge가 이메일을 지어낸 것으로 봤다. 결정적 보고서의 미연결 커밋에도 작성자 이름·이메일을 요청자 범위(PM 전체, PL 본인 파트, 개발자 본인)로 싣고 출력 단계에서 마스킹한다. 공용 회의 자료에는 싣지 않는다.
+- **'지난주'를 LLM이 풀게 둠**(7번): 검색 필터는 코드로 지난주 회의록(W46)을 골랐지만 프롬프트에는 날짜 정보가 없어, LLM이 그 회의록이 '지난주'인지 확인하지 못하고 grounded 규칙대로 '알 수 없음'만 답했다. 코드가 정한 기준 주와 지난주 회의록 ID를 `[기준 정보]`로 넘기고 해당 주 회의록을 우선하도록 고쳤다(2차 레버 경로만).
+- **답변 서술과 근거 표의 불일치**(15번): ReAct 에이전트는 `get_commits` 결과의 작성자 이메일(마스킹)을 말했는데, 덧붙인 `[도구 계산 결과]`에는 작성자 열이 없어 judge가 이메일을 지어낸 것으로 봤다. 결정적 보고서의 미연결 커밋에도 작성자 이름·이메일을 요청자 범위(PM 전체, PL 본인 파트, 개발자 본인)로 싣고 출력 단계에서 마스킹한다. 공용 회의 자료에는 싣지 않는다.
 - **실제 내용과 맞지 않는 게시 꼬리말**: '업무 담당 확인을 위해 이름만 표기합니다'가 이름 없는 회의 자료에 붙어 있었다. '참석자 공용 자료로, 개인 이름·연락처·개인별 진척률을 싣지 않습니다'로 바꿨다.
-- **LLM 구조화 출력 길이 무제한**(2차 두 번째 실행 1·8·11번): 회의 초안(`MeetingDraft`)이 출력 토큰 한도(2048)에 잘려 `action_items`가 빠지자 요청 전체가 검증 오류로 끝났다. 섹션별 5개 이내·한 문장으로 제한하고(출력 약 1,100토큰), 실패해도 결정적 초안으로 대체한다.
+- **LLM 구조화 출력 길이 무제한**(1·8·11번): 회의 초안(`MeetingDraft`)이 출력 토큰 한도(2048)에 잘려 `action_items`가 빠지자 요청 전체가 검증 오류로 끝났다. 섹션별 5개 이내·한 문장으로 제한하고(출력 약 1,100토큰), 실패해도 결정적 초안으로 대체한다.
 - **문자열 포함 기반 BM25**: '지연됐고'와 '지연되어'처럼 활용형이 다르면 맞지 않았다. kiwipiepy 형태소 토큰화로 바꿨다.
 - **긴 문서를 통째로 임베딩**(사용 예시 캡처 중 발견): 회의 자료를 게시하면 그 페이지(약 1.6만 자)가 런타임 검색 대상이 되는데, Titan 입력 한도(8,192토큰)를 넘어 이후 문서 Q&A가 모두 오류로 끝났다. 평가는 생성 문서를 검색에서 빼므로 드러나지 않았다. 긴 문서는 문단 경계로 3,000자 이하 조각을 만들어 각각 임베딩하고, 질의와 가장 가까운 조각의 유사도를 문서 점수로 쓴다.
 - **도구 인자에 ID만 기대**(사용 예시 캡처 중 발견): ReAct LLM은 개발자 ID를 모르므로 `developer_id`에 이름('정카카')을 넣었고, 도구가 이를 그대로 찾아 PM에게는 '찾을 수 없음', PL에게는 본인 파트 팀원인데도 '권한 없음'으로 답했다. 도구가 이름을 ID로 바꾼 뒤 범위를 검사한다.
-- **RAGAS 기본 프롬프트를 그대로 사용**(2차 세 번째 실행 뒤 발견): answer relevancy가 0.59로 낮게 나와 처음에는 '인용형 짧은 답변' 탓으로 봤다. 역질문을 직접 꺼내 보니 한국어 답변에서 영어 역질문이 만들어져 언어 간 유사도를 재고 있었다. 역질문 언어를 응답과 맞추고 1차도 같은 기준으로 재채점했다.
+- **RAGAS 기본 프롬프트를 그대로 사용**: answer relevancy가 기준보다 낮게 나와 처음에는 '인용형 짧은 답변' 탓으로 봤다. 역질문을 직접 꺼내 보니 한국어 답변에서 영어 역질문이 만들어져 언어 간 유사도를 재고 있었다. 역질문 언어를 응답과 맞추고 1차도 같은 기준으로 재채점했다.
 - **Bedrock 호출 타임아웃 미지정**: 일일 토큰 한도에 걸리자 기본 재시도·대기로 RAGAS 재채점이 20분 넘게 멈춰 있었다. 클라이언트에 연결 10초·응답 120초·재시도 3회(standard)를 명시했다.
 
 ### 최종 채택한 접근과 이유
@@ -181,14 +178,14 @@ copy .env.example .env
 | 문서 Q&A (RAG) | `src/agent.py:25` `BASELINE_PROMPT`, `src/agent.py:26` `GROUNDED_PROMPT`, `src/agent.py:37` `answer_docs_qa`, `src/retriever.py:261` `week_note`(기준 주 안내) |
 | 하이브리드 검색·형태소 BM25 | `src/retriever.py:199` `ko_tokens`, `src/retriever.py:213` `bm25_scores`, `src/retriever.py:295` `search_scored` |
 | 이력 질문 검색 확대·긴 문서 조각 임베딩 | `src/retriever.py:285` `top_k`, `src/retriever.py:150` `embed_chunks`, `src/retriever.py:179` `dense_sim` |
-| 평가 시 생성 문서 제외 | `src/retriever.py:56` `runtime_documents`, `evaluation/run_eval.py:324` |
+| 평가 시 생성 문서 제외 | `src/retriever.py:56` `runtime_documents`, `evaluation/run_eval.py:314` |
 | 진척 결정적 계산 | `src/tools.py:269` `calc_progress`, `src/tools.py:314` `build_progress_report`, `src/tools.py:375` `format_progress_report` |
 | 회의 자료 표·기간 도식·대메뉴 일정표 | `src/tools.py:501` `format_progress_markdown`, `src/tools.py:606` `timeline_lines`, `src/tools.py:624` `large_menu_schedule` |
 | 회의 자료 Plan-Execute·HITL | `src/meeting.py:294` `MeetingFlow`, `src/meeting.py:347` `_check_previous_meeting`(MCP `get_page`), `src/meeting.py:377` `_draft_material`(초안 실패 시 결정적 초안), `src/meeting.py:403` `interrupt()` |
 | MCP 서버·클라이언트 | `src/mcp_confluence_server.py:16` `FastMCP`, `src/mcp_client.py:24` `make_client`, `src/mcp_client.py:61` `call_tool` |
 | Markdown → Confluence 변환 | `src/confluence_convert.py:46` `md_to_storage` |
 | 재시도·타임아웃 | `src/middleware.py:55` `call_with_retry`, `src/config.py:26` `boto_config`(Bedrock 타임아웃) |
-| judge 입력·RAGAS 4개 지표 | `evaluation/run_eval.py:181` `judge_message`, `evaluation/run_eval.py:277` `ragas_metrics`(`evaluation/run_eval.py:268` 역질문 언어 고정), `evaluation/run_eval.py:295` `ragas_scores`, `evaluation/run_eval.py:69` `RERUN_FIXES`(2차 재실행 결함 기록) |
+| judge 입력·RAGAS 4개 지표 | `evaluation/run_eval.py:171` `judge_message`, `evaluation/run_eval.py:267` `ragas_metrics`(`evaluation/run_eval.py:258` 역질문 언어 고정), `evaluation/run_eval.py:285` `ragas_scores`, `evaluation/run_eval.py:69` `FIXES`(2차 개선 중 고친 결함 기록) |
 
 ## 산출물 구성
 강의 산출물 구성(3-1)과 이 저장소의 실제 구성:

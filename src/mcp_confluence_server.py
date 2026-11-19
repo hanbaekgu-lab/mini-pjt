@@ -1,6 +1,8 @@
-"""가짜 Confluence MCP 서버 (stdio, 줄 단위 JSON-RPC 2.0).
+"""Confluence MCP 서버 (stdio, 줄 단위 JSON-RPC 2.0).
 
-tool 스키마: get_page, create_page, search_pages. 쓰기 폴더는 CONFLUENCE_DIR 환경변수.
+tool 스키마: get_page, create_page, search_pages.
+create_page는 Markdown 본문을 받아 서버에서 Confluence 저장 형식(표·작업 목록·info 패널)으로 변환해 게시한다.
+CONFLUENCE_MODE=fake(기본)는 로컬 폴더(CONFLUENCE_DIR), real은 .env의 주소·인증 정보로 실제 Confluence에 게시한다.
 실행: python -m src.mcp_confluence_server
 """
 from __future__ import annotations
@@ -13,7 +15,7 @@ from src import confluence
 TOOLS = [
     {"name": "get_page", "description": "page_id로 페이지 조회",
      "inputSchema": {"type": "object", "properties": {"page_id": {"type": "string"}}, "required": ["page_id"]}},
-    {"name": "create_page", "description": "페이지 생성(같은 제목이면 교체)",
+    {"name": "create_page", "description": "Markdown 본문으로 페이지 생성(서버에서 Confluence 형식으로 변환, 같은 제목이면 교체)",
      "inputSchema": {"type": "object", "properties": {"title": {"type": "string"}, "body": {"type": "string"},
                                                     "page_id": {"type": "string"}},
                      "required": ["title", "body"]}},

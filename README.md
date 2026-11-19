@@ -19,7 +19,7 @@ AX 교육 개인 mini PJT.
 ```
 python -m venv .venv
 .venv\Scripts\pip install -r requirements.txt
-# .env 에 AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_DEFAULT_REGION=<사용할 리전>
+copy .env.example .env   # mock 값을 실제 값으로 교체 (AWS 자격 증명·리전, Confluence 설정)
 
 # API 서버 (POST /query)
 .venv\Scripts\python.exe -m uvicorn src.server:app --port 8000
@@ -31,6 +31,14 @@ python -m venv .venv
 .venv\Scripts\python.exe evaluation/run_eval.py --round 1
 .venv\Scripts\python.exe evaluation/run_eval.py --round 2
 ```
+
+## Confluence 연동
+- 기본은 가짜 Confluence(`CONFLUENCE_MODE=fake`): `data/confluence_pages/`에 Markdown(`weekly_meeting_<기준 주 시작일>.md`)과
+  Confluence 저장 형식 미리보기(`.storage.xml`)를 쓴다.
+- 실제 Confluence로 바꿀 때는 `.env`에서 `CONFLUENCE_MODE=real`과 `CONFLUENCE_BASE_URL`·`CONFLUENCE_SPACE_KEY`·
+  `CONFLUENCE_PARENT_PAGE_ID`·`CONFLUENCE_USER`·`CONFLUENCE_API_TOKEN`을 실제 값으로 채운다(`.env.example`은 mock 값). 코드 수정은 필요 없다.
+- 변환기는 MCP 서버 쪽 기능이다. 에이전트는 Markdown만 보내고, `create_page`가 `src/confluence_convert.py`로 표·체크리스트(작업 목록)·
+  인용(info 패널)을 Confluence 형식으로 바꿔 게시한다. real 모드는 REST API로 생성하고, 같은 제목이면 버전을 올려 교체한다.
 
 ## API
 `POST /query` — 요청 `{question, user_id, role(developer|pm_pl), thread_id?, approval?(approve|reject)}`,
@@ -56,7 +64,7 @@ python -m venv .venv
 | 2 | ReAct (도구 자율 선택) | `src/agent.py` `answer_progress` — `create_agent` + 진척 도구 |
 | 3 | RAG | `src/retriever.py` (1차 Titan 벡터 dense-only, 2차 BM25+벡터 RRF·리랭킹·쿼리 확장·메타데이터 필터) + `src/agent.py` `answer_docs_qa` (근거 인용 답변) |
 | 4 | 다중 도구 | `src/tools.py` 결정적 계산 + `src/agent.py` `calc_progress`·`calc_remaining_mm`·`check_mismatch`·`get_commits` |
-| 5 | MCP | `src/mcp_confluence_server.py` (stdio, `get_page`·`create_page`·`search_pages`), `src/mcp_client.py` |
+| 5 | MCP | `src/mcp_confluence_server.py` (stdio, `get_page`·`create_page`·`search_pages`), `src/mcp_client.py`, `src/confluence.py`(fake/real), `src/confluence_convert.py`(Markdown→Confluence) |
 | 6 | 가드레일 | `src/guardrails.py` — 역할 범위·권한 상승·직접/간접 인젝션·순위 금지를 도구 실행 전 코드로 강제, 개발자 도구는 본인 범위로 고정 |
 | 7 | HITL | `src/meeting.py` `interrupt()` + checkpointer, `src/api.py` thread_id·approval 재개 (PM/PL만 승인) |
 | 8 | 미들웨어 | `src/middleware.py` PII 마스킹(한 곳)·타임아웃·재시도, `src/agent.py` `SummarizationMiddleware`(회의 중 긴 대화 요약)·`ModelRetryMiddleware` |

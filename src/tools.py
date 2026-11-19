@@ -256,3 +256,42 @@ def format_progress_report(report: dict) -> str:
     lines += [f"- {c['hash']} {names.get(c['developer_id'], '알 수 없음')} {c['date']} \"{c['message']}\""
               for c in report["unlinked_commits"]] or ["- 없음"]
     return "\n".join(lines)
+
+
+STATUS_ICON = {"완료": "✅ 완료", "진행중": "🟡 진행중", "미착수": "⚪ 미착수"}
+UNLINKED_REASON = {"no_or_malformed_task_id": "업무 ID 없음·형식 오류", "unknown_task_id": "없는 업무 ID"}
+
+
+def progress_bar(p: float, width: int = 10) -> str:
+    n = round(p * width)
+    return "█" * n + "░" * (width - n)
+
+
+def format_progress_markdown(report: dict) -> str:
+    """회의 자료용 표 렌더링 (팀 전체 보고서). 숫자는 도구 계산값 그대로."""
+    names = {d["developer_id"]: d["name"] for d in load_developers()}
+    p = report["progress"]
+    warns, unlinked = report["mismatch_warnings"], report["unlinked_commits"]
+    L = [f"기준 주: {report['reference_week']}", "",
+         "| 전체 진척률 | 진행 | 계획 | 남은 공수 | 불일치 경고 | 미연결 커밋 |",
+         "|---:|---|---:|---:|---:|---:|",
+         f"| **{p['progress']*100:.2f}%** | `{progress_bar(p['progress'])}` | {p['plan_mm']:.2f}MM | "
+         f"{p['remaining_mm']:.2f}MM | {len(warns)}건 | {len(unlinked)}건 |", "",
+         "### 개발자별", "", "| 개발자 | 진척률 | 진행 | 남은 공수 |", "|---|---:|---|---:|"]
+    L += [f"| {d['name']} | {d['progress']*100:.2f}% | `{progress_bar(d['progress'])}` | {d['remaining_mm']:.2f}MM |"
+          for d in report.get("developers", [])]
+    L += ["", "### 업무별", "",
+          "| 업무 | 담당 | 상태 | 진척률 | 진행 | 남은 공수 | 남은 하위 작업 | 커밋(이번 주/누적) |",
+          "|---|---|---|---:|---|---:|---|---:|"]
+    for t in p["tasks"]:
+        rest = ", ".join(f"{t['task_id']}-{n}" for n in t["subtasks_remaining"]) or "-"
+        L.append(f"| {t['task_id']} {t['title']} | {names.get(t['owner'], t['owner'])} | "
+                 f"{STATUS_ICON.get(t['status'], t['status'])} | {t['progress']*100:.2f}% | `{progress_bar(t['progress'])}` | "
+                 f"{t['remaining_mm']:.2f}MM | {rest} | {t['commit_count_week']}/{t['commit_count_total']} |")
+    L += ["", "### ⚠️ 상태-커밋 불일치", ""]
+    L += (["| 업무 | 내용 |", "|---|---|"] + [f"| {w['task_id']} | {w['message']} |" for w in warns]) if warns else ["없음"]
+    L += ["", "### 🔗 미연결 커밋", ""]
+    L += (["| 커밋 | 작성자 | 일자 | 메시지 | 사유 |", "|---|---|---|---|---|"]
+          + [f"| {c['hash']} | {names.get(c['developer_id'], '알 수 없음')} | {c['date']} | `{c['message']}` | "
+             f"{UNLINKED_REASON.get(c['reason'], c['reason'])} |" for c in unlinked]) if unlinked else ["없음"]
+    return "\n".join(L)

@@ -108,7 +108,7 @@ def test_developer_report_scoped_to_self():
     assert rep["unlinked_commits"] == [] and rep["mismatch_warnings"] == []
     rep4 = tools.build_progress_report(developer_id="dev04")
     assert [c["hash"] for c in rep4["unlinked_commits"]] == ["c021", "c022"]
-    assert "박서연" not in tools.format_progress_report(rep)
+    assert "박지단" not in tools.format_progress_report(rep)
 
 
 def test_task_warning_lookup():

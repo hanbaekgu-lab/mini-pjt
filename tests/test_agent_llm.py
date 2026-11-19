@@ -70,7 +70,7 @@ def test_progress_react_calls_tools_and_keeps_tool_numbers():
     tools_called = [t["input"]["tool"] for t in out["trace"] if t["step"] == "tool_call"]
     assert sorted(tools_called) == ["calc_progress", "calc_remaining_mm"]  # 병렬 실행이라 순서 무관
     assert "[도구 계산 결과]" in out["answer"] and "진척률" in out["answer"]
-    assert "박서연" not in out["answer"]  # 개발자 본인 범위만
+    assert "박지단" not in out["answer"]  # 개발자 본인 범위만
 
 
 def test_developer_tool_scope_enforced_in_code():

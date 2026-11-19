@@ -37,14 +37,15 @@ def build_meeting_material() -> str:
         if t["subtasks_remaining"]:
             rest = ",".join(f"{t['task_id']}-{n}" for n in t["subtasks_remaining"])
             actions.append(f"{names.get(t['owner'], t['owner'])}: {rest} 완료 (남은 {t['remaining_mm']:.2f}MM)")
-    return render(decisions, blockers, actions, tools.format_progress_report(report))
+    return render(decisions, blockers, actions, tools.format_progress_markdown(report))
 
 
-def render(decisions, blockers, actions, progress_text: str) -> str:
-    lines = ["## 결정사항", *[f"- {x}" for x in decisions or ["없음"]],
-             "## 블로커", *[f"- {x}" for x in blockers or ["없음"]],
-             "## 액션아이템", *[f"- {x}" for x in actions or ["없음"]],
-             "## 진척 현황", progress_text]  # 숫자는 도구 결과 그대로 (LLM이 바꾸지 않음)
+def render(decisions, blockers, actions, progress_md: str) -> str:
+    lines = ["> 주간 진척 보고 에이전트가 커밋·업무 데이터로 자동 작성하고, PM/PL 승인 후 게시한 문서입니다.", "",
+             "## 진척 현황", progress_md, "",  # 숫자는 도구 결과 그대로 (LLM이 바꾸지 않음)
+             "## 결정사항", *[f"- {x}" for x in decisions or ["없음"]], "",
+             "## 블로커", *[f"- {x}" for x in blockers or ["없음"]], "",
+             "## 액션아이템", *[f"- [ ] {x}" for x in actions or ["없음"]]]
     return "\n".join(lines)
 
 
@@ -150,7 +151,8 @@ class MeetingFlow:
             "진척률·MM 같은 숫자는 쓰지 마라(도구 결과가 따로 붙는다). 사람을 평가하거나 순위를 매기지 마라.\n\n"
             f"[도구 계산 결과]\n{state['report_text']}\n\n[불일치 경고·미연결 커밋]\n" + "\n".join(state["warnings"])
             + "\n\n[지난주 액션아이템]\n" + "\n".join(state["previous_items"]))
-        body = render(draft.decisions, draft.blockers, draft.action_items, state["report_text"])
+        body = render(draft.decisions, draft.blockers, draft.action_items,
+                      tools.format_progress_markdown(tools.build_progress_report()))
         log = state["log"] + [{"step": "llm_draft", "input": "meeting_material", "output": "drafted"}]
         return {"body": body, "log": log}
 
@@ -168,8 +170,8 @@ class MeetingFlow:
             return {"error": str(e), "log": state["log"] + [{"step": "confluence_publish", "input": meeting_title(),
                                                             "output": f"error: {e}"}]}
         week = tools.load_reference_week()["start"]
-        items = [ln[2:] for ln in state["body"].split("## 액션아이템", 1)[1].split("## 진척 현황")[0].splitlines()
-                 if ln.startswith("- ")]
+        items = [ln.removeprefix("- [ ] ") for ln in state["body"].split("## 액션아이템", 1)[1].splitlines()
+                 if ln.startswith("- [ ] ")]
         self.store.put(("action_items",), week, {"items": items})  # 이번 주 액션아이템 상태 저장
         return {"page_id": page_id, "log": state["log"] + [{"step": "confluence_publish", "input": meeting_title(),
                                                            "output": page_id}]}

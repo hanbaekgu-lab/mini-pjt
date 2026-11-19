@@ -22,6 +22,8 @@ constraints:
 - '산출물: src/agent.py, src/tools.py, src/retriever.py, data/, POST /query API, SERVICE.md,
   test_queries.csv, evaluation/round1_report.md, evaluation/round2_report.md, README.md'
 - 모든 데이터는 가짜 데이터(fixture)로 구성함. 실제 git 저장소 연동은 범위 밖
+- '가짜 데이터의 인물·이메일은 실존 인물로 오해되지 않게 둠: 이름은 한글 성 + 축구선수 이름 두 글자(예: 김메시), 이메일 도메인은 example.com'
+- 'AWS 리전 등 환경별 값은 코드·문서에 실제 값을 적지 않고 .env(AWS_DEFAULT_REGION 등)에서만 읽음'
 - public repo에 인증 정보를 포함하지 않음
 # --- API ---
 - POST /query 응답은 answer, contexts, trace를 반환함. 요청 본문은 question, user_id, role(developer|pm_pl) 필드와 HITL
@@ -58,6 +60,14 @@ constraints:
 # --- 패턴 구현 ---
 - Confluence 연동은 기본적으로 가짜 MCP 서버(stdio, 설정 가능한 로컬 폴더에 마크다운 쓰기)이며 tool 스키마는 get_page,
   create_page, search_pages임. 실제 API는 CONFLUENCE_MODE=real일 때만 쓰는 어댑터로 분리함
+- '실제 Confluence 전환을 전제로 접속 정보는 .env의 CONFLUENCE_BASE_URL, CONFLUENCE_SPACE_KEY, CONFLUENCE_PARENT_PAGE_ID,
+  CONFLUENCE_USER, CONFLUENCE_API_TOKEN으로만 받음. 저장소에는 mock 값을 담은 .env.example만 두고, real 모드에서 값이 빠지면
+  변수 이름만 알리는 오류를 냄(값은 출력하지 않음)'
+- 'Markdown → Confluence 저장 형식 변환기는 MCP 서버(create_page) 쪽 기능으로 둠: 에이전트는 Markdown만 보내고, 서버가 표·체크리스트(작업
+  목록)·인용(info 패널)·굵게·코드를 Confluence 형식으로 바꿔 게시함. fake 모드에서도 변환 결과 미리보기(.storage.xml)를 함께 저장함'
+- '회의 자료 양식: 상단 자동 작성 안내 → 진척 현황(전체 요약 표, 개발자별 표, 업무별 표에 진행 막대·상태 아이콘, 상태-커밋 불일치 표,
+  미연결 커밋 표) → 결정사항 → 블로커 → 액션아이템(체크리스트). 진척 수치는 도구 결과를 그대로 표에 넣음'
+- 게시 페이지 파일명(page_id)은 영문 weekly_meeting_<기준 주 시작일>로 하고, 페이지 제목은 한글 '주간회의 자료 <기준 주 시작일>'을 유지함
 - MCP 호출과 LLM 호출은 10초 타임아웃, 최대 2회 재시도(미들웨어)이며 최종 실패 시 오류를 answer에 명시하고 게시하지 않음
 - Multi-Agent Supervisor는 LLM 라우팅으로 진척 / 문서 Q&A / 회의 자료 에이전트 중 하나를 선택하고 라우팅을 trace에 노출함
 - 회의 자료 생성 흐름(진척 수집 → 지난 액션아이템 확인 → 초안 → 승인 → 게시)에 Plan-Execute를 적용함
@@ -131,6 +141,16 @@ acceptance_criteria:
   verify_command: python -m pytest -q tests/test_trace.py
   expected_artifacts:
   - tests/test_trace.py
+- description: 게시된 회의 자료가 Confluence에서 읽기 쉬운 형태로 등록된다. 진척 현황은 요약·개발자별·업무별 표와 진행 막대로 보이고
+    액션아이템은 체크리스트로 보인다. MCP 서버가 Markdown을 Confluence 저장 형식(표·작업 목록·info 패널)으로 변환해 게시하며,
+    CONFLUENCE_MODE=real에서는 .env의 주소·스페이스·인증 정보로 REST API에 생성(같은 제목은 버전 증가로 교체)하고, 설정이 빠지면
+    값 노출 없이 누락된 변수 이름만 알린다. 게시 파일명은 영문 weekly_meeting_<기준 주 시작일>이다
+  semantic_ac_key: ac_fa1ee002cb65f5e1
+  verify_command: python -m pytest -q tests/test_confluence_real.py tests/test_meeting_material.py
+  expected_artifacts:
+  - tests/test_confluence_real.py
+  - src/confluence_convert.py
+  - .env.example
 - description: 평가 리포트가 성공 기준을 충족함을 보인다. evaluation/round1_report.md(사전 고정 dense-only baseline)와
     round2_report.md가 있고, 각 리포트의 결과 JSON에서 2차 통과 16건 이상, 1차 대비 통과 3건 이상 증가, 수치 exact-match 100%,
     가드레일 차단 100%, 설명형 케이스 faithfulness ≥ 0.85, context recall ≥ 0.80이 확인된다
@@ -277,10 +297,10 @@ exit_conditions:
   criteria: 버그로 분류해 수정될 때까지 평가 개선 작업을 중단함
 metadata:
   seed_id: seed_50f7c51da60d
-  version: 1.1.0
+  version: 1.2.0
   created_at: '2026-11-18T07:26:15.837365Z'
-  revised_at: '2026-11-18'
-  revision_note: refinement pass 1 — 인터뷰 이후 사용자 결정 반영(이름, 수치, 사내 표준화, 최종 점검 후속 결정 5건) + QA 제안 4건 적용
+  revised_at: '2026-11-19'
+  revision_note: 'refinement pass 2 — 회의 자료 표 양식, 영문 page_id, 실제 Confluence 전환용 .env 설정·REST 어댑터, MCP 서버 측 Markdown→Confluence 변환기, 가짜 인물·이메일 규칙, 리전 비하드코딩 반영 (pass 1: 인터뷰 이후 사용자 결정 + QA 제안 4건)'
   ambiguity_score: 0.139
   gate_forced: false
   interview_id: interview_20261118_060344

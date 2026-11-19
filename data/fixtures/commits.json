@@ -1,211 +1,211 @@
 [
  {
   "hash": "c001",
-  "author_email": "minjun.kim@example.com",
+  "author_email": "messi.kim@example.com",
   "date": "2026-11-10",
   "message": "[TASK-012-1][done] 인증 흐름 설계"
  },
  {
   "hash": "c002",
-  "author_email": "minjun.kim@example.com",
+  "author_email": "messi.kim@example.com",
   "date": "2026-11-17",
   "message": "[TASK-012-2][done] 결제 목 서버 구성"
  },
  {
   "hash": "c003",
-  "author_email": "minjun.kim@example.com",
+  "author_email": "messi.kim@example.com",
   "date": "2026-11-18",
   "message": "[TASK-012] 인증 키 연동 시도"
  },
  {
   "hash": "c004",
-  "author_email": "minjun.kim@example.com",
+  "author_email": "messi.kim@example.com",
   "date": "2026-11-17",
   "message": "[TASK-013-1][done] 조회 API 스펙 정리"
  },
  {
   "hash": "c005",
-  "author_email": "minjun.kim@example.com",
+  "author_email": "messi.kim@example.com",
   "date": "2026-11-19",
   "message": "[TASK-013] 목록 화면 초안"
  },
  {
   "hash": "c006",
-  "author_email": "seoyeon.park@example.com",
+  "author_email": "zidane.park@example.com",
   "date": "2026-11-16",
   "message": "[TASK-014-1][done] 스키마 정의"
  },
  {
   "hash": "c007",
-  "author_email": "seoyeon.park@example.com",
+  "author_email": "zidane.park@example.com",
   "date": "2026-11-17",
   "message": "[TASK-014-2][done] 마이그레이션 작성"
  },
  {
   "hash": "c008",
-  "author_email": "seoyeon.park@example.com",
+  "author_email": "zidane.park@example.com",
   "date": "2026-11-18",
   "message": "[TASK-014-3][done] 스키마 문서화"
  },
  {
   "hash": "c009",
-  "author_email": "seoyeon.park@example.com",
+  "author_email": "zidane.park@example.com",
   "date": "2026-11-17",
   "message": "[TASK-015-1][done] 엔드포인트 골격"
  },
  {
   "hash": "c010",
-  "author_email": "seoyeon.park@example.com",
+  "author_email": "zidane.park@example.com",
   "date": "2026-11-19",
   "message": "[TASK-015-2][done] 응답 모델 구현"
  },
  {
   "hash": "c011",
-  "author_email": "seoyeon.park@example.com",
+  "author_email": "zidane.park@example.com",
   "date": "2026-11-20",
   "message": "[TASK-015-2] 응답 모델 리팩터링"
  },
  {
   "hash": "c012",
-  "author_email": "doyun.lee@example.com",
+  "author_email": "kane.lee@example.com",
   "date": "2026-11-09",
   "message": "[TASK-007-1][done] 알림 큐 구현"
  },
  {
   "hash": "c013",
-  "author_email": "doyun.lee@example.com",
+  "author_email": "kane.lee@example.com",
   "date": "2026-11-10",
   "message": "[TASK-007-2][done] 알림 전송기 구현"
  },
  {
   "hash": "c014",
-  "author_email": "doyun.lee@example.com",
+  "author_email": "kane.lee@example.com",
   "date": "2026-11-16",
   "message": "[TASK-007-3][done] 재시도 로직"
  },
  {
   "hash": "c015",
-  "author_email": "doyun.lee@example.com",
+  "author_email": "kane.lee@example.com",
   "date": "2026-11-18",
   "message": "[TASK-007-4] 마무리 정리 작업"
  },
  {
   "hash": "c016",
-  "author_email": "doyun.lee@example.com",
+  "author_email": "kane.lee@example.com",
   "date": "2026-11-23",
   "message": "[TASK-019-1][done] 템플릿 저장소 (기준 주 이후)"
  },
  {
   "hash": "c017",
-  "author_email": "doyun.lee@example.com",
+  "author_email": "kane.lee@example.com",
   "date": "2026-11-20",
   "message": "[TASK-019] 템플릿 초안"
  },
  {
   "hash": "c018",
-  "author_email": "jiwoo.choi@example.com",
+  "author_email": "pele.choi@example.com",
   "date": "2026-11-16",
   "message": "[TASK-016-1][done] 역할 모델"
  },
  {
   "hash": "c019",
-  "author_email": "jiwoo.choi@example.com",
+  "author_email": "pele.choi@example.com",
   "date": "2026-11-17",
   "message": "[TASK-016-2][done] 권한 검사기"
  },
  {
   "hash": "c020",
-  "author_email": "jiwoo.choi@example.com",
+  "author_email": "pele.choi@example.com",
   "date": "2026-11-18",
   "message": "[TASK-016-3][done] 정책 로더"
  },
  {
   "hash": "c021",
-  "author_email": "jiwoo.choi@example.com",
+  "author_email": "pele.choi@example.com",
   "date": "2026-11-19",
   "message": "[TASK-16-4][done] 감사 로그 (업무 ID 형식 오류)"
  },
  {
   "hash": "c022",
-  "author_email": "jiwoo.choi@example.com",
+  "author_email": "pele.choi@example.com",
   "date": "2026-11-20",
   "message": "fix: 로그 오타 수정"
  },
  {
   "hash": "c023",
-  "author_email": "hajun.jung@example.com",
+  "author_email": "kaka.jung@example.com",
   "date": "2026-11-18",
   "message": "[TASK-017] 환경 구성 스크립트 작성"
  },
  {
   "hash": "c024",
-  "author_email": "hajun.jung@example.com",
+  "author_email": "kaka.jung@example.com",
   "date": "2026-11-16",
   "message": "[TASK-020-1][done] 차트 컴포넌트"
  },
  {
   "hash": "c025",
-  "author_email": "hajun.jung@example.com",
+  "author_email": "kaka.jung@example.com",
   "date": "2026-11-17",
   "message": "[TASK-020-2][done] 데이터 어댑터"
  },
  {
   "hash": "c026",
-  "author_email": "hajun.jung@example.com",
+  "author_email": "kaka.jung@example.com",
   "date": "2026-11-18",
   "message": "[TASK-020-3][done] 범례 구현"
  },
  {
   "hash": "c027",
-  "author_email": "hajun.jung@example.com",
+  "author_email": "kaka.jung@example.com",
   "date": "2026-11-19",
   "message": "[TASK-020-4][done] 툴팁 구현"
  },
  {
   "hash": "c028",
-  "author_email": "hajun.jung@example.com",
+  "author_email": "kaka.jung@example.com",
   "date": "2026-11-20",
   "message": "TASK020 마무리 작업 (업무 ID 형식 오류)"
  },
  {
   "hash": "c029",
-  "author_email": "seoyun.han@example.com",
+  "author_email": "figo.han@example.com",
   "date": "2026-11-16",
   "message": "[TASK-018-1][done] 수집기 골격"
  },
  {
   "hash": "c030",
-  "author_email": "seoyun.han@example.com",
+  "author_email": "figo.han@example.com",
   "date": "2026-11-17",
   "message": "[TASK-018-2][done] 파서 구현"
  },
  {
   "hash": "c031",
-  "author_email": "seoyun.han@example.com",
+  "author_email": "figo.han@example.com",
   "date": "2026-11-18",
   "message": "[TASK-018-3][done] 저장소 연동"
  },
  {
   "hash": "c032",
-  "author_email": "seoyun.han@example.com",
+  "author_email": "figo.han@example.com",
   "date": "2026-11-21",
   "message": "[TASK-099] 실험 코드 (fixture에 없는 업무)"
  },
  {
   "hash": "c033",
-  "author_email": "seoyun.han@example.com",
+  "author_email": "figo.han@example.com",
   "date": "2026-11-16",
   "message": "[TASK-021-1][done] 설정 폼"
  },
  {
   "hash": "c034",
-  "author_email": "seoyun.han@example.com",
+  "author_email": "figo.han@example.com",
   "date": "2026-11-17",
   "message": "[TASK-021-2][done] 설정 저장"
  },
  {
   "hash": "c035",
-  "author_email": "seoyun.han@example.com",
+  "author_email": "figo.han@example.com",
   "date": "2026-11-22",
   "message": "[TASK-0123-1][done] 배포 점검 (업무 ID 형식 오류)"
  }

@@ -39,11 +39,11 @@ def test_material_has_sections_and_matching_numbers():
         assert sec in body
     rep = tools.build_progress_report()
     team = rep["progress"]
-    assert f"진척률 {team['progress']*100:.2f}%" in body
-    assert f"남은 {team['remaining_mm']:.2f}MM" in body
-    for t in team["tasks"]:
-        assert f"{t['task_id']} {t['title']}" in body
-        assert f"진척률 {t['progress']*100:.2f}%, 남은 {t['remaining_mm']:.2f}MM" in body
+    assert f"**{team['progress']*100:.2f}%**" in body
+    assert f"{team['remaining_mm']:.2f}MM" in body
+    for t in team["tasks"]:  # 업무별 표의 행마다 도구 수치가 그대로 들어간다
+        row = next(ln for ln in body.splitlines() if ln.startswith(f"| {t['task_id']} {t['title']} |"))
+        assert f"| {t['progress']*100:.2f}% |" in row and f"| {t['remaining_mm']:.2f}MM |" in row
 
 
 def test_published_page_retrievable_via_mcp():
@@ -51,7 +51,7 @@ def test_published_page_retrievable_via_mcp():
     page = mcp_client.call_tool("get_page", {"page_id": pid})
     assert "## 결정사항" in page["body"] and "## 액션아이템" in page["body"]
     team = tools.build_progress_report()["progress"]
-    assert f"진척률 {team['progress']*100:.2f}%" in page["body"]
+    assert f"**{team['progress']*100:.2f}%**" in page["body"]
     assert pid in [h["page_id"] for h in mcp_client.call_tool("search_pages", {"query": "블로커"})]
 
 

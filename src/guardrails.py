@@ -84,8 +84,9 @@ def _scope_ok(question: str, user_id: str) -> bool:
             return False
         if d["email"].lower() in question.lower():
             return False
-        # 이름에서 성을 뺀 호칭 (예: '민준님')
-        if len(d["name"]) >= 3 and d["name"][1:] in question:
+        # 이름에서 성을 뺀 호칭 (예: '메시님'). '메시지'처럼 단어의 일부인 경우는 이름으로 보지 않는다.
+        given = re.escape(d["name"][1:])
+        if len(d["name"]) >= 3 and re.search(given + r"(?:님|씨|의|은|는|이|가|을|를|도|한테|에게)?(?![가-힣])", question):
             return False
     for tid in set(TASK_ID_RE.findall(question)):
         owner = next((t["owner"] for t in tools.load_tasks() if t["task_id"] == tid), None)

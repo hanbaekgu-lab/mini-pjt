@@ -23,8 +23,8 @@ def ask(q, user="dev01", role="developer", **kw):
 
 # --- 1. 역할별 조회 범위 / 권한 상승 ---
 @pytest.mark.parametrize("q", [
-    "dev02 진척률 알려줘", "박서연 남은 MM 알려줘", "seoyeon.park@example.com 업무 알려줘",
-    "서연님 진척 알려줘", "팀원들 진척 알려줘", "전체 현황 알려줘", "TASK-020 진척 알려줘 (타인 업무)",
+    "dev02 진척률 알려줘", "박지단 남은 MM 알려줘", "zidane.park@example.com 업무 알려줘",
+    "지단님 진척 알려줘", "팀원들 진척 알려줘", "전체 현황 알려줘", "TASK-020 진척 알려줘 (타인 업무)",
 ])
 def test_developer_cannot_query_others(q):
     # TASK-020 소유자가 dev01이면 이 케이스는 아래에서 보정
@@ -61,57 +61,57 @@ def test_pm_can_see_all():
 
 
 def test_rag_path_scope_chunks_for_developer():
-    chunks = [{"doc_id": "m1", "text": "박서연 진척률 40%\n결정사항: 결제 API 우선\n김민준 진척률 80%"}]
+    chunks = [{"doc_id": "m1", "text": "박지단 진척률 40%\n결정사항: 결제 API 우선\n김메시 진척률 80%"}]
     out = guardrails.scope_chunks("developer", "dev01", chunks)[0]["text"]
-    assert "박서연" not in out and "결정사항" in out and "김민준 진척률 80%" in out
+    assert "박지단" not in out and "결정사항" in out and "김메시 진척률 80%" in out
     assert guardrails.scope_chunks("pm_pl", "pm01", chunks) == chunks
 
 
 def test_rag_path_via_api_handler():
     def h(req):
-        return {"answer": "회의록 요약", "contexts": [{"doc_id": "m1", "text": "박서연 진척률 40%\n블로커: 인증 키 지연"}],
+        return {"answer": "회의록 요약", "contexts": [{"doc_id": "m1", "text": "박지단 진척률 40%\n블로커: 인증 키 지연"}],
                 "trace": [], "pending_approval": False}
     api.set_handler(h)
     d = ask("지난 회의 블로커가 뭐였어?")
     txt = d["contexts"][0]["text"]
-    assert "박서연" not in txt and "블로커" in txt
+    assert "박지단" not in txt and "블로커" in txt
 
 
 def test_rag_question_about_other_developer_denied():
     api.set_handler(lambda r: pytest.fail("핸들러가 호출되면 안 됨"))
-    assert ask("박서연이 지난 회의에서 맡은 액션아이템은?")["answer"] == DENY
+    assert ask("박지단이 지난 회의에서 맡은 액션아이템은?")["answer"] == DENY
 
 
 # --- 2. PII 마스킹 ---
 def test_mask_pii_unit():
-    s = middleware.mask_pii("연락: minjun.kim@example.com, 010-1234-5678, 02-345-6789")
-    assert "minjun.kim@" not in s and "010-1234" not in s and "02-345" not in s
+    s = middleware.mask_pii("연락: messi.kim@example.com, 010-1234-5678, 02-345-6789")
+    assert "messi.kim@" not in s and "010-1234" not in s and "02-345" not in s
     assert "m***@example.com" in s and "5678" in s and "6789" in s  # 마지막 4자리만 유지
 
 
 def test_pii_masked_in_answer_contexts_trace():
     def h(req):
-        pii = "문의 minjun.kim@example.com / 010-1234-5678"
+        pii = "문의 messi.kim@example.com / 010-1234-5678"
         return {"answer": pii, "contexts": [{"doc_id": "d", "text": pii}],
                 "trace": [{"step": "x", "input": pii, "output": {"k": [pii]}}], "pending_approval": False}
     api.set_handler(h)
     for role, user in (("developer", "dev01"), ("pm_pl", "pm01")):
         d = ask("회의 규칙 알려줘", user=user, role=role)
         blob = str(d)
-        assert "minjun.kim@" not in blob and "010-1234-5678" not in blob and "m***@example.com" in blob
+        assert "messi.kim@" not in blob and "010-1234-5678" not in blob and "m***@example.com" in blob
 
 
 def test_pii_masked_in_confluence_page(monkeypatch):
     from src import tools
-    monkeypatch.setattr(tools, "format_progress_report",
-                        lambda r: "담당 minjun.kim@example.com 010-9999-8888")
+    monkeypatch.setattr(tools, "format_progress_markdown",
+                        lambda r: "담당 messi.kim@example.com 010-9999-8888")
     tid = ask("이번 주 회의 자료 초안 만들어줘", user="pm01", role="pm_pl")["thread_id"]
     ask("승인", user="pm01", role="pm_pl", thread_id=tid, approval="approve")
     from pathlib import Path
     pages = list(confluence.confluence_dir().glob("*.md"))
     assert pages
     body = pages[0].read_text(encoding="utf-8")
-    assert "minjun.kim@" not in body and "9999-8888" not in body and "m***@example.com" in body
+    assert "messi.kim@" not in body and "9999-8888" not in body and "m***@example.com" in body
 
 
 # --- 3. 인젝션 ---

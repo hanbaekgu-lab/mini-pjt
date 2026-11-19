@@ -52,8 +52,6 @@ def test_round2_success_criteria():
     assert r2["context_precision"] >= 0.80
 
 
-@pytest.mark.skip(reason="answer relevancy 실측 0.59로 목표 0.80 미달 (round2_report.md '남은 실패·지표 한계': "
-                         "인용형 짧은 답변에서 ResponseRelevancy가 낮게 나옴, 측정 결함 없음)")
 def test_round2_answer_relevancy_target():
     assert load(2)["summary"]["answer_relevancy"] >= 0.80
 

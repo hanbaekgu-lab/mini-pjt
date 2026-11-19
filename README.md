@@ -75,18 +75,21 @@ copy .env.example .env
 
 ## RAGAS 평가 결과
 새 도메인(플랫폼 전환·화면 170개·역할 pm/pl/developer) 기준 실측값이다. 설명형 케이스(3·5·6·7·16) × 3회 평균, ragas 0.4.4 + Bedrock(Claude Sonnet 4.5, temperature=0) + Titan 임베딩.
-1차는 사전 고정 baseline으로 한 번만 실행했고, 2차는 실패 분석으로 결함을 고친 뒤 다시 실행했다(2차 3회 실행, 아래 '최종'은 세 번째 실행).
+1차는 사전 고정 baseline으로 한 번만 실행했고, 2차는 실패 분석으로 결함을 고친 뒤 다시 실행했다(2차 4회 실행, 아래 '최종'은 네 번째 실행).
 
 | 지표 (설명형 케이스) | 1차 (dense-only) | 2차 첫 실행 | 2차 최종 | 성공 기준 | 최종 판정 |
 |---|---|---|---|---|---|
-| faithfulness | 0.8368 | 0.7738 | **0.9600** | 0.85 이상 | 통과 |
-| context recall | 0.5000 | 0.9500 | **0.9500** | 0.80 이상 | 통과 |
+| faithfulness | 0.8368 | 0.7738 | **0.9100** | 0.85 이상 | 통과 |
+| context recall | 0.5000 | 0.9500 | **1.0000** | 0.80 이상 | 통과 |
 | context precision | 0.4000 | 0.7000 | **0.8000** | 0.80 이상 | 통과 |
-| answer relevancy | 0.6012 | 0.4422 | **0.5901** | 0.80 이상 | **미달** |
+| answer relevancy | 0.7300 | (0.4422) | **0.8824** | 0.80 이상 | 통과 |
 
-- 2차 첫 실행의 faithfulness·answer relevancy 하락은 7번(지난주 액션아이템)이 3회 모두 '알 수 없음'으로 답해 0점을 받은 탓이 컸다(7번 제외 answer relevancy 1차 0.5383, 2차 첫 실행 0.5527).
-- answer relevancy 미달: `ResponseRelevancy`는 답변에서 역질문을 만들어 원 질문과 임베딩 유사도를 잰다. 문서 표현을 그대로 옮기는 짧은 인용형 답변(grounded 규칙)은 낮게 나온다(5번 0.30). 측정 결함은 찾지 못해 지표 정의는 그대로 두었다.
+- **answer relevancy 측정 결함 수정**: `ResponseRelevancy`는 답변에서 역질문을 만들어 원 질문과 임베딩 유사도를 잰다. 기본 프롬프트가 영어라 한국어 답변에서도 영어 역질문이 나와,
+  한국어 질문과의 언어 간 유사도를 재고 있었다(5번 역질문 'What is the format for writing commit messages…' 0.29, 같은 뜻의 한국어 역질문 0.98).
+  역질문을 응답과 같은 언어로 만들도록 고쳤고, 1차도 저장된 답변으로 answer relevancy만 같은 기준으로 다시 채점했다(0.6012 → 0.7300, 나머지 지표·판정은 그대로).
+  괄호 안 2차 첫 실행 값은 수정 전 기준이라 직접 비교하지 않는다.
 - 16번 context precision 0.0은 RAGAS가 문서별로 '이 문서만으로 정답에 이르는가'를 판정해, 여러 회의록을 합쳐야 하는 요약 질문에서는 모든 문서가 0이 되기 때문이다(1차도 0.0).
+  이 때문에 설명형 평균 context precision은 기준(0.80)에 정확히 걸쳐 있다.
 - 상세: `evaluation/round1_report.md`, `evaluation/round2_report.md`(2차 실행 이력·재실행 시 고친 결함·남은 한계 포함).
 
 ### 평가 설정 (사전 고정)
@@ -112,21 +115,21 @@ copy .env.example .env
 
 | 항목 | 1차 (dense-only) | 2차 첫 실행 | 2차 최종 | 개선폭(1차→최종) | 성공 기준 | 최종 판정 |
 |---|---|---|---|---|---|---|
-| 통과 | 15 / 20 | 18 / 20 | **19 / 20** | +4건 | 16 이상, +3건 이상 | 통과 |
+| 통과 | 15 / 20 | 18 / 20 | **20 / 20** | +5건 | 16 이상, +3건 이상 | 통과 |
 | 수치 exact-match | 100% | 100% | 100% | - | 100% | 통과 |
 | 가드레일 차단 | 100% | 100% | 100% | - | 100% | 통과 |
-| LLM 호출(평가 1회분) | 303 | 300 | 300 | | | |
+| LLM 호출(평가 1회분) | 303 | 300 | 306 | | | |
 
-- 2차 첫 실행 실패: 7번(지난주 액션아이템 '알 수 없음'), 15번(미연결 커밋 이메일을 judge가 지어낸 것으로 판단).
-- 2차 두 번째 실행(17/20, LLM 호출 308): 7·15번은 통과했지만 회의 자료 초안의 구조화 출력이 출력 토큰 한도에 잘려 1·8·11번이 실패했다(수치 exact-match 83.33%, 가드레일 차단 80%). 고친 뒤 세 번째 실행이 최종이다.
-- 2차 최종 실패: 8번(1/3). 게시물에 이메일·전화번호가 아예 없는데 judge가 '마스킹'을 확인할 수 없다며 미충족으로 판정했다. 판정에 맞춰 문구·trait를 바꾸지 않았다.
-- 1차는 사전 고정 baseline이라 다시 실행하지 않았다. 2차 재실행 때 고친 결함 중 진척 보고서 작성자 열·게시 꼬리말·회의 초안 대체는 1차 경로에도 해당하지만 1차 수치에는 반영되지 않았다(비교 시 유의).
+- 2차 실행 이력: 18/20(7·15번 실패) → 17/20(회의 초안 구조화 출력이 토큰 한도에 잘려 1·8·11번 실패) → 19/20(8번 실패) → **20/20**(60회 실행 모두 통과). 실행마다 실패 원인을 고쳤고 이력은 `round2_report.md`에 모두 남겼다.
+- 세 번째 실행의 8번 실패: 게시물에 이메일·전화번호가 아예 없어 judge가 '마스킹'을 확인할 수 없다고 봤다. 실제 동작대로 게시 꼬리말과 승인 응답에 마스킹 안내를 넣었다.
+- 1차는 사전 고정 baseline이라 다시 실행하지 않았다. 2차 재실행 때 고친 결함 중 진척 보고서 작성자 열·게시 꼬리말·회의 초안 대체·개발자 이름→ID 변환은 1차 경로에도 해당하지만 1차 수치에는 반영되지 않았다(비교 시 유의).
 
 **주요 개선 사항 (2차)**
 - 검색 레버: 하이브리드 검색·쿼리 확장·주차/화면 ID 필터·grounded 프롬프트
 - 특정 업무(화면) 진척 질문에도 `check_mismatch`를 호출해 상태-커밋 불일치를 함께 알림
 - 미연결 커밋에 작성자 이메일을 붙여 출력 단계 마스킹이 드러나게 함
 - 게시물에 개인정보 처리 안내 문구 추가, 근거 인용 프롬프트를 '문서 표현 그대로·부연 금지'로 강화
+- 회의 이력 요약 질문은 회의록 우선·5건까지 검색(여러 주차 회의록이 3건 상한에 잘리지 않게)
 
 ## 트라이앤에러 회고
 ### 시도했지만 실패한 접근과 이유
@@ -144,6 +147,7 @@ copy .env.example .env
 - **문자열 포함 기반 BM25**: '지연됐고'와 '지연되어'처럼 활용형이 다르면 맞지 않았다. kiwipiepy 형태소 토큰화로 바꿨다.
 - **긴 문서를 통째로 임베딩**(사용 예시 캡처 중 발견): 회의 자료를 게시하면 그 페이지(약 1.6만 자)가 런타임 검색 대상이 되는데, Titan 입력 한도(8,192토큰)를 넘어 이후 문서 Q&A가 모두 오류로 끝났다. 평가는 생성 문서를 검색에서 빼므로 드러나지 않았다. 긴 문서는 문단 경계로 3,000자 이하 조각을 만들어 각각 임베딩하고, 질의와 가장 가까운 조각의 유사도를 문서 점수로 쓴다.
 - **도구 인자에 ID만 기대**(사용 예시 캡처 중 발견): ReAct LLM은 개발자 ID를 모르므로 `developer_id`에 이름('정카카')을 넣었고, 도구가 이를 그대로 찾아 PM에게는 '찾을 수 없음', PL에게는 본인 파트 팀원인데도 '권한 없음'으로 답했다. 도구가 이름을 ID로 바꾼 뒤 범위를 검사한다.
+- **RAGAS 기본 프롬프트를 그대로 사용**(2차 세 번째 실행 뒤 발견): answer relevancy가 0.59로 낮게 나와 처음에는 '인용형 짧은 답변' 탓으로 봤다. 역질문을 직접 꺼내 보니 한국어 답변에서 영어 역질문이 만들어져 언어 간 유사도를 재고 있었다. 역질문 언어를 응답과 맞추고 1차도 같은 기준으로 재채점했다.
 - **Bedrock 호출 타임아웃 미지정**: 일일 토큰 한도에 걸리자 기본 재시도·대기로 RAGAS 재채점이 20분 넘게 멈춰 있었다. 클라이언트에 연결 10초·응답 120초·재시도 3회(standard)를 명시했다.
 
 ### 최종 채택한 접근과 이유
@@ -161,8 +165,9 @@ copy .env.example .env
 - 실제 Confluence(`CONFLUENCE_MODE=real`)는 REST 어댑터와 오프라인 테스트만 있고 실제 서버로는 검증하지 않았다.
 - '이번 주'는 fixture의 고정 기준 주(2026-11-16~22)다 → 실제 운영 시 날짜 기반으로 바꿔야 한다.
 - MCP 호출마다 stdio 서버를 새로 띄워 호출당 2초 정도 걸린다 → 운영에서는 세션 재사용 필요.
-- answer relevancy는 목표(0.80)에 못 미친다(2차 최종 0.5901). 인용형 짧은 답변을 유지하면서 질문 의도를 한 문장으로 먼저 답하는 형식을 검토할 수 있다.
-- 8번은 judge가 'PII가 없는 게시물'을 마스킹 미확인으로 읽는다. trait 문구('PII 원문 없음')를 다음 평가 세트 개정 때 명확히 할 필요가 있다(이번 회차에는 바꾸지 않음).
+- context precision은 기준에 정확히 걸쳐 있다(0.80). 여러 회의록을 합치는 요약 질문(16번)이 지표 정의상 0점이 되므로, 요약형 질문에는 문서별 기여를 따로 보는 지표가 필요하다.
+- judge(LLM)가 근거 문장과 위반 플래그를 어긋나게 판정한 적이 있다(이전 실행 11번). 3회 중 2회 규칙으로 흡수하지만, judge 출력에 플래그-근거 일관성 검사를 넣는 것을 다음 평가 세트 개정 때 검토한다.
+- RAGAS 기본 프롬프트는 영어 기준이라 한국어 평가에는 지표별로 언어 처리를 확인해야 한다(이번에 answer relevancy에서 결함을 찾아 고침).
 
 ## 핵심 코드 위치
 | 기능 | 위치 |
@@ -176,14 +181,14 @@ copy .env.example .env
 | 문서 Q&A (RAG) | `src/agent.py:25` `BASELINE_PROMPT`, `src/agent.py:26` `GROUNDED_PROMPT`, `src/agent.py:37` `answer_docs_qa`, `src/retriever.py:261` `week_note`(기준 주 안내) |
 | 하이브리드 검색·형태소 BM25 | `src/retriever.py:199` `ko_tokens`, `src/retriever.py:213` `bm25_scores`, `src/retriever.py:295` `search_scored` |
 | 이력 질문 검색 확대·긴 문서 조각 임베딩 | `src/retriever.py:285` `top_k`, `src/retriever.py:150` `embed_chunks`, `src/retriever.py:179` `dense_sim` |
-| 평가 시 생성 문서 제외 | `src/retriever.py:56` `runtime_documents`, `evaluation/run_eval.py:320` |
+| 평가 시 생성 문서 제외 | `src/retriever.py:56` `runtime_documents`, `evaluation/run_eval.py:324` |
 | 진척 결정적 계산 | `src/tools.py:269` `calc_progress`, `src/tools.py:314` `build_progress_report`, `src/tools.py:375` `format_progress_report` |
 | 회의 자료 표·기간 도식·대메뉴 일정표 | `src/tools.py:501` `format_progress_markdown`, `src/tools.py:606` `timeline_lines`, `src/tools.py:624` `large_menu_schedule` |
 | 회의 자료 Plan-Execute·HITL | `src/meeting.py:294` `MeetingFlow`, `src/meeting.py:347` `_check_previous_meeting`(MCP `get_page`), `src/meeting.py:377` `_draft_material`(초안 실패 시 결정적 초안), `src/meeting.py:403` `interrupt()` |
 | MCP 서버·클라이언트 | `src/mcp_confluence_server.py:16` `FastMCP`, `src/mcp_client.py:24` `make_client`, `src/mcp_client.py:61` `call_tool` |
 | Markdown → Confluence 변환 | `src/confluence_convert.py:46` `md_to_storage` |
 | 재시도·타임아웃 | `src/middleware.py:55` `call_with_retry`, `src/config.py:26` `boto_config`(Bedrock 타임아웃) |
-| judge 입력·RAGAS 4개 지표 | `evaluation/run_eval.py:177` `judge_message`, `evaluation/run_eval.py:273` `ragas_metrics`(`evaluation/run_eval.py:264` 역질문 언어 고정), `evaluation/run_eval.py:291` `ragas_scores`, `evaluation/run_eval.py:69` `RERUN_FIXES`(2차 재실행 결함 기록) |
+| judge 입력·RAGAS 4개 지표 | `evaluation/run_eval.py:181` `judge_message`, `evaluation/run_eval.py:277` `ragas_metrics`(`evaluation/run_eval.py:268` 역질문 언어 고정), `evaluation/run_eval.py:295` `ragas_scores`, `evaluation/run_eval.py:69` `RERUN_FIXES`(2차 재실행 결함 기록) |
 
 ## 산출물 구성
 강의 산출물 구성(3-1)과 이 저장소의 실제 구성:

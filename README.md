@@ -15,7 +15,7 @@
 | 3 | RAG | `src/retriever.py` (1차 Titan 벡터 dense-only, 2차 kiwipiepy 형태소 BM25 + 벡터 RRF·휴리스틱 리랭킹(질의 용어 커버리지·화면 ID 일치 가중치)·쿼리 확장·메타데이터 필터) + `src/agent.py` `answer_docs_qa` (2차는 근거 인용 답변) |
 | 4 | 다중 도구 | `src/tools.py` 결정적 계산 + `src/agent.py` `calc_progress`·`calc_remaining_mm`·`check_mismatch`·`get_commits` |
 | 5 | MCP | `src/mcp_confluence_server.py` (fastmcp, stdio, `get_page`·`create_page`·`search_pages`), `src/mcp_client.py` (langchain-mcp-adapters `MultiServerMCPClient`), `src/confluence.py`(fake/real), `src/confluence_convert.py`(Markdown→Confluence) |
-| 6 | 가드레일 | `src/guardrails.py` — 역할 범위(PM 전체·PL 본인 파트·개발자 본인, 신원은 로그인 세션 기준)·직접/간접 인젝션(숨은 지시 줄만 제외)·사람 평가·순위 금지를 도구 실행 전 코드로 강제, 진척 도구도 요청자 범위로 고정 |
+| 6 | 가드레일 | `src/guardrails.py` — 역할 범위(PM 전체·PL 본인 파트·개발자 본인, 신원은 로그인 세션 기준)·직접/간접 인젝션(숨은 지시 줄만 제외)·사람 평가·순위 금지를 도구 실행 전 코드로 강제, 진척 도구도 요청자 범위로 고정. 인젝션·순위는 정규식으로 먼저 거르고, 통과한 질문은 구조화 출력 LLM 분류기(`SafetyVerdict`)가 2차 판정한다(LLM 실패 시 통과, 범위는 코드가 강제). 문서 근거의 범위 밖 수치는 문단(블록) 단위로 가린다 |
 | 7 | HITL | `src/meeting.py` `interrupt()` + checkpointer, `src/api.py` thread_id·approval 재개 (PM·PL만 승인, thread 소유권 확인) |
 | 8 | 미들웨어 | `src/middleware.py` PII 마스킹(한 곳)·타임아웃·재시도(최대 1회, 타임아웃은 재시도 안 함), `src/agent.py` `SummarizationMiddleware`(회의 중 긴 대화 요약)·`ModelRetryMiddleware`(1회) |
 | 9 | Multi-Agent Supervisor | `src/supervisor.py` 구조화 출력 LLM 라우터 → 진척 / 문서 Q&A / 회의 자료 에이전트. 세션·가드레일 통과 뒤 요청당 한 번 호출(캐시 없음), trace는 `guardrail` → `supervisor_route` 순서 |
@@ -31,7 +31,7 @@ LLM 호출이 실패하면 규칙 기반 라우팅으로 대체한다.
 ## 아키텍처
 ![주간 진척 보고 에이전트 아키텍처](docs/images/architecture.svg)
 
-1. `POST /login`(데모 로그인) → 세션 토큰. `POST /query` → 세션 확인(토큰 없음·무효 401) → thread 소유권 확인(404) → 가드레일(범위·인젝션·순위)을 라우팅·도구 실행 전에 검사
+1. `POST /login`(데모 로그인) → 세션 토큰. `POST /query` → 세션 확인(토큰 없음·무효 401) → thread 소유권 확인(404) → 가드레일(범위·인젝션·순위)을 라우팅·도구 실행 전에 검사. 인젝션·순위는 정규식 → LLM 분류기 순서로 판정(요청당 LLM 1회 추가)
 2. 가드레일을 통과한 요청만 Supervisor가 진척 / 문서 Q&A / 회의 자료 중 하나로 라우팅(요청당 LLM 1회)
    - **진척**: ReAct 에이전트가 요청자 범위로 고정된 도구로 계산하고, 도구 결과를 답변 끝에 그대로 붙인다
    - **문서 Q&A**: 검색 → 간접 인젝션 줄 제외·범위 밖 진척 수치 가림 → 답변(2차는 근거 인용)
@@ -150,6 +150,7 @@ copy .env.example .env
 ### 최종 채택한 접근과 이유
 - 숫자는 `src/tools.py`가 결정적으로 계산하고 LLM은 설명만 한다 → exact-match 100%를 버그 기준으로 관리할 수 있다.
 - 권한은 프롬프트가 아니라 도구 실행 전 코드와 범위가 고정된 도구로 강제한다 → 인젝션·신원 주장 문구로 우회되지 않는다.
+- 인젝션·순위 감지는 정규식(빠르고 결정적) + LLM 분류기(표현을 바꾼 우회 대응) 2단으로 둔다 → 분류기는 사람·데이터 범위를 판단하지 않고, 범위는 코드가 맡는다.
 - Supervisor는 구조화 출력 라우터 하나로 둔다 → HITL 재개와 가드레일을 결정적으로 처리하고 trace로 확인한다.
 - 회의 자료는 Plan-Execute + `interrupt()` → 승인 전 게시가 구조적으로 불가능하다.
 
@@ -159,6 +160,7 @@ copy .env.example .env
 - 커밋 작성자를 개발자와 연결하려고 내부에서는 실제 이메일을 쓰며, 진척 도구 결과(미연결 커밋 작성자 이메일)가 LLM 입력으로 들어간다. 출력(answer·contexts·trace·게시물)에서만
   마스킹하고, LangSmith 자동 추적(LLM 입력 원문 전송)은 켜지 않는다(`LANGSMITH_API_KEY`가 있을 때도 마스킹된 trace만 기록).
 - 파이썬 스레드는 강제 종료할 수 없어 타임아웃 뒤에도 백그라운드 작업이 끝까지 돌 수 있다. 결과는 버리고 그 thread의 대화 기억 키를 바꿔 섞이지 않게만 한다.
+- 가드레일 LLM 분류기는 평가 실행 뒤에 추가했다. 평가 입력 20건과 헷갈리기 쉬운 정상 질문·표현을 바꾼 공격 문구로 실제 Bedrock 판정을 확인했다(정상 28건 오탐 0, 공격 7건 모두 차단). 분류기 호출이 실패하면 막지 않고 통과시키므로(fail-open), 그때는 정규식과 범위 고정 도구만 남는다.
 - 실제 Confluence(`CONFLUENCE_MODE=real`)는 REST 어댑터와 오프라인 테스트만 있고 실제 서버로는 검증하지 않았다.
 - '이번 주'는 fixture의 고정 기준 주(2026-11-16~22)다 → 실제 운영 시 날짜 기반으로 바꿔야 한다.
 - MCP 호출마다 stdio 서버를 새로 띄워 호출당 2초 정도 걸린다 → 운영에서는 세션 재사용 필요.
@@ -171,17 +173,17 @@ copy .env.example .env
 |---|---|
 | 데모 로그인·세션 확인 | `src/api.py:235` `login`, `src/api.py:245` `session_user` |
 | API 진입점·thread 소유권·HITL 재개 | `src/api.py:260` `query`, `src/api.py:272` `_query` |
-| 가드레일 검사(라우팅·도구 실행 전) | `src/api.py:285`, `src/guardrails.py:83` `check_question`, `src/guardrails.py:150` `filter_injected_chunks` |
+| 가드레일 검사(라우팅·도구 실행 전) | `src/api.py:285`, `src/guardrails.py:149` `check_question`, `src/guardrails.py:216` `filter_injected_chunks`, `src/guardrails.py:109` `llm_check`(LLM 분류기 2차), `src/guardrails.py:234` `scope_chunks`(블록 단위 범위 가림) |
 | 출력 단계 PII 마스킹 | `src/api.py:267`, `src/middleware.py:20` `mask_pii` |
 | Supervisor 구조화 출력 라우터 | `src/supervisor.py:20` `RouteDecision`, `src/supervisor.py:36` `make_llm_router` |
-| 진척 ReAct 에이전트 | `src/agent.py:60` `PROGRESS_SYSTEM`, `src/agent.py:76` `_progress_tools`(`src/agent.py:88` 이름→ID), `src/agent.py:145` `answer_progress` |
-| 문서 Q&A (RAG) | `src/agent.py:25` `BASELINE_PROMPT`, `src/agent.py:26` `GROUNDED_PROMPT`, `src/agent.py:37` `answer_docs_qa`, `src/retriever.py:261` `week_note`(기준 주 안내) |
+| 진척 ReAct 에이전트 | `src/agent.py:59` `PROGRESS_SYSTEM`, `src/agent.py:75` `_progress_tools`(`src/agent.py:87` 이름→ID), `src/agent.py:144` `answer_progress` |
+| 문서 Q&A (RAG) | `src/agent.py:24` `BASELINE_PROMPT`, `src/agent.py:25` `GROUNDED_PROMPT`, `src/agent.py:36` `answer_docs_qa`, `src/retriever.py:261` `week_note`(기준 주 안내) |
 | 하이브리드 검색·형태소 BM25 | `src/retriever.py:199` `ko_tokens`, `src/retriever.py:213` `bm25_scores`, `src/retriever.py:295` `search_scored` |
 | 이력 질문 검색 확대·긴 문서 조각 임베딩 | `src/retriever.py:285` `top_k`, `src/retriever.py:150` `embed_chunks`, `src/retriever.py:179` `dense_sim` |
 | 평가 시 생성 문서 제외 | `src/retriever.py:56` `runtime_documents`, `evaluation/run_eval.py:314` |
 | 진척 결정적 계산 | `src/tools.py:269` `calc_progress`, `src/tools.py:314` `build_progress_report`, `src/tools.py:375` `format_progress_report` |
 | 회의 자료 표·기간 도식·대메뉴 일정표 | `src/tools.py:501` `format_progress_markdown`, `src/tools.py:606` `timeline_lines`, `src/tools.py:624` `large_menu_schedule` |
-| 회의 자료 Plan-Execute·HITL | `src/meeting.py:294` `MeetingFlow`, `src/meeting.py:347` `_check_previous_meeting`(MCP `get_page`), `src/meeting.py:377` `_draft_material`(초안 실패 시 결정적 초안), `src/meeting.py:403` `interrupt()` |
+| 회의 자료 Plan-Execute·HITL | `src/meeting.py:301` `MeetingFlow`, `src/meeting.py:354` `_check_previous_meeting`(MCP `get_page`), `src/meeting.py:384` `_draft_material`(초안 실패 시 결정적 초안), `src/meeting.py:410` `interrupt()` |
 | MCP 서버·클라이언트 | `src/mcp_confluence_server.py:16` `FastMCP`, `src/mcp_client.py:24` `make_client`, `src/mcp_client.py:61` `call_tool` |
 | Markdown → Confluence 변환 | `src/confluence_convert.py:46` `md_to_storage` |
 | 재시도·타임아웃 | `src/middleware.py:55` `call_with_retry`, `src/config.py:26` `boto_config`(Bedrock 타임아웃) |

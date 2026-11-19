@@ -50,7 +50,7 @@
   <text x="546" y="126" class="t">가드레일</text>
   <text x="546" y="146" class="f">guardrails.py</text>
   <text x="546" y="168" class="s">범위: PM 전체·PL 본인 파트·개발자 본인</text>
-  <text x="546" y="186" class="s">직접 인젝션 차단 · 사람 순위 금지</text>
+  <text x="546" y="186" class="s">인젝션·사람 순위: 정규식 → LLM 분류기</text>
   <text x="546" y="204" class="s">라우팅·도구 실행 전에 코드로 검사</text>
   <circle cx="750" cy="118" r="11" fill="#f97316"/><text x="750" y="122" text-anchor="middle" class="p">6</text>
 

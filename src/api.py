@@ -283,13 +283,16 @@ def _query(req: QueryRequest) -> tuple[dict, str, str]:
             return saved["response"], req.thread_id, saved["route"]
     tid = req.thread_id or uuid.uuid4().hex
     blocked = guardrails.check_question(req.question, req.user_id, req.role)
+    llm_trace = None
+    if not blocked:  # 정규식·범위 검사를 통과한 질문만 LLM 분류기로 2차 판정
+        blocked, llm_trace = guardrails.llm_check(req.question)
     if blocked:  # 도구·핸들러·라우팅 전에 코드 계층에서 차단
         out = {"answer": blocked["answer"], "contexts": [], "trace": blocked["trace"], "pending_approval": False}
         _save(tid, req, "guardrail", out)
         return out, tid, "guardrail"
     route = supervisor.route(req.question)
-    head = [{"step": "guardrail", "input": "question", "output": "passed"},
-            {"step": "supervisor_route", "input": req.question, "output": route}]
+    head = [{"step": "guardrail", "input": "question", "output": "passed"}] + ([llm_trace] if llm_trace else []) \
+        + [{"step": "supervisor_route", "input": req.question, "output": route}]
     epoch = (saved or {}).get("epoch", 0)
     memory_key = tid if epoch == 0 else f"{tid}#{epoch}"
     try:

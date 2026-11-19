@@ -263,6 +263,7 @@ def setup() -> None:
     from src import api
     llm = config.get_llm()
     supervisor.set_llm_router(supervisor.make_llm_router(llm))
+    guardrails.set_llm_classifier(guardrails.make_llm_classifier(llm))  # 정규식 다음 2차 입력 검사
     retriever.set_embedder(config.get_embeddings())
     _flow = meeting.MeetingFlow(llm, _publish, _read_page)
     reset()

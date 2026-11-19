@@ -1,7 +1,8 @@
 """Markdown → Confluence 저장 형식(storage format, XHTML) 변환기.
 
 MCP 서버의 create_page가 게시 직전에 호출한다(에이전트는 Markdown만 넘긴다).
-회의 자료에 쓰는 문법만 지원: 제목, 문단, 인용(→ info 패널), 목록, 체크리스트(→ 작업 목록), 표, **굵게**, `코드`.
+회의 자료에 쓰는 문법만 지원: 제목, 문단, 인용(→ info 패널), 목록, 체크리스트(→ 작업 목록), 표, **굵게**, `코드`,
+지난주 대비 증감 표시(``▲ +1.86%p`` → 초록 글자, ``▼ -0.50%p`` → 빨강 글자).
 """
 from __future__ import annotations
 
@@ -9,11 +10,16 @@ import html
 import re
 
 _TABLE_SEP = re.compile(r"^\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?$")
+UP_COLOR, DOWN_COLOR = "rgb(0,135,90)", "rgb(222,53,11)"  # 증가 초록, 감소 빨강
+_UP = re.compile(r"▲ \+\d+(?:\.\d+)?(?:%p|MM|개|건)?")
+_DOWN = re.compile(r"▼ -\d+(?:\.\d+)?(?:%p|MM|개|건)?")
 
 
 def _inline(text: str) -> str:
     out = html.escape(text, quote=False)
     out = re.sub(r"`([^`]+)`", r"<code>\1</code>", out)
+    out = _UP.sub(lambda m: f'<span style="color: {UP_COLOR};">{m.group(0)}</span>', out)
+    out = _DOWN.sub(lambda m: f'<span style="color: {DOWN_COLOR};">{m.group(0)}</span>', out)
     return re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", out)
 
 

@@ -1,8 +1,14 @@
 """가드레일 (코드 계층 강제). 도구/핸들러 실행 전에 호출된다.
 
-1 역할별 조회 범위 + 권한 상승 거절 (고정 문구)   2 PII 마스킹은 middleware.py
-3 직접 인젝션 거절 / 간접 인젝션 청크 제외        4 승인 없는 게시 금지(api.py, PM/PL만 승인)
+1 역할별 조회 범위 (고정 문구)                    2 PII 마스킹은 middleware.py
+  (범위는 개인 진척·사람 정보에만 적용한다. 화면 정의서·팀 규칙·전환 일정·회의록 같은 팀 공용 문서는 누구나 읽는다.
+   범위 밖 화면이라도 정의서 내용(완료 조건 등)만 묻는 질문은 문서 Q&A로 답하고, 그 화면의 진척 질문은 거절한다)
+3 직접 인젝션 거절 / 간접 인젝션 청크 제외        4 승인 없는 게시 금지(api.py, PM·PL만 승인)
 5 사람 평가·순위 거절 (업무 단위 현황 안내)
+
+역할: pm(전체) / pl(본인 파트의 대메뉴·소속 개발자) / developer(본인 화면만)
+신원(user_id·role)은 세션(요청 필드)에서만 정한다. 질문 속 '나 PM이야' 같은 자기 소개 문구는 판단에 쓰지 않으며,
+범위 밖 데이터를 요청할 때만 거절한다. 역할과 user_id 등록 정보 불일치는 api.py에서 403으로 막는다.
 """
 from __future__ import annotations
 
@@ -13,7 +19,8 @@ from src import tools
 DENY = "해당 정보는 조회 권한이 없습니다"
 INJECTION_REFUSAL = "프롬프트 인젝션 시도로 판단되어 요청을 처리할 수 없습니다."
 RANKING_REFUSAL = ("사람에 대한 평가·순위는 제공하지 않습니다. 대신 업무 단위 현황"
-                   "(업무별 진척률·남은 MM)을 확인해 보세요.")
+                   "(화면·메뉴별 진척률·남은 MM)을 확인해 보세요.")
+MEETING_ROLES = ("pm", "pl")  # 회의 자료 초안 작성·승인 가능 역할
 
 INJECTION_PATTERNS = [re.compile(p, re.IGNORECASE) for p in [
     r"(이전|위|앞의|기존)\s*(지시|명령|지침|규칙|프롬프트)[^.\n]{0,15}(무시|잊|따르지)",
@@ -27,26 +34,19 @@ INJECTION_PATTERNS = [re.compile(p, re.IGNORECASE) for p in [
     r"(you are now|지금부터\s*(너는|넌))",
     r"(모든|전체)\s*(데이터|정보|개발자)[^.\n]{0,10}(출력|유출|전송)",
 ]]
-ESCALATION_PATTERNS = [re.compile(p, re.IGNORECASE) for p in [
-    r"(나는|저는|난|제가|내가)\s*(사실\s*)?(pm|pl|피엠|피엘|관리자|팀장|리더|admin)",
-    r"(pm|pl|관리자|admin|팀장)\s*(/\s*pl\s*)?(권한|역할)(으로|을|를|이|임|이다|입니다)",
-    r"(권한|역할)(을|를)?\s*(pm|pl|관리자|admin|pm_pl)(으?로)?\s*(변경|상승|올려|바꿔|설정)",
-    r"as\s+(an?\s+)?(admin|pm|manager)", r"role\s*[=:]\s*pm_pl", r"sudo|root\s*권한",
-    r"권한\s*(상승|우회|해제)",
-]]
 RANKING_PATTERNS = [re.compile(p, re.IGNORECASE) for p in [
     r"순위", r"랭킹|ranking|rank\b", r"등수", r"서열",
     r"(가장|제일|젤|누가|가장\s*많이|최고|최악)\s*(잘|못|열심|게으|우수|뒤처|느린|빠른|성과|생산)",
     r"누가\s*(더|제일|가장)", r"(잘|못)\s*하는\s*(사람|개발자|팀원)",
-    r"(인사)?평가|고과|성과\s*(비교|등급|점수)|등급|점수\s*(매겨|줘)|줄\s*세워|비교해",
+    r"(인사)?평가|고과|성과\s*(비교|등급|점수)|(개발자|팀원|사람|직원)\s*등급|점수\s*(매겨|줘)|줄\s*세워|비교해",
     r"(best|worst|top)\s*(developer|performer)",
 ]]
+# 화면 정의서(완료 조건·기능 등) 질문: 팀 공용 문서라 누구나 읽는다. 진척·담당·커밋 등 사람의 진척을 드러내는 말이 섞이면 해당 없음
+SCREEN_DOC_RE = re.compile(r"완료\s*조건|정의서|화면\s*정의|요구\s*사항|요건|기능|입력\s*항목|화면\s*구성")
+SCREEN_PROGRESS_RE = re.compile(r"진척|진행|남은|MM|mm|현황|커밋|지연|상태|담당|누가|얼마|몇\s*%|퍼센트|끝났|충족|만족|달성|완료(했|됐|된|율|\s*여부)")
 ALL_SCOPE_PATTERNS = [re.compile(p) for p in [
     r"(팀원|팀\s*전체|다른\s*(개발자|사람|팀원)|전체\s*(개발자|팀|현황|진척)|모든\s*개발자|개발자\s*(들|별)|타인|남의)",
 ]]
-
-TASK_ID_RE = re.compile(r"TASK-\d{3}")
-DEV_ID_RE = re.compile(r"\bdev\d{2}\b|\bpm\d{2}\b", re.IGNORECASE)
 
 
 def is_injection(text: str) -> bool:
@@ -65,36 +65,63 @@ def check_question(question: str, user_id: str, role: str) -> dict | None:
 
     if is_injection(question):
         return block("direct_injection", INJECTION_REFUSAL)
-    if _hit(ESCALATION_PATTERNS, question):
-        return block("privilege_escalation", DENY)
     if _hit(RANKING_PATTERNS, question):
         return block("ranking_evaluation", RANKING_REFUSAL)
-    if role == "developer":
-        if not _scope_ok(question, user_id):
-            return block("scope", DENY)
+    if role in ("developer", "pl") and not _scope_ok(question, user_id, role):
+        return block("scope", DENY)
     return None
 
 
-def _scope_ok(question: str, user_id: str) -> bool:
-    devs = tools.load_developers()
-    for d in devs:
-        if d["developer_id"] == user_id:
-            continue
-        if d["developer_id"].lower() in question.lower() or d["name"] in question:
-            return False
-        if d["email"].lower() in question.lower():
-            return False
-        # 이름에서 성을 뺀 호칭 (예: '메시님'). '메시지'처럼 단어의 일부인 경우는 이름으로 보지 않는다.
+def allowed_people(role: str, user_id: str) -> set[str] | None:
+    """질문·문서에서 언급해도 되는 사람. PM=제한 없음(None), PL=본인 파트 구성원, 개발자=본인."""
+    if role == "pm":
+        return None
+    if role == "developer":
+        return {user_id}
+    part = tools.user_scope(role, user_id).get("part")
+    return {d["developer_id"] for d in tools.load_developers() if part and d["part"] == part} | {user_id}
+
+
+def mentioned_people(question: str) -> list[str]:
+    """질문에 언급된 사람(developer_id). ID·이름·이메일·성을 뺀 호칭(예: '메시님')으로 찾는다."""
+    out = []
+    for d in tools.load_developers():
         given = re.escape(d["name"][1:])
-        if len(d["name"]) >= 3 and re.search(given + r"(?:님|씨|의|은|는|이|가|을|를|도|한테|에게)?(?![가-힣])", question):
-            return False
-    for tid in set(TASK_ID_RE.findall(question)):
-        owner = next((t["owner"] for t in tools.load_tasks() if t["task_id"] == tid), None)
-        if owner is not None and owner != user_id:
-            return False
-    if _hit(ALL_SCOPE_PATTERNS, question):
+        # '메시지'처럼 단어의 일부인 경우는 이름으로 보지 않는다.
+        if (d["developer_id"].lower() in question.lower() or d["name"] in question
+                or d["email"].lower() in question.lower()
+                or (len(d["name"]) >= 3 and re.search(
+                    given + r"(?:님|씨|의|은|는|이|가|을|를|도|한테|에게)?(?![가-힣])", question))):
+            out.append(d["developer_id"])
+    return out
+
+
+def _scope_ok(question: str, user_id: str, role: str) -> bool:
+    allowed = allowed_people(role, user_id)
+    if any(p not in allowed for p in mentioned_people(question)):
         return False
+    if out_of_scope_screens(question, user_id, role) and not is_screen_doc_question(question):
+        return False  # 범위 밖 화면의 진척(개인 진척이 드러남)은 거절, 화면 정의서 질문은 허용
+    if role == "developer" and _hit(ALL_SCOPE_PATTERNS, question):
+        return False
+    if role == "pl":  # 다른 파트(PL1·PL2) 지칭
+        scope = tools.user_scope(role, user_id)
+        for part in tools.load_project()["parts"]:
+            if part != scope.get("part") and re.search(rf"(?<![A-Za-z0-9]){part}(?![0-9])", question, re.IGNORECASE):
+                return False
     return True
+
+
+def out_of_scope_screens(question: str, user_id: str, role: str) -> list[str]:
+    """질문 속 화면 ID 중 요청자 진척 범위 밖인 화면 (PM은 없음)."""
+    scope = tools.user_scope(role, user_id)
+    return sorted(sid for sid in set(tools.SCREEN_ID_RE.findall(question))
+                  if (s := tools.find_screen(sid)) is not None and not tools.in_scope(s, scope))
+
+
+def is_screen_doc_question(question: str) -> bool:
+    """화면 정의서(팀 공용 문서) 내용만 묻는 질문인가: 정의서 용어가 있고 진척·담당 관련 말이 없음."""
+    return bool(SCREEN_DOC_RE.search(question)) and not SCREEN_PROGRESS_RE.search(question)
 
 
 def filter_injected_chunks(chunks: list[dict]) -> tuple[list[dict], list[str]]:
@@ -109,10 +136,11 @@ def filter_injected_chunks(chunks: list[dict]) -> tuple[list[dict], list[str]]:
 
 
 def scope_chunks(role: str, user_id: str, chunks: list[dict]) -> list[dict]:
-    """개발자 역할: 다른 개발자의 진척 수치가 담긴 줄은 제외(결정사항·블로커 등 공용 내용만 유지)."""
-    if role != "developer":
+    """PM 외 역할: 범위 밖 사람의 진척 수치가 담긴 줄은 제외(결정사항·블로커 등 공용 내용만 유지)."""
+    allowed = allowed_people(role, user_id)
+    if allowed is None:
         return chunks
-    others = [d for d in tools.load_developers() if d["developer_id"] != user_id]
+    others = [d for d in tools.load_developers() if d["developer_id"] not in allowed]
     numeric = re.compile(r"\d+(\.\d+)?\s*(%|MM|mm|퍼센트)|진척률|남은\s*MM")
     out = []
     for c in chunks:

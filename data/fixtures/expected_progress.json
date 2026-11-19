@@ -1,31 +1,1505 @@
 {
-  "_note": "사전 고정 정답. 손계산: 진척률=하위작업 완료비율(상태 '완료'는 100%), 개발자/팀=계획 MM 가중. 진척률 소수 4자리, MM 소수 2자리.",
-  "tasks": {
-    "TASK-007": {"progress": 1.0, "remaining_mm": 0.0},
-    "TASK-012": {"progress": 0.4, "remaining_mm": 2.4},
-    "TASK-013": {"progress": 0.25, "remaining_mm": 1.5},
-    "TASK-014": {"progress": 1.0, "remaining_mm": 0.0},
-    "TASK-015": {"progress": 0.4, "remaining_mm": 1.5},
-    "TASK-016": {"progress": 0.5, "remaining_mm": 1.5},
-    "TASK-017": {"progress": 0.0, "remaining_mm": 1.5},
-    "TASK-018": {"progress": 0.75, "remaining_mm": 0.5},
-    "TASK-019": {"progress": 0.0, "remaining_mm": 1.0},
-    "TASK-020": {"progress": 0.8, "remaining_mm": 0.5},
-    "TASK-021": {"progress": 1.0, "remaining_mm": 0.0}
+ "_note": "생성기(make_fixtures.py)가 의도한 단계 완료 상태로 따로 계산한 정답. 진척률=완료 단계/4(상태 '완료'는 100%, '미착수'는 0%), 묶음=계획 MM 가중. 진척률 소수 4자리, MM 소수 2자리. 계획 진척률=화면별 계획 시작~종료 선형 비율의 계획 MM 가중, 차이(%p)=실적-계획, 상태: -3%p 이상 정상·-10%p 이상 주의·그 미만 지연.",
+ "screens": {
+  "SCR-A01-01": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
   },
-  "developers": {
-    "dev01": {"progress": 0.35, "remaining_mm": 3.9},
-    "dev02": {"progress": 0.7273, "remaining_mm": 1.5},
-    "dev03": {"progress": 0.6667, "remaining_mm": 1.0},
-    "dev04": {"progress": 0.5, "remaining_mm": 1.5},
-    "dev05": {"progress": 0.5, "remaining_mm": 2.0},
-    "dev06": {"progress": 0.8333, "remaining_mm": 0.5}
+  "SCR-A01-02": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
   },
-  "team": {"progress": 0.5755, "remaining_mm": 10.4},
-  "unlinked_hashes": ["c021", "c022", "c028", "c032", "c035"],
-  "mismatch_tasks": {
-    "TASK-007": "STATUS_DONE_SUBTASKS_INCOMPLETE",
-    "TASK-014": "SUBTASKS_DONE_STATUS_NOT_DONE",
-    "TASK-017": "NOT_STARTED_BUT_HAS_COMMITS"
+  "SCR-A01-03": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-A01-04": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-A01-05": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-A01-06": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-A02-01": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-A02-02": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-A02-03": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-A02-04": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-A02-05": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-A03-01": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-A03-02": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-A03-03": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-A03-04": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-A03-05": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-A03-06": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-A04-01": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-A04-02": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-A04-03": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-A04-04": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-A04-05": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-A05-01": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-A05-02": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-A05-03": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-A05-04": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-B01-01": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-B01-02": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-B01-03": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-B01-04": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-B01-05": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-B02-01": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-B02-02": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-B02-03": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-B02-04": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-B02-05": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-B02-06": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-B03-01": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-B03-02": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-B03-03": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-B03-04": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-B03-05": {
+   "progress": 0.5,
+   "remaining_mm": 0.15
+  },
+  "SCR-B03-06": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-B04-01": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-B04-02": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-B04-03": {
+   "progress": 0.75,
+   "remaining_mm": 0.12
+  },
+  "SCR-B04-04": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-B04-05": {
+   "progress": 0.5,
+   "remaining_mm": 0.3
+  },
+  "SCR-B05-01": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-B05-02": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-B05-03": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-B05-04": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-B05-05": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-C01-01": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-C01-02": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-C01-03": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-C01-04": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-C01-05": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-C01-06": {
+   "progress": 0.75,
+   "remaining_mm": 0.15
+  },
+  "SCR-C02-01": {
+   "progress": 0.5,
+   "remaining_mm": 0.2
+  },
+  "SCR-C02-02": {
+   "progress": 0.5,
+   "remaining_mm": 0.15
+  },
+  "SCR-C02-03": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-C02-04": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-C02-05": {
+   "progress": 0.0,
+   "remaining_mm": 0.6
+  },
+  "SCR-C03-01": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-C03-02": {
+   "progress": 0.5,
+   "remaining_mm": 0.15
+  },
+  "SCR-C03-03": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-C03-04": {
+   "progress": 0.25,
+   "remaining_mm": 0.23
+  },
+  "SCR-C03-05": {
+   "progress": 0.0,
+   "remaining_mm": 0.4
+  },
+  "SCR-C04-01": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-C04-02": {
+   "progress": 0.5,
+   "remaining_mm": 0.25
+  },
+  "SCR-C04-03": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-C04-04": {
+   "progress": 0.25,
+   "remaining_mm": 0.38
+  },
+  "SCR-C04-05": {
+   "progress": 0.0,
+   "remaining_mm": 0.3
+  },
+  "SCR-D01-01": {
+   "progress": 0.25,
+   "remaining_mm": 0.45
+  },
+  "SCR-D01-02": {
+   "progress": 0.0,
+   "remaining_mm": 0.5
+  },
+  "SCR-D01-03": {
+   "progress": 0.0,
+   "remaining_mm": 0.6
+  },
+  "SCR-D01-04": {
+   "progress": 0.0,
+   "remaining_mm": 0.6
+  },
+  "SCR-D01-05": {
+   "progress": 0.0,
+   "remaining_mm": 0.3
+  },
+  "SCR-D01-06": {
+   "progress": 0.0,
+   "remaining_mm": 0.3
+  },
+  "SCR-D02-01": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-D02-02": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-D02-03": {
+   "progress": 0.0,
+   "remaining_mm": 0.3
+  },
+  "SCR-D02-04": {
+   "progress": 0.0,
+   "remaining_mm": 0.3
+  },
+  "SCR-D02-05": {
+   "progress": 0.0,
+   "remaining_mm": 0.3
+  },
+  "SCR-D03-01": {
+   "progress": 0.0,
+   "remaining_mm": 0.6
+  },
+  "SCR-D03-02": {
+   "progress": 0.0,
+   "remaining_mm": 0.3
+  },
+  "SCR-D03-03": {
+   "progress": 0.0,
+   "remaining_mm": 0.6
+  },
+  "SCR-D03-04": {
+   "progress": 0.0,
+   "remaining_mm": 0.3
+  },
+  "SCR-D03-05": {
+   "progress": 0.0,
+   "remaining_mm": 0.3
+  },
+  "SCR-D04-01": {
+   "progress": 0.0,
+   "remaining_mm": 0.6
+  },
+  "SCR-D04-02": {
+   "progress": 0.0,
+   "remaining_mm": 0.6
+  },
+  "SCR-D04-03": {
+   "progress": 0.0,
+   "remaining_mm": 0.4
+  },
+  "SCR-D04-04": {
+   "progress": 0.0,
+   "remaining_mm": 0.5
+  },
+  "SCR-D04-05": {
+   "progress": 0.0,
+   "remaining_mm": 0.3
+  },
+  "SCR-D05-01": {
+   "progress": 0.0,
+   "remaining_mm": 0.5
+  },
+  "SCR-D05-02": {
+   "progress": 0.0,
+   "remaining_mm": 0.3
+  },
+  "SCR-D05-03": {
+   "progress": 0.0,
+   "remaining_mm": 0.5
+  },
+  "SCR-D05-04": {
+   "progress": 0.0,
+   "remaining_mm": 0.5
+  },
+  "SCR-E01-01": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-E01-02": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-E01-03": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-E01-04": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-E01-05": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-E02-01": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-E02-02": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-E02-03": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-E02-04": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-E02-05": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-E03-01": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-E03-02": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-E03-03": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-E03-04": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-E04-01": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-E04-02": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-E04-03": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-E04-04": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-E04-05": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-F01-01": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-F01-02": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-F01-03": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-F01-04": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-F01-05": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-F02-01": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-F02-02": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-F02-03": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-F02-04": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-F03-01": {
+   "progress": 0.75,
+   "remaining_mm": 0.1
+  },
+  "SCR-F03-02": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-F03-03": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-F03-04": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-F04-01": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-F04-02": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-F04-03": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-F04-04": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-G01-01": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-G01-02": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-G01-03": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-G01-04": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-G01-05": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-G02-01": {
+   "progress": 0.75,
+   "remaining_mm": 0.15
+  },
+  "SCR-G02-02": {
+   "progress": 0.0,
+   "remaining_mm": 0.4
+  },
+  "SCR-G02-03": {
+   "progress": 0.0,
+   "remaining_mm": 0.4
+  },
+  "SCR-G02-04": {
+   "progress": 0.0,
+   "remaining_mm": 0.5
+  },
+  "SCR-G03-01": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-G03-02": {
+   "progress": 0.0,
+   "remaining_mm": 0.6
+  },
+  "SCR-G03-03": {
+   "progress": 0.0,
+   "remaining_mm": 0.5
+  },
+  "SCR-G03-04": {
+   "progress": 0.0,
+   "remaining_mm": 0.4
+  },
+  "SCR-G04-01": {
+   "progress": 1.0,
+   "remaining_mm": 0.0
+  },
+  "SCR-G04-02": {
+   "progress": 0.5,
+   "remaining_mm": 0.25
+  },
+  "SCR-G04-03": {
+   "progress": 0.0,
+   "remaining_mm": 0.4
+  },
+  "SCR-G04-04": {
+   "progress": 0.0,
+   "remaining_mm": 0.4
+  },
+  "SCR-G04-05": {
+   "progress": 0.0,
+   "remaining_mm": 0.3
+  },
+  "SCR-G04-06": {
+   "progress": 0.0,
+   "remaining_mm": 0.6
+  },
+  "SCR-H01-01": {
+   "progress": 0.0,
+   "remaining_mm": 0.5
+  },
+  "SCR-H01-02": {
+   "progress": 0.0,
+   "remaining_mm": 0.5
+  },
+  "SCR-H01-03": {
+   "progress": 0.0,
+   "remaining_mm": 0.4
+  },
+  "SCR-H01-04": {
+   "progress": 0.0,
+   "remaining_mm": 0.5
+  },
+  "SCR-H01-05": {
+   "progress": 0.0,
+   "remaining_mm": 0.5
+  },
+  "SCR-H01-06": {
+   "progress": 0.0,
+   "remaining_mm": 0.3
+  },
+  "SCR-H02-01": {
+   "progress": 0.0,
+   "remaining_mm": 0.6
+  },
+  "SCR-H02-02": {
+   "progress": 0.0,
+   "remaining_mm": 0.4
+  },
+  "SCR-H02-03": {
+   "progress": 0.0,
+   "remaining_mm": 0.3
+  },
+  "SCR-H02-04": {
+   "progress": 0.0,
+   "remaining_mm": 0.4
+  },
+  "SCR-H02-05": {
+   "progress": 0.0,
+   "remaining_mm": 0.3
+  },
+  "SCR-H03-01": {
+   "progress": 0.0,
+   "remaining_mm": 0.4
+  },
+  "SCR-H03-02": {
+   "progress": 0.0,
+   "remaining_mm": 0.5
+  },
+  "SCR-H03-03": {
+   "progress": 0.0,
+   "remaining_mm": 0.3
+  },
+  "SCR-H03-04": {
+   "progress": 0.0,
+   "remaining_mm": 0.3
+  },
+  "SCR-H03-05": {
+   "progress": 0.0,
+   "remaining_mm": 0.5
   }
+ },
+ "developers": {
+  "dev01": {
+   "progress": 0.7543,
+   "remaining_mm": 2.85,
+   "screens_done": 19,
+   "screens_total": 27
+  },
+  "dev02": {
+   "progress": 0.6633,
+   "remaining_mm": 3.3,
+   "screens_done": 14,
+   "screens_total": 24
+  },
+  "dev03": {
+   "progress": 0.6368,
+   "remaining_mm": 3.85,
+   "screens_done": 12,
+   "screens_total": 23
+  },
+  "dev04": {
+   "progress": 0.7182,
+   "remaining_mm": 3.33,
+   "screens_done": 16,
+   "screens_total": 25
+  },
+  "dev05": {
+   "progress": 0.6473,
+   "remaining_mm": 3.95,
+   "screens_done": 16,
+   "screens_total": 26
+  },
+  "dev06": {
+   "progress": 0.5792,
+   "remaining_mm": 4.25,
+   "screens_done": 12,
+   "screens_total": 23
+  },
+  "dev07": {
+   "progress": 0.6535,
+   "remaining_mm": 3.5,
+   "screens_done": 14,
+   "screens_total": 22
+  }
+ },
+ "large_menus": {
+  "A": {
+   "progress": 1.0,
+   "remaining_mm": 0.0,
+   "screens_done": 26,
+   "screens_total": 26
+  },
+  "B": {
+   "progress": 0.954,
+   "remaining_mm": 0.57,
+   "screens_done": 24,
+   "screens_total": 27
+  },
+  "C": {
+   "progress": 0.6854,
+   "remaining_mm": 2.8,
+   "screens_done": 9,
+   "screens_total": 21
+  },
+  "D": {
+   "progress": 0.0872,
+   "remaining_mm": 9.95,
+   "screens_done": 2,
+   "screens_total": 25
+  },
+  "E": {
+   "progress": 1.0,
+   "remaining_mm": 0.0,
+   "screens_done": 19,
+   "screens_total": 19
+  },
+  "F": {
+   "progress": 0.9863,
+   "remaining_mm": 0.1,
+   "screens_done": 16,
+   "screens_total": 17
+  },
+  "G": {
+   "progress": 0.4556,
+   "remaining_mm": 4.9,
+   "screens_done": 7,
+   "screens_total": 19
+  },
+  "H": {
+   "progress": 0.0,
+   "remaining_mm": 6.7,
+   "screens_done": 0,
+   "screens_total": 16
+  }
+ },
+ "medium_menus": {
+  "A01": {
+   "progress": 1.0,
+   "remaining_mm": 0.0,
+   "screens_done": 6,
+   "screens_total": 6
+  },
+  "A02": {
+   "progress": 1.0,
+   "remaining_mm": 0.0,
+   "screens_done": 5,
+   "screens_total": 5
+  },
+  "A03": {
+   "progress": 1.0,
+   "remaining_mm": 0.0,
+   "screens_done": 6,
+   "screens_total": 6
+  },
+  "A04": {
+   "progress": 1.0,
+   "remaining_mm": 0.0,
+   "screens_done": 5,
+   "screens_total": 5
+  },
+  "A05": {
+   "progress": 1.0,
+   "remaining_mm": 0.0,
+   "screens_done": 4,
+   "screens_total": 4
+  },
+  "B01": {
+   "progress": 1.0,
+   "remaining_mm": 0.0,
+   "screens_done": 5,
+   "screens_total": 5
+  },
+  "B02": {
+   "progress": 1.0,
+   "remaining_mm": 0.0,
+   "screens_done": 6,
+   "screens_total": 6
+  },
+  "B03": {
+   "progress": 0.9483,
+   "remaining_mm": 0.15,
+   "screens_done": 5,
+   "screens_total": 6
+  },
+  "B04": {
+   "progress": 0.8152,
+   "remaining_mm": 0.42,
+   "screens_done": 3,
+   "screens_total": 5
+  },
+  "B05": {
+   "progress": 1.0,
+   "remaining_mm": 0.0,
+   "screens_done": 5,
+   "screens_total": 5
+  },
+  "C01": {
+   "progress": 0.95,
+   "remaining_mm": 0.15,
+   "screens_done": 5,
+   "screens_total": 6
+  },
+  "C02": {
+   "progress": 0.5,
+   "remaining_mm": 0.95,
+   "screens_done": 1,
+   "screens_total": 5
+  },
+  "C03": {
+   "progress": 0.5694,
+   "remaining_mm": 0.78,
+   "screens_done": 2,
+   "screens_total": 5
+  },
+  "C04": {
+   "progress": 0.5795,
+   "remaining_mm": 0.93,
+   "screens_done": 1,
+   "screens_total": 5
+  },
+  "D01": {
+   "progress": 0.0517,
+   "remaining_mm": 2.75,
+   "screens_done": 0,
+   "screens_total": 6
+  },
+  "D02": {
+   "progress": 0.4706,
+   "remaining_mm": 0.9,
+   "screens_done": 2,
+   "screens_total": 5
+  },
+  "D03": {
+   "progress": 0.0,
+   "remaining_mm": 2.1,
+   "screens_done": 0,
+   "screens_total": 5
+  },
+  "D04": {
+   "progress": 0.0,
+   "remaining_mm": 2.4,
+   "screens_done": 0,
+   "screens_total": 5
+  },
+  "D05": {
+   "progress": 0.0,
+   "remaining_mm": 1.8,
+   "screens_done": 0,
+   "screens_total": 4
+  },
+  "E01": {
+   "progress": 1.0,
+   "remaining_mm": 0.0,
+   "screens_done": 5,
+   "screens_total": 5
+  },
+  "E02": {
+   "progress": 1.0,
+   "remaining_mm": 0.0,
+   "screens_done": 5,
+   "screens_total": 5
+  },
+  "E03": {
+   "progress": 1.0,
+   "remaining_mm": 0.0,
+   "screens_done": 4,
+   "screens_total": 4
+  },
+  "E04": {
+   "progress": 1.0,
+   "remaining_mm": 0.0,
+   "screens_done": 5,
+   "screens_total": 5
+  },
+  "F01": {
+   "progress": 1.0,
+   "remaining_mm": 0.0,
+   "screens_done": 5,
+   "screens_total": 5
+  },
+  "F02": {
+   "progress": 1.0,
+   "remaining_mm": 0.0,
+   "screens_done": 4,
+   "screens_total": 4
+  },
+  "F03": {
+   "progress": 0.9444,
+   "remaining_mm": 0.1,
+   "screens_done": 3,
+   "screens_total": 4
+  },
+  "F04": {
+   "progress": 1.0,
+   "remaining_mm": 0.0,
+   "screens_done": 4,
+   "screens_total": 4
+  },
+  "G01": {
+   "progress": 1.0,
+   "remaining_mm": 0.0,
+   "screens_done": 5,
+   "screens_total": 5
+  },
+  "G02": {
+   "progress": 0.2368,
+   "remaining_mm": 1.45,
+   "screens_done": 0,
+   "screens_total": 4
+  },
+  "G03": {
+   "progress": 0.2857,
+   "remaining_mm": 1.5,
+   "screens_done": 1,
+   "screens_total": 4
+  },
+  "G04": {
+   "progress": 0.2778,
+   "remaining_mm": 1.95,
+   "screens_done": 1,
+   "screens_total": 6
+  },
+  "H01": {
+   "progress": 0.0,
+   "remaining_mm": 2.7,
+   "screens_done": 0,
+   "screens_total": 6
+  },
+  "H02": {
+   "progress": 0.0,
+   "remaining_mm": 2.0,
+   "screens_done": 0,
+   "screens_total": 5
+  },
+  "H03": {
+   "progress": 0.0,
+   "remaining_mm": 2.0,
+   "screens_done": 0,
+   "screens_total": 5
+  }
+ },
+ "parts": {
+  "PL1": {
+   "progress": 0.6958,
+   "remaining_mm": 13.32,
+   "screens_done": 61,
+   "screens_total": 99
+  },
+  "PL2": {
+   "progress": 0.6274,
+   "remaining_mm": 11.7,
+   "screens_done": 42,
+   "screens_total": 71
+  }
+ },
+ "team": {
+  "progress": 0.6672,
+  "remaining_mm": 25.02,
+  "screens_done": 103,
+  "screens_total": 170
+ },
+ "phases": {
+  "1": 119,
+  "2": 116,
+  "3": 109,
+  "4": 105
+ },
+ "delayed_screens": [
+  "SCR-B03-05",
+  "SCR-B04-03",
+  "SCR-B04-05",
+  "SCR-C02-01",
+  "SCR-C02-02",
+  "SCR-C02-04",
+  "SCR-C03-02",
+  "SCR-C04-02",
+  "SCR-C04-03",
+  "SCR-D01-01",
+  "SCR-F03-01",
+  "SCR-G02-01",
+  "SCR-G02-02",
+  "SCR-G02-03",
+  "SCR-G02-04",
+  "SCR-G03-02",
+  "SCR-G04-02",
+  "SCR-G04-03",
+  "SCR-G04-04"
+ ],
+ "unlinked": {
+  "c0418": "unknown_screen_id",
+  "c0436": "no_or_malformed_screen_id",
+  "c0458": "unknown_screen_id",
+  "c0468": "no_or_malformed_screen_id",
+  "c0471": "no_or_malformed_screen_id",
+  "c0478": "no_or_malformed_screen_id",
+  "c0482": "no_or_malformed_screen_id"
+ },
+ "after_week_hashes": [
+  "c0491",
+  "c0492"
+ ],
+ "mismatch": [
+  [
+   "SCR-A04-05",
+   "STATUS_DONE_SUBTASKS_INCOMPLETE"
+  ],
+  [
+   "SCR-B03-06",
+   "STATUS_DONE_SUBTASKS_INCOMPLETE"
+  ],
+  [
+   "SCR-C02-04",
+   "SUBTASKS_DONE_STATUS_NOT_DONE"
+  ],
+  [
+   "SCR-C04-02",
+   "DONE_MARK_UNKNOWN_SUBTASK"
+  ],
+  [
+   "SCR-C04-03",
+   "SUBTASKS_DONE_STATUS_NOT_DONE"
+  ],
+  [
+   "SCR-D03-05",
+   "NOT_STARTED_BUT_HAS_COMMITS"
+  ]
+ ],
+ "schedule": {
+  "as_of": "2026-11-22",
+  "elapsed": 0.7348,
+  "team": {
+   "progress": 0.6672,
+   "planned_progress": 0.7435,
+   "gap_pp": -7.63,
+   "schedule_status": "주의"
+  },
+  "parts": {
+   "PL1": {
+    "progress": 0.6958,
+    "planned_progress": 0.7424,
+    "gap_pp": -4.66,
+    "schedule_status": "주의"
+   },
+   "PL2": {
+    "progress": 0.6274,
+    "planned_progress": 0.7451,
+    "gap_pp": -11.77,
+    "schedule_status": "지연"
+   }
+  },
+  "large_menus": {
+   "A": {
+    "progress": 1.0,
+    "planned_progress": 1.0,
+    "gap_pp": 0.0,
+    "schedule_status": "정상"
+   },
+   "B": {
+    "progress": 0.954,
+    "planned_progress": 1.0,
+    "gap_pp": -4.6,
+    "schedule_status": "주의"
+   },
+   "C": {
+    "progress": 0.6854,
+    "planned_progress": 0.7998,
+    "gap_pp": -11.44,
+    "schedule_status": "지연"
+   },
+   "D": {
+    "progress": 0.0872,
+    "planned_progress": 0.1284,
+    "gap_pp": -4.12,
+    "schedule_status": "주의"
+   },
+   "E": {
+    "progress": 1.0,
+    "planned_progress": 1.0,
+    "gap_pp": 0.0,
+    "schedule_status": "정상"
+   },
+   "F": {
+    "progress": 0.9863,
+    "planned_progress": 1.0,
+    "gap_pp": -1.37,
+    "schedule_status": "정상"
+   },
+   "G": {
+    "progress": 0.4556,
+    "planned_progress": 0.837,
+    "gap_pp": -38.14,
+    "schedule_status": "지연"
+   },
+   "H": {
+    "progress": 0.0,
+    "planned_progress": 0.0241,
+    "gap_pp": -2.41,
+    "schedule_status": "정상"
+   }
+  },
+  "medium_menus": {
+   "A01": {
+    "progress": 1.0,
+    "planned_progress": 1.0,
+    "gap_pp": 0.0,
+    "schedule_status": "정상"
+   },
+   "A02": {
+    "progress": 1.0,
+    "planned_progress": 1.0,
+    "gap_pp": 0.0,
+    "schedule_status": "정상"
+   },
+   "A03": {
+    "progress": 1.0,
+    "planned_progress": 1.0,
+    "gap_pp": 0.0,
+    "schedule_status": "정상"
+   },
+   "A04": {
+    "progress": 1.0,
+    "planned_progress": 1.0,
+    "gap_pp": 0.0,
+    "schedule_status": "정상"
+   },
+   "A05": {
+    "progress": 1.0,
+    "planned_progress": 1.0,
+    "gap_pp": 0.0,
+    "schedule_status": "정상"
+   },
+   "B01": {
+    "progress": 1.0,
+    "planned_progress": 1.0,
+    "gap_pp": 0.0,
+    "schedule_status": "정상"
+   },
+   "B02": {
+    "progress": 1.0,
+    "planned_progress": 1.0,
+    "gap_pp": 0.0,
+    "schedule_status": "정상"
+   },
+   "B03": {
+    "progress": 0.9483,
+    "planned_progress": 1.0,
+    "gap_pp": -5.17,
+    "schedule_status": "주의"
+   },
+   "B04": {
+    "progress": 0.8152,
+    "planned_progress": 1.0,
+    "gap_pp": -18.48,
+    "schedule_status": "지연"
+   },
+   "B05": {
+    "progress": 1.0,
+    "planned_progress": 1.0,
+    "gap_pp": 0.0,
+    "schedule_status": "정상"
+   },
+   "C01": {
+    "progress": 0.95,
+    "planned_progress": 0.9059,
+    "gap_pp": 4.41,
+    "schedule_status": "정상"
+   },
+   "C02": {
+    "progress": 0.5,
+    "planned_progress": 0.7771,
+    "gap_pp": -27.71,
+    "schedule_status": "지연"
+   },
+   "C03": {
+    "progress": 0.5694,
+    "planned_progress": 0.7611,
+    "gap_pp": -19.17,
+    "schedule_status": "지연"
+   },
+   "C04": {
+    "progress": 0.5795,
+    "planned_progress": 0.7063,
+    "gap_pp": -12.68,
+    "schedule_status": "지연"
+   },
+   "D01": {
+    "progress": 0.0517,
+    "planned_progress": 0.2069,
+    "gap_pp": -15.52,
+    "schedule_status": "지연"
+   },
+   "D02": {
+    "progress": 0.4706,
+    "planned_progress": 0.4706,
+    "gap_pp": 0.0,
+    "schedule_status": "정상"
+   },
+   "D03": {
+    "progress": 0.0,
+    "planned_progress": 0.0,
+    "gap_pp": 0.0,
+    "schedule_status": "정상"
+   },
+   "D04": {
+    "progress": 0.0,
+    "planned_progress": 0.0,
+    "gap_pp": 0.0,
+    "schedule_status": "정상"
+   },
+   "D05": {
+    "progress": 0.0,
+    "planned_progress": 0.0,
+    "gap_pp": 0.0,
+    "schedule_status": "정상"
+   },
+   "E01": {
+    "progress": 1.0,
+    "planned_progress": 1.0,
+    "gap_pp": 0.0,
+    "schedule_status": "정상"
+   },
+   "E02": {
+    "progress": 1.0,
+    "planned_progress": 1.0,
+    "gap_pp": 0.0,
+    "schedule_status": "정상"
+   },
+   "E03": {
+    "progress": 1.0,
+    "planned_progress": 1.0,
+    "gap_pp": 0.0,
+    "schedule_status": "정상"
+   },
+   "E04": {
+    "progress": 1.0,
+    "planned_progress": 1.0,
+    "gap_pp": 0.0,
+    "schedule_status": "정상"
+   },
+   "F01": {
+    "progress": 1.0,
+    "planned_progress": 1.0,
+    "gap_pp": 0.0,
+    "schedule_status": "정상"
+   },
+   "F02": {
+    "progress": 1.0,
+    "planned_progress": 1.0,
+    "gap_pp": 0.0,
+    "schedule_status": "정상"
+   },
+   "F03": {
+    "progress": 0.9444,
+    "planned_progress": 1.0,
+    "gap_pp": -5.56,
+    "schedule_status": "주의"
+   },
+   "F04": {
+    "progress": 1.0,
+    "planned_progress": 1.0,
+    "gap_pp": 0.0,
+    "schedule_status": "정상"
+   },
+   "G01": {
+    "progress": 1.0,
+    "planned_progress": 1.0,
+    "gap_pp": 0.0,
+    "schedule_status": "정상"
+   },
+   "G02": {
+    "progress": 0.2368,
+    "planned_progress": 1.0,
+    "gap_pp": -76.32,
+    "schedule_status": "지연"
+   },
+   "G03": {
+    "progress": 0.2857,
+    "planned_progress": 0.7302,
+    "gap_pp": -44.45,
+    "schedule_status": "지연"
+   },
+   "G04": {
+    "progress": 0.2778,
+    "planned_progress": 0.6667,
+    "gap_pp": -38.89,
+    "schedule_status": "지연"
+   },
+   "H01": {
+    "progress": 0.0,
+    "planned_progress": 0.037,
+    "gap_pp": -3.7,
+    "schedule_status": "주의"
+   },
+   "H02": {
+    "progress": 0.0,
+    "planned_progress": 0.0,
+    "gap_pp": 0.0,
+    "schedule_status": "정상"
+   },
+   "H03": {
+    "progress": 0.0,
+    "planned_progress": 0.0308,
+    "gap_pp": -3.08,
+    "schedule_status": "주의"
+   }
+  }
+ },
+ "previous_week": {
+  "week": {
+   "start": "2026-11-09",
+   "end": "2026-11-15"
+  },
+  "team": {
+   "progress": 0.6486,
+   "planned_progress": 0.7213,
+   "remaining_mm": 26.43,
+   "screens_done": 100,
+   "screens_total": 170,
+   "delayed_count": 18
+  },
+  "large_menus": {
+   "A": 1.0,
+   "B": 0.954,
+   "C": 0.6067,
+   "D": 0.0734,
+   "E": 1.0,
+   "F": 0.9863,
+   "G": 0.3944,
+   "H": 0.0
+  },
+  "medium_menus": {
+   "A01": 1.0,
+   "A02": 1.0,
+   "A03": 1.0,
+   "A04": 1.0,
+   "A05": 1.0,
+   "B01": 1.0,
+   "B02": 1.0,
+   "B03": 0.9483,
+   "B04": 0.8152,
+   "B05": 1.0,
+   "C01": 0.85,
+   "C02": 0.5,
+   "C03": 0.4722,
+   "C04": 0.4773,
+   "D01": 0.0,
+   "D02": 0.4706,
+   "D03": 0.0,
+   "D04": 0.0,
+   "D05": 0.0,
+   "E01": 1.0,
+   "E02": 1.0,
+   "E03": 1.0,
+   "E04": 1.0,
+   "F01": 1.0,
+   "F02": 1.0,
+   "F03": 0.9444,
+   "F04": 1.0,
+   "G01": 1.0,
+   "G02": 0.1579,
+   "G03": 0.2143,
+   "G04": 0.1852,
+   "H01": 0.0,
+   "H02": 0.0,
+   "H03": 0.0
+  },
+  "phases": {
+   "1": 115,
+   "2": 114,
+   "3": 107,
+   "4": 102
+  },
+  "issue_ids": [
+   "DLY-SCR-B03-05",
+   "DLY-SCR-B04-03",
+   "DLY-SCR-B04-05",
+   "DLY-SCR-C02-01",
+   "DLY-SCR-C02-02",
+   "DLY-SCR-C02-04",
+   "DLY-SCR-C03-02",
+   "DLY-SCR-C03-03",
+   "DLY-SCR-C04-02",
+   "DLY-SCR-F03-01",
+   "DLY-SCR-G01-05",
+   "DLY-SCR-G02-01",
+   "DLY-SCR-G02-02",
+   "DLY-SCR-G02-03",
+   "DLY-SCR-G03-01",
+   "DLY-SCR-G03-02",
+   "DLY-SCR-G04-02",
+   "DLY-SCR-G04-03",
+   "MIS-SCR-A04-05",
+   "MIS-SCR-B03-06",
+   "MIS-SCR-C02-04",
+   "MIS-SCR-G01-05",
+   "UNL-c0418",
+   "UNL-c0436"
+  ],
+  "completed_this_week": [
+   "SCR-C03-03",
+   "SCR-G01-05",
+   "SCR-G03-01"
+  ]
+ },
+ "issue_tracking": {
+  "resolved": [
+   "DLY-SCR-C03-03",
+   "DLY-SCR-G01-05",
+   "DLY-SCR-G03-01",
+   "MIS-SCR-G01-05"
+  ],
+  "new": [
+   "DLY-SCR-C04-03",
+   "DLY-SCR-D01-01",
+   "DLY-SCR-G02-04",
+   "DLY-SCR-G04-04",
+   "MIS-SCR-C04-02",
+   "MIS-SCR-C04-03",
+   "MIS-SCR-D03-05",
+   "UNL-c0458",
+   "UNL-c0468",
+   "UNL-c0471",
+   "UNL-c0478",
+   "UNL-c0482"
+  ],
+  "persistent": {
+   "DLY-SCR-B03-05": 10,
+   "DLY-SCR-B04-03": 12,
+   "DLY-SCR-B04-05": 5,
+   "DLY-SCR-C02-01": 12,
+   "DLY-SCR-C02-02": 9,
+   "DLY-SCR-C02-04": 4,
+   "DLY-SCR-C03-02": 4,
+   "DLY-SCR-C04-02": 3,
+   "DLY-SCR-F03-01": 16,
+   "DLY-SCR-G02-01": 7,
+   "DLY-SCR-G02-02": 5,
+   "DLY-SCR-G02-03": 3,
+   "DLY-SCR-G03-02": 2,
+   "DLY-SCR-G04-02": 4,
+   "DLY-SCR-G04-03": 2,
+   "MIS-SCR-A04-05": 23,
+   "MIS-SCR-B03-06": 4,
+   "MIS-SCR-C02-04": 2,
+   "UNL-c0418": 4,
+   "UNL-c0436": 3
+  }
+ },
+ "previous_action_items": {
+  "SCR-F03-01 공지사항 메인: SCR-F03-01-4 완료 (계획 종료 2026-08-07)": false,
+  "SCR-B04-03 취소·반품 상세 조회: SCR-B04-03-4 완료 (계획 종료 2026-09-03)": false,
+  "SCR-C02-01 결제 승인 메인: SCR-C02-01-3,SCR-C02-01-4 완료 (계획 종료 2026-09-04)": false,
+  "SCR-B03-05 주문 조회 수정: SCR-B03-05-3,SCR-B03-05-4 완료 (계획 종료 2026-09-15)": false,
+  "SCR-C02-02 결제 승인 목록 조회: SCR-C02-02-3,SCR-C02-02-4 완료 (계획 종료 2026-09-24)": false,
+  "SCR-G02-01 회원 통계 메인: SCR-G02-01-3,SCR-G02-01-4 완료 (계획 종료 2026-10-09)": false,
+  "SCR-G01-05 매출 통계 수정: SCR-G01-05 상태를 '완료'로 갱신 (계획 종료 2026-10-16)": true,
+  "SCR-B04-05 취소·반품 수정: SCR-B04-05-3,SCR-B04-05-4 완료 (계획 종료 2026-10-21)": false,
+  "SCR-G02-02 회원 통계 목록 조회: SCR-G02-02-1,SCR-G02-02-2,SCR-G02-02-3,SCR-G02-02-4 완료 (계획 종료 2026-10-22)": false,
+  "SCR-G03-01 상품 통계 메인: SCR-G03-01-4 완료 (계획 종료 2026-10-23)": true,
+  "미연결 커밋 c0418, c0436: 올바른 화면 ID로 커밋 메시지 정정": false
+ }
 }

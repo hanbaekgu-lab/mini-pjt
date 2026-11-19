@@ -1,212 +1,2954 @@
 [
  {
-  "hash": "c001",
+  "hash": "c0001",
   "author_email": "messi.kim@example.com",
-  "date": "2026-11-10",
-  "message": "[TASK-012-1][done] 인증 흐름 설계"
+  "date": "2026-03-27",
+  "message": "[SCR-A01-01-1][done] 회원가입 메인 분석 완료"
  },
  {
-  "hash": "c002",
+  "hash": "c0002",
   "author_email": "messi.kim@example.com",
-  "date": "2026-11-17",
-  "message": "[TASK-012-2][done] 결제 목 서버 구성"
+  "date": "2026-04-01",
+  "message": "[SCR-A01-01-2][done] 회원가입 메인 개발 완료"
  },
  {
-  "hash": "c003",
+  "hash": "c0003",
   "author_email": "messi.kim@example.com",
-  "date": "2026-11-18",
-  "message": "[TASK-012] 인증 키 연동 시도"
+  "date": "2026-04-03",
+  "message": "[SCR-A01-01-3][done] 회원가입 메인 단위테스트 완료"
  },
  {
-  "hash": "c004",
+  "hash": "c0004",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-04-03",
+  "message": "[SCR-A04-01-1][done] 등급·포인트 메인 분석 완료"
+ },
+ {
+  "hash": "c0005",
   "author_email": "messi.kim@example.com",
-  "date": "2026-11-17",
-  "message": "[TASK-013-1][done] 조회 API 스펙 정리"
+  "date": "2026-04-06",
+  "message": "[SCR-A01-01-4][done] 회원가입 메인 통합테스트 완료"
  },
  {
-  "hash": "c005",
+  "hash": "c0006",
   "author_email": "messi.kim@example.com",
-  "date": "2026-11-19",
-  "message": "[TASK-013] 목록 화면 초안"
+  "date": "2026-04-08",
+  "message": "[SCR-A01-02-1][done] 회원가입 목록 조회 분석 완료"
  },
  {
-  "hash": "c006",
+  "hash": "c0007",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-04-09",
+  "message": "[SCR-A04-01-2][done] 등급·포인트 메인 개발 완료"
+ },
+ {
+  "hash": "c0008",
   "author_email": "zidane.park@example.com",
-  "date": "2026-11-16",
-  "message": "[TASK-014-1][done] 스키마 정의"
+  "date": "2026-04-09",
+  "message": "[SCR-A02-01-1][done] 로그인·인증 메인 분석 완료"
  },
  {
-  "hash": "c007",
+  "hash": "c0009",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-04-10",
+  "message": "[SCR-A01-02-2][done] 회원가입 목록 조회 개발 완료"
+ },
+ {
+  "hash": "c0010",
   "author_email": "zidane.park@example.com",
-  "date": "2026-11-17",
-  "message": "[TASK-014-2][done] 마이그레이션 작성"
+  "date": "2026-04-10",
+  "message": "[SCR-A02-01-2][done] 로그인·인증 메인 개발 완료"
  },
  {
-  "hash": "c008",
+  "hash": "c0011",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-04-13",
+  "message": "[SCR-A04-01-3][done] 등급·포인트 메인 단위테스트 완료"
+ },
+ {
+  "hash": "c0012",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-04-14",
+  "message": "[SCR-A01-02-3][done] 회원가입 목록 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0013",
   "author_email": "zidane.park@example.com",
-  "date": "2026-11-18",
-  "message": "[TASK-014-3][done] 스키마 문서화"
+  "date": "2026-04-15",
+  "message": "[SCR-A02-01-3][done] 로그인·인증 메인 단위테스트 완료"
  },
  {
-  "hash": "c009",
+  "hash": "c0014",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-04-17",
+  "message": "[SCR-A03-01-1][done] 회원정보 관리 메인 분석 완료"
+ },
+ {
+  "hash": "c0015",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-04-17",
+  "message": "[SCR-A01-02-4][done] 회원가입 목록 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0016",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-04-17",
+  "message": "[SCR-A04-01-4][done] 등급·포인트 메인 통합테스트 완료"
+ },
+ {
+  "hash": "c0017",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-04-17",
+  "message": "[SCR-A04-02-1][done] 등급·포인트 목록 조회 분석 완료"
+ },
+ {
+  "hash": "c0018",
   "author_email": "zidane.park@example.com",
-  "date": "2026-11-17",
-  "message": "[TASK-015-1][done] 엔드포인트 골격"
+  "date": "2026-04-17",
+  "message": "[SCR-A02-01-4][done] 로그인·인증 메인 통합테스트 완료"
  },
  {
-  "hash": "c010",
+  "hash": "c0019",
   "author_email": "zidane.park@example.com",
-  "date": "2026-11-19",
-  "message": "[TASK-015-2][done] 응답 모델 구현"
+  "date": "2026-04-20",
+  "message": "[SCR-A02-02-1][done] 로그인·인증 목록 조회 분석 완료"
  },
  {
-  "hash": "c011",
+  "hash": "c0020",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-04-21",
+  "message": "[SCR-A01-03-1][done] 회원가입 상세 조회 분석 완료"
+ },
+ {
+  "hash": "c0021",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-04-21",
+  "message": "[SCR-A04-02-2][done] 등급·포인트 목록 조회 개발 완료"
+ },
+ {
+  "hash": "c0022",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-04-23",
+  "message": "[SCR-A03-01-2][done] 회원정보 관리 메인 개발 완료"
+ },
+ {
+  "hash": "c0023",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-04-23",
+  "message": "[SCR-A04-02-3][done] 등급·포인트 목록 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0024",
   "author_email": "zidane.park@example.com",
-  "date": "2026-11-20",
-  "message": "[TASK-015-2] 응답 모델 리팩터링"
+  "date": "2026-04-23",
+  "message": "[SCR-A02-02-2][done] 로그인·인증 목록 조회 개발 완료"
  },
  {
-  "hash": "c012",
+  "hash": "c0025",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-04-24",
+  "message": "[SCR-A03-01-3][done] 회원정보 관리 메인 단위테스트 완료"
+ },
+ {
+  "hash": "c0026",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-04-24",
+  "message": "[SCR-A01-03-2][done] 회원가입 상세 조회 개발 완료"
+ },
+ {
+  "hash": "c0027",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-04-24",
+  "message": "[SCR-A04-02-4][done] 등급·포인트 목록 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0028",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-04-24",
+  "message": "[SCR-A02-02-3][done] 로그인·인증 목록 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0029",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-04-28",
+  "message": "[SCR-A02-02-4][done] 로그인·인증 목록 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0030",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-04-29",
+  "message": "[SCR-E03-01-1][done] 세금계산서 메인 분석 완료"
+ },
+ {
+  "hash": "c0031",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-04-29",
+  "message": "[SCR-A01-03-3][done] 회원가입 상세 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0032",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-04-29",
+  "message": "[SCR-A04-03-1][done] 등급·포인트 상세 조회 분석 완료"
+ },
+ {
+  "hash": "c0033",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-04-30",
+  "message": "[SCR-A03-01-4][done] 회원정보 관리 메인 통합테스트 완료"
+ },
+ {
+  "hash": "c0034",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-05-01",
+  "message": "[SCR-E03-01-2][done] 세금계산서 메인 개발 완료"
+ },
+ {
+  "hash": "c0035",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-05-01",
+  "message": "[SCR-E01-01-1][done] 판매 정산 메인 분석 완료"
+ },
+ {
+  "hash": "c0036",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-05-01",
+  "message": "[SCR-A03-02-1][done] 회원정보 관리 목록 조회 분석 완료"
+ },
+ {
+  "hash": "c0037",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-05-01",
+  "message": "[SCR-A04-03-2][done] 등급·포인트 상세 조회 개발 완료"
+ },
+ {
+  "hash": "c0038",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-05-01",
+  "message": "[SCR-A02-03-1][done] 로그인·인증 상세 조회 분석 완료"
+ },
+ {
+  "hash": "c0039",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-05-04",
+  "message": "[SCR-A01-03-4][done] 회원가입 상세 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0040",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-05-05",
+  "message": "[SCR-E03-01-3][done] 세금계산서 메인 단위테스트 완료"
+ },
+ {
+  "hash": "c0041",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-05-05",
+  "message": "[SCR-E01-01-2][done] 판매 정산 메인 개발 완료"
+ },
+ {
+  "hash": "c0042",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-05-06",
+  "message": "[SCR-A02-03-2][done] 로그인·인증 상세 조회 개발 완료"
+ },
+ {
+  "hash": "c0043",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-05-07",
+  "message": "[SCR-E01-01-3][done] 판매 정산 메인 단위테스트 완료"
+ },
+ {
+  "hash": "c0044",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-05-07",
+  "message": "[SCR-A03-02-2][done] 회원정보 관리 목록 조회 개발 완료"
+ },
+ {
+  "hash": "c0045",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-05-07",
+  "message": "[SCR-A01-04-1][done] 회원가입 등록 분석 완료"
+ },
+ {
+  "hash": "c0046",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-05-07",
+  "message": "[SCR-A04-03-3][done] 등급·포인트 상세 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0047",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-05-08",
+  "message": "[SCR-E03-01-4][done] 세금계산서 메인 통합테스트 완료"
+ },
+ {
+  "hash": "c0048",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-05-08",
+  "message": "[SCR-E01-01-4][done] 판매 정산 메인 통합테스트 완료"
+ },
+ {
+  "hash": "c0049",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-05-08",
+  "message": "[SCR-A01-04-2][done] 회원가입 등록 개발 완료"
+ },
+ {
+  "hash": "c0050",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-05-08",
+  "message": "[SCR-A02-03-3][done] 로그인·인증 상세 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0051",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-05-11",
+  "message": "[SCR-E01-02-1][done] 판매 정산 목록 조회 분석 완료"
+ },
+ {
+  "hash": "c0052",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-05-11",
+  "message": "[SCR-A03-02-3][done] 회원정보 관리 목록 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0053",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-05-11",
+  "message": "[SCR-A04-03-4][done] 등급·포인트 상세 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0054",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-05-12",
+  "message": "[SCR-E03-02-1][done] 세금계산서 목록 조회 분석 완료"
+ },
+ {
+  "hash": "c0055",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-05-13",
+  "message": "[SCR-A01-04-3][done] 회원가입 등록 단위테스트 완료"
+ },
+ {
+  "hash": "c0056",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-05-13",
+  "message": "[SCR-A04-04-1][done] 등급·포인트 등록 분석 완료"
+ },
+ {
+  "hash": "c0057",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-05-14",
+  "message": "[SCR-E03-02] 세금계산서 목록 조회 리뷰 반영"
+ },
+ {
+  "hash": "c0058",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-05-14",
+  "message": "[SCR-E01-02-2][done] 판매 정산 목록 조회 개발 완료"
+ },
+ {
+  "hash": "c0059",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-05-14",
+  "message": "[SCR-A02-03-4][done] 로그인·인증 상세 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0060",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-05-15",
+  "message": "[SCR-E03-02-2][done] 세금계산서 목록 조회 개발 완료"
+ },
+ {
+  "hash": "c0061",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-05-15",
+  "message": "[SCR-E01-02-3][done] 판매 정산 목록 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0062",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-05-15",
+  "message": "[SCR-A03-02-4][done] 회원정보 관리 목록 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0063",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-05-15",
+  "message": "[SCR-A03-03-1][done] 회원정보 관리 상세 조회 분석 완료"
+ },
+ {
+  "hash": "c0064",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-05-15",
+  "message": "[SCR-A01-04-4][done] 회원가입 등록 통합테스트 완료"
+ },
+ {
+  "hash": "c0065",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-05-15",
+  "message": "[SCR-A04-04-2][done] 등급·포인트 등록 개발 완료"
+ },
+ {
+  "hash": "c0066",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-05-15",
+  "message": "[SCR-A02-04-1][done] 로그인·인증 등록 분석 완료"
+ },
+ {
+  "hash": "c0067",
+  "author_email": "figo.han@example.com",
+  "date": "2026-05-19",
+  "message": "[SCR-E02-01-1][done] 수수료 관리 메인 분석 완료"
+ },
+ {
+  "hash": "c0068",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-05-19",
+  "message": "[SCR-A03-03-2][done] 회원정보 관리 상세 조회 개발 완료"
+ },
+ {
+  "hash": "c0069",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-05-19",
+  "message": "[SCR-B02-01-1][done] 주문서 작성 메인 분석 완료"
+ },
+ {
+  "hash": "c0070",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-05-19",
+  "message": "[SCR-A04-04-3][done] 등급·포인트 등록 단위테스트 완료"
+ },
+ {
+  "hash": "c0071",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-05-20",
+  "message": "[SCR-E03-02-3][done] 세금계산서 목록 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0072",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-05-20",
+  "message": "[SCR-E01-02-4][done] 판매 정산 목록 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0073",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-05-20",
+  "message": "[SCR-A02-04-2][done] 로그인·인증 등록 개발 완료"
+ },
+ {
+  "hash": "c0074",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-05-21",
+  "message": "[SCR-E01-03] 판매 정산 상세 조회 리뷰 반영"
+ },
+ {
+  "hash": "c0075",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-05-21",
+  "message": "[SCR-A03-03-3][done] 회원정보 관리 상세 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0076",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-05-21",
+  "message": "[SCR-B02-01] 주문서 작성 메인 리뷰 반영"
+ },
+ {
+  "hash": "c0077",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-05-22",
+  "message": "[SCR-E03-02-4][done] 세금계산서 목록 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0078",
+  "author_email": "figo.han@example.com",
+  "date": "2026-05-22",
+  "message": "[SCR-E02-01-2][done] 수수료 관리 메인 개발 완료"
+ },
+ {
+  "hash": "c0079",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-05-22",
+  "message": "[SCR-E01-03-1][done] 판매 정산 상세 조회 분석 완료"
+ },
+ {
+  "hash": "c0080",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-05-22",
+  "message": "[SCR-E01-03-2][done] 판매 정산 상세 조회 개발 완료"
+ },
+ {
+  "hash": "c0081",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-05-22",
+  "message": "[SCR-A03-03-4][done] 회원정보 관리 상세 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0082",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-05-22",
+  "message": "[SCR-B02-01-2][done] 주문서 작성 메인 개발 완료"
+ },
+ {
+  "hash": "c0083",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-05-22",
+  "message": "[SCR-A04-04-4][done] 등급·포인트 등록 통합테스트 완료"
+ },
+ {
+  "hash": "c0084",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-05-22",
+  "message": "[SCR-A02-04-3][done] 로그인·인증 등록 단위테스트 완료"
+ },
+ {
+  "hash": "c0085",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-05-25",
+  "message": "[SCR-B02-01-3][done] 주문서 작성 메인 단위테스트 완료"
+ },
+ {
+  "hash": "c0086",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-05-26",
+  "message": "[SCR-E03-03-1][done] 세금계산서 상세 조회 분석 완료"
+ },
+ {
+  "hash": "c0087",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-05-26",
+  "message": "[SCR-E01-03-3][done] 판매 정산 상세 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0088",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-05-26",
+  "message": "[SCR-B01-01-1][done] 장바구니 메인 분석 완료"
+ },
+ {
+  "hash": "c0089",
+  "author_email": "figo.han@example.com",
+  "date": "2026-05-27",
+  "message": "[SCR-E02-01-3][done] 수수료 관리 메인 단위테스트 완료"
+ },
+ {
+  "hash": "c0090",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-05-27",
+  "message": "[SCR-A03-04-1][done] 회원정보 관리 등록 분석 완료"
+ },
+ {
+  "hash": "c0091",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-05-27",
+  "message": "[SCR-A02-04-4][done] 로그인·인증 등록 통합테스트 완료"
+ },
+ {
+  "hash": "c0092",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-05-28",
+  "message": "[SCR-E03-03-2][done] 세금계산서 상세 조회 개발 완료"
+ },
+ {
+  "hash": "c0093",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-05-28",
+  "message": "[SCR-B02-01-4][done] 주문서 작성 메인 통합테스트 완료"
+ },
+ {
+  "hash": "c0094",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-05-29",
+  "message": "[SCR-E03-03-3][done] 세금계산서 상세 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0095",
+  "author_email": "figo.han@example.com",
+  "date": "2026-05-29",
+  "message": "[SCR-E02-01-4][done] 수수료 관리 메인 통합테스트 완료"
+ },
+ {
+  "hash": "c0096",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-05-29",
+  "message": "[SCR-E01-03-4][done] 판매 정산 상세 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0097",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-05-29",
+  "message": "[SCR-A03-04-2][done] 회원정보 관리 등록 개발 완료"
+ },
+ {
+  "hash": "c0098",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-05-29",
+  "message": "[SCR-A01-05-1][done] 회원가입 수정 분석 완료"
+ },
+ {
+  "hash": "c0099",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-05-29",
+  "message": "[SCR-B01-01-2][done] 장바구니 메인 개발 완료"
+ },
+ {
+  "hash": "c0100",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-05-29",
+  "message": "[SCR-A05-01-1][done] 탈퇴·휴면 메인 분석 완료"
+ },
+ {
+  "hash": "c0101",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-06-02",
+  "message": "[SCR-E03-03-4][done] 세금계산서 상세 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0102",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-06-02",
+  "message": "[SCR-E01-04-1][done] 판매 정산 등록 분석 완료"
+ },
+ {
+  "hash": "c0103",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-06-02",
+  "message": "[SCR-A03-04-3][done] 회원정보 관리 등록 단위테스트 완료"
+ },
+ {
+  "hash": "c0104",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-06-02",
+  "message": "[SCR-A05-01-2][done] 탈퇴·휴면 메인 개발 완료"
+ },
+ {
+  "hash": "c0105",
+  "author_email": "figo.han@example.com",
+  "date": "2026-06-03",
+  "message": "[SCR-E02-02-1][done] 수수료 관리 목록 조회 분석 완료"
+ },
+ {
+  "hash": "c0106",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-06-03",
+  "message": "[SCR-B01-01-3][done] 장바구니 메인 단위테스트 완료"
+ },
+ {
+  "hash": "c0107",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-06-04",
+  "message": "[SCR-A01-05-2][done] 회원가입 수정 개발 완료"
+ },
+ {
+  "hash": "c0108",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-06-05",
+  "message": "[SCR-E03-04-1][done] 세금계산서 등록 분석 완료"
+ },
+ {
+  "hash": "c0109",
+  "author_email": "figo.han@example.com",
+  "date": "2026-06-05",
+  "message": "[SCR-E02-02-2][done] 수수료 관리 목록 조회 개발 완료"
+ },
+ {
+  "hash": "c0110",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-06-05",
+  "message": "[SCR-E01-04-2][done] 판매 정산 등록 개발 완료"
+ },
+ {
+  "hash": "c0111",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-06-05",
+  "message": "[SCR-A03-04-4][done] 회원정보 관리 등록 통합테스트 완료"
+ },
+ {
+  "hash": "c0112",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-06-05",
+  "message": "[SCR-A01-05-3][done] 회원가입 수정 단위테스트 완료"
+ },
+ {
+  "hash": "c0113",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-06-05",
+  "message": "[SCR-B01-01-4][done] 장바구니 메인 통합테스트 완료"
+ },
+ {
+  "hash": "c0114",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-06-05",
+  "message": "[SCR-A05-01-3][done] 탈퇴·휴면 메인 단위테스트 완료"
+ },
+ {
+  "hash": "c0115",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-06-08",
+  "message": "[SCR-B03-01-1][done] 주문 조회 메인 분석 완료"
+ },
+ {
+  "hash": "c0116",
+  "author_email": "figo.han@example.com",
+  "date": "2026-06-09",
+  "message": "[SCR-E02-02-3][done] 수수료 관리 목록 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0117",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-06-09",
+  "message": "[SCR-A04-05-1][done] 등급·포인트 수정 분석 완료"
+ },
+ {
+  "hash": "c0118",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-06-09",
+  "message": "[SCR-A05-01-4][done] 탈퇴·휴면 메인 통합테스트 완료"
+ },
+ {
+  "hash": "c0119",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-06-10",
+  "message": "[SCR-E01-04-3][done] 판매 정산 등록 단위테스트 완료"
+ },
+ {
+  "hash": "c0120",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-06-11",
+  "message": "[SCR-E03-04-2][done] 세금계산서 등록 개발 완료"
+ },
+ {
+  "hash": "c0121",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-06-11",
+  "message": "[SCR-B03-01-2][done] 주문 조회 메인 개발 완료"
+ },
+ {
+  "hash": "c0122",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-06-11",
+  "message": "[SCR-A01-05-4][done] 회원가입 수정 통합테스트 완료"
+ },
+ {
+  "hash": "c0123",
+  "author_email": "figo.han@example.com",
+  "date": "2026-06-12",
+  "message": "[SCR-E02-02-4][done] 수수료 관리 목록 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0124",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-06-12",
+  "message": "[SCR-B03-01-3][done] 주문 조회 메인 단위테스트 완료"
+ },
+ {
+  "hash": "c0125",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-06-12",
+  "message": "[SCR-B02-02-1][done] 주문서 작성 목록 조회 분석 완료"
+ },
+ {
+  "hash": "c0126",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-06-12",
+  "message": "[SCR-A04-05-2][done] 등급·포인트 수정 개발 완료"
+ },
+ {
+  "hash": "c0127",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-06-12",
+  "message": "[SCR-A04-05-3][done] 등급·포인트 수정 단위테스트 완료"
+ },
+ {
+  "hash": "c0128",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-06-12",
+  "message": "[SCR-A02-05-1][done] 로그인·인증 수정 분석 완료"
+ },
+ {
+  "hash": "c0129",
+  "author_email": "figo.han@example.com",
+  "date": "2026-06-15",
+  "message": "[SCR-E02-03-1][done] 수수료 관리 상세 조회 분석 완료"
+ },
+ {
+  "hash": "c0130",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-06-15",
+  "message": "[SCR-E01-04-4][done] 판매 정산 등록 통합테스트 완료"
+ },
+ {
+  "hash": "c0131",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-06-16",
+  "message": "[SCR-E03-04-3][done] 세금계산서 등록 단위테스트 완료"
+ },
+ {
+  "hash": "c0132",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-06-16",
+  "message": "[SCR-B02-02-2][done] 주문서 작성 목록 조회 개발 완료"
+ },
+ {
+  "hash": "c0133",
+  "author_email": "figo.han@example.com",
+  "date": "2026-06-17",
+  "message": "[SCR-E02-03-2][done] 수수료 관리 상세 조회 개발 완료"
+ },
+ {
+  "hash": "c0134",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-06-17",
+  "message": "[SCR-B03-01-4][done] 주문 조회 메인 통합테스트 완료"
+ },
+ {
+  "hash": "c0135",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-06-17",
+  "message": "[SCR-A04-05] 등급·포인트 수정 통합테스트 진행"
+ },
+ {
+  "hash": "c0136",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-06-19",
+  "message": "[SCR-E03-04-4][done] 세금계산서 등록 통합테스트 완료"
+ },
+ {
+  "hash": "c0137",
+  "author_email": "figo.han@example.com",
+  "date": "2026-06-19",
+  "message": "[SCR-E02-03-3][done] 수수료 관리 상세 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0138",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-06-19",
+  "message": "[SCR-F01-01-1][done] 1:1 문의 메인 분석 완료"
+ },
+ {
+  "hash": "c0139",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-06-19",
+  "message": "[SCR-A03-05-1][done] 회원정보 관리 수정 분석 완료"
+ },
+ {
+  "hash": "c0140",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-06-19",
+  "message": "[SCR-B02-02-3][done] 주문서 작성 목록 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0141",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-06-19",
+  "message": "[SCR-B01-02-1][done] 장바구니 목록 조회 분석 완료"
+ },
+ {
+  "hash": "c0142",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-06-19",
+  "message": "[SCR-A02-05-2][done] 로그인·인증 수정 개발 완료"
+ },
+ {
+  "hash": "c0143",
+  "author_email": "figo.han@example.com",
+  "date": "2026-06-22",
+  "message": "[SCR-E02-03-4][done] 수수료 관리 상세 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0144",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-06-22",
+  "message": "[SCR-B02-02-4][done] 주문서 작성 목록 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0145",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-06-23",
+  "message": "[SCR-F01-01-2][done] 1:1 문의 메인 개발 완료"
+ },
+ {
+  "hash": "c0146",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-06-24",
+  "message": "[SCR-A01-06-1][done] 회원가입 이력 조회 분석 완료"
+ },
+ {
+  "hash": "c0147",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-06-24",
+  "message": "[SCR-A02-05-3][done] 로그인·인증 수정 단위테스트 완료"
+ },
+ {
+  "hash": "c0148",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-06-25",
+  "message": "[SCR-E04-01-1][done] 정산 지급 메인 분석 완료"
+ },
+ {
+  "hash": "c0149",
+  "author_email": "figo.han@example.com",
+  "date": "2026-06-25",
+  "message": "[SCR-E02-04-1][done] 수수료 관리 등록 분석 완료"
+ },
+ {
+  "hash": "c0150",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-06-25",
+  "message": "[SCR-A01-06] 회원가입 이력 조회 리뷰 반영"
+ },
+ {
+  "hash": "c0151",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-06-25",
+  "message": "[SCR-B01-02-2][done] 장바구니 목록 조회 개발 완료"
+ },
+ {
+  "hash": "c0152",
+  "author_email": "figo.han@example.com",
+  "date": "2026-06-26",
+  "message": "[SCR-E02-04-2][done] 수수료 관리 등록 개발 완료"
+ },
+ {
+  "hash": "c0153",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-06-26",
+  "message": "[SCR-F01-01-3][done] 1:1 문의 메인 단위테스트 완료"
+ },
+ {
+  "hash": "c0154",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-06-26",
+  "message": "[SCR-A03-05-2][done] 회원정보 관리 수정 개발 완료"
+ },
+ {
+  "hash": "c0155",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-06-26",
+  "message": "[SCR-A01-06-2][done] 회원가입 이력 조회 개발 완료"
+ },
+ {
+  "hash": "c0156",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-06-26",
+  "message": "[SCR-A01-06-3][done] 회원가입 이력 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0157",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-06-29",
+  "message": "[SCR-E04-01-2][done] 정산 지급 메인 개발 완료"
+ },
+ {
+  "hash": "c0158",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-06-29",
+  "message": "[SCR-B01-02-3][done] 장바구니 목록 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0159",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-06-29",
+  "message": "[SCR-A02-05-4][done] 로그인·인증 수정 통합테스트 완료"
+ },
+ {
+  "hash": "c0160",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-06-30",
+  "message": "[SCR-A03-05-3][done] 회원정보 관리 수정 단위테스트 완료"
+ },
+ {
+  "hash": "c0161",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-06-30",
+  "message": "[SCR-A01-06-4][done] 회원가입 이력 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0162",
+  "author_email": "figo.han@example.com",
+  "date": "2026-07-01",
+  "message": "[SCR-E02-04-3][done] 수수료 관리 등록 단위테스트 완료"
+ },
+ {
+  "hash": "c0163",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-07-01",
+  "message": "[SCR-A05-02-1][done] 탈퇴·휴면 목록 조회 분석 완료"
+ },
+ {
+  "hash": "c0164",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-07-02",
+  "message": "[SCR-F01-01-4][done] 1:1 문의 메인 통합테스트 완료"
+ },
+ {
+  "hash": "c0165",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-07-03",
+  "message": "[SCR-E04-01-3][done] 정산 지급 메인 단위테스트 완료"
+ },
+ {
+  "hash": "c0166",
+  "author_email": "figo.han@example.com",
+  "date": "2026-07-03",
+  "message": "[SCR-E02-04-4][done] 수수료 관리 등록 통합테스트 완료"
+ },
+ {
+  "hash": "c0167",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-07-03",
+  "message": "[SCR-E01-05-1][done] 판매 정산 수정 분석 완료"
+ },
+ {
+  "hash": "c0168",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-07-03",
+  "message": "[SCR-A03-05-4][done] 회원정보 관리 수정 통합테스트 완료"
+ },
+ {
+  "hash": "c0169",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-07-03",
+  "message": "[SCR-B02-03-1][done] 주문서 작성 상세 조회 분석 완료"
+ },
+ {
+  "hash": "c0170",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-07-03",
+  "message": "[SCR-B01-02-4][done] 장바구니 목록 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0171",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-07-03",
+  "message": "[SCR-A05-02-2][done] 탈퇴·휴면 목록 조회 개발 완료"
+ },
+ {
+  "hash": "c0172",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-07-03",
+  "message": "[SCR-A05-02-3][done] 탈퇴·휴면 목록 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0173",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-07-06",
+  "message": "[SCR-B01-03-1][done] 장바구니 상세 조회 분석 완료"
+ },
+ {
+  "hash": "c0174",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-07-07",
+  "message": "[SCR-E04-01-4][done] 정산 지급 메인 통합테스트 완료"
+ },
+ {
+  "hash": "c0175",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-07-07",
+  "message": "[SCR-E01-05-2][done] 판매 정산 수정 개발 완료"
+ },
+ {
+  "hash": "c0176",
+  "author_email": "figo.han@example.com",
+  "date": "2026-07-08",
+  "message": "[SCR-F02-01-1][done] FAQ 관리 메인 분석 완료"
+ },
+ {
+  "hash": "c0177",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-07-08",
+  "message": "[SCR-B02-03-2][done] 주문서 작성 상세 조회 개발 완료"
+ },
+ {
+  "hash": "c0178",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-07-08",
+  "message": "[SCR-B01-03] 장바구니 상세 조회 리뷰 반영"
+ },
+ {
+  "hash": "c0179",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-07-08",
+  "message": "[SCR-A05-02-4][done] 탈퇴·휴면 목록 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0180",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-07-09",
+  "message": "[SCR-B03-02-1][done] 주문 조회 목록 조회 분석 완료"
+ },
+ {
+  "hash": "c0181",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-07-09",
+  "message": "[SCR-B01-03-2][done] 장바구니 상세 조회 개발 완료"
+ },
+ {
+  "hash": "c0182",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-07-10",
+  "message": "[SCR-E04-02-1][done] 정산 지급 목록 조회 분석 완료"
+ },
+ {
+  "hash": "c0183",
+  "author_email": "figo.han@example.com",
+  "date": "2026-07-10",
+  "message": "[SCR-F02-01-2][done] FAQ 관리 메인 개발 완료"
+ },
+ {
+  "hash": "c0184",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-07-10",
+  "message": "[SCR-E01-05-3][done] 판매 정산 수정 단위테스트 완료"
+ },
+ {
+  "hash": "c0185",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-07-10",
+  "message": "[SCR-B02-03-3][done] 주문서 작성 상세 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0186",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-07-10",
+  "message": "[SCR-B01-03-3][done] 장바구니 상세 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0187",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-07-10",
+  "message": "[SCR-A05-03-1][done] 탈퇴·휴면 상세 조회 분석 완료"
+ },
+ {
+  "hash": "c0188",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-07-12",
+  "message": "[SCR-A05-03] 탈퇴·휴면 상세 조회 리뷰 반영"
+ },
+ {
+  "hash": "c0189",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-07-13",
+  "message": "[SCR-E01-05-4][done] 판매 정산 수정 통합테스트 완료"
+ },
+ {
+  "hash": "c0190",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-07-13",
+  "message": "[SCR-A05-03-2][done] 탈퇴·휴면 상세 조회 개발 완료"
+ },
+ {
+  "hash": "c0191",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-07-14",
+  "message": "[SCR-E04-02-2][done] 정산 지급 목록 조회 개발 완료"
+ },
+ {
+  "hash": "c0192",
+  "author_email": "figo.han@example.com",
+  "date": "2026-07-14",
+  "message": "[SCR-F02-01-3][done] FAQ 관리 메인 단위테스트 완료"
+ },
+ {
+  "hash": "c0193",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-07-14",
+  "message": "[SCR-B03-02-2][done] 주문 조회 목록 조회 개발 완료"
+ },
+ {
+  "hash": "c0194",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-07-14",
+  "message": "[SCR-B01-03-4][done] 장바구니 상세 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0195",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-07-15",
+  "message": "[SCR-A05-03-3][done] 탈퇴·휴면 상세 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0196",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-07-16",
+  "message": "[SCR-F01-02-1][done] 1:1 문의 목록 조회 분석 완료"
+ },
+ {
+  "hash": "c0197",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-07-16",
+  "message": "[SCR-B01-04-1][done] 장바구니 등록 분석 완료"
+ },
+ {
+  "hash": "c0198",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-07-17",
+  "message": "[SCR-E04-02-3][done] 정산 지급 목록 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0199",
+  "author_email": "figo.han@example.com",
+  "date": "2026-07-17",
+  "message": "[SCR-F02-01-4][done] FAQ 관리 메인 통합테스트 완료"
+ },
+ {
+  "hash": "c0200",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-07-17",
+  "message": "[SCR-B03-02-3][done] 주문 조회 목록 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0201",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-07-17",
+  "message": "[SCR-B02-03-4][done] 주문서 작성 상세 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0202",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-07-17",
+  "message": "[SCR-B02-04-1][done] 주문서 작성 등록 분석 완료"
+ },
+ {
+  "hash": "c0203",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-07-17",
+  "message": "[SCR-B01-04-2][done] 장바구니 등록 개발 완료"
+ },
+ {
+  "hash": "c0204",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-07-17",
+  "message": "[SCR-A05-03-4][done] 탈퇴·휴면 상세 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0205",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-07-20",
+  "message": "[SCR-F01-02-2][done] 1:1 문의 목록 조회 개발 완료"
+ },
+ {
+  "hash": "c0206",
+  "author_email": "figo.han@example.com",
+  "date": "2026-07-21",
+  "message": "[SCR-E02-05-1][done] 수수료 관리 수정 분석 완료"
+ },
+ {
+  "hash": "c0207",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-07-21",
+  "message": "[SCR-B02-04-2][done] 주문서 작성 등록 개발 완료"
+ },
+ {
+  "hash": "c0208",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-07-21",
+  "message": "[SCR-A05-04-1][done] 탈퇴·휴면 등록 분석 완료"
+ },
+ {
+  "hash": "c0209",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-07-22",
+  "message": "[SCR-E04-02-4][done] 정산 지급 목록 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0210",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-07-22",
+  "message": "[SCR-B01-04-3][done] 장바구니 등록 단위테스트 완료"
+ },
+ {
+  "hash": "c0211",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-07-23",
+  "message": "[SCR-F01-02-3][done] 1:1 문의 목록 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0212",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-07-23",
+  "message": "[SCR-B03-02-4][done] 주문 조회 목록 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0213",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-07-23",
+  "message": "[SCR-B02-04-3][done] 주문서 작성 등록 단위테스트 완료"
+ },
+ {
+  "hash": "c0214",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-07-24",
+  "message": "[SCR-E04-03-1][done] 정산 지급 상세 조회 분석 완료"
+ },
+ {
+  "hash": "c0215",
+  "author_email": "figo.han@example.com",
+  "date": "2026-07-24",
+  "message": "[SCR-E02-05-2][done] 수수료 관리 수정 개발 완료"
+ },
+ {
+  "hash": "c0216",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-07-24",
+  "message": "[SCR-B02-04-4][done] 주문서 작성 등록 통합테스트 완료"
+ },
+ {
+  "hash": "c0217",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-07-24",
+  "message": "[SCR-B01-04-4][done] 장바구니 등록 통합테스트 완료"
+ },
+ {
+  "hash": "c0218",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-07-24",
+  "message": "[SCR-A05-04-2][done] 탈퇴·휴면 등록 개발 완료"
+ },
+ {
+  "hash": "c0219",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-07-27",
+  "message": "[SCR-F01-02-4][done] 1:1 문의 목록 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0220",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-07-27",
+  "message": "[SCR-A03-06-1][done] 회원정보 관리 이력 조회 분석 완료"
+ },
+ {
+  "hash": "c0221",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-07-27",
+  "message": "[SCR-C01-01-1][done] 결제수단 관리 메인 분석 완료"
+ },
+ {
+  "hash": "c0222",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-07-27",
+  "message": "[SCR-B05-01-1][done] 배송 조회 메인 분석 완료"
+ },
+ {
+  "hash": "c0223",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-07-27",
+  "message": "[SCR-A05-04-3][done] 탈퇴·휴면 등록 단위테스트 완료"
+ },
+ {
+  "hash": "c0224",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-07-29",
+  "message": "[SCR-F01-03-1][done] 1:1 문의 상세 조회 분석 완료"
+ },
+ {
+  "hash": "c0225",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-07-29",
+  "message": "[SCR-C01-01-2][done] 결제수단 관리 메인 개발 완료"
+ },
+ {
+  "hash": "c0226",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-07-29",
+  "message": "[SCR-B05-01] 배송 조회 메인 리뷰 반영"
+ },
+ {
+  "hash": "c0227",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-07-30",
+  "message": "[SCR-E04-03] 정산 지급 상세 조회 리뷰 반영"
+ },
+ {
+  "hash": "c0228",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-07-30",
+  "message": "[SCR-F01-03] 1:1 문의 상세 조회 리뷰 반영"
+ },
+ {
+  "hash": "c0229",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-07-30",
+  "message": "[SCR-A03-06] 회원정보 관리 이력 조회 리뷰 반영"
+ },
+ {
+  "hash": "c0230",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-07-30",
+  "message": "[SCR-B05-01-2][done] 배송 조회 메인 개발 완료"
+ },
+ {
+  "hash": "c0231",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-07-31",
+  "message": "[SCR-E04-03-2][done] 정산 지급 상세 조회 개발 완료"
+ },
+ {
+  "hash": "c0232",
+  "author_email": "figo.han@example.com",
+  "date": "2026-07-31",
+  "message": "[SCR-E02-05-3][done] 수수료 관리 수정 단위테스트 완료"
+ },
+ {
+  "hash": "c0233",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-07-31",
+  "message": "[SCR-F01-03-2][done] 1:1 문의 상세 조회 개발 완료"
+ },
+ {
+  "hash": "c0234",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-07-31",
+  "message": "[SCR-F01-03-3][done] 1:1 문의 상세 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0235",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-07-31",
+  "message": "[SCR-A03-06-2][done] 회원정보 관리 이력 조회 개발 완료"
+ },
+ {
+  "hash": "c0236",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-07-31",
+  "message": "[SCR-C01-01-3][done] 결제수단 관리 메인 단위테스트 완료"
+ },
+ {
+  "hash": "c0237",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-07-31",
+  "message": "[SCR-C01-01-4][done] 결제수단 관리 메인 통합테스트 완료"
+ },
+ {
+  "hash": "c0238",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-07-31",
+  "message": "[SCR-B05-01-3][done] 배송 조회 메인 단위테스트 완료"
+ },
+ {
+  "hash": "c0239",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-07-31",
+  "message": "[SCR-A05-04-4][done] 탈퇴·휴면 등록 통합테스트 완료"
+ },
+ {
+  "hash": "c0240",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-07-31",
+  "message": "[SCR-B04-01-1][done] 취소·반품 메인 분석 완료"
+ },
+ {
+  "hash": "c0241",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-08-04",
+  "message": "[SCR-B02-05-1][done] 주문서 작성 수정 분석 완료"
+ },
+ {
+  "hash": "c0242",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-08-05",
+  "message": "[SCR-E04-03-3][done] 정산 지급 상세 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0243",
+  "author_email": "figo.han@example.com",
+  "date": "2026-08-05",
+  "message": "[SCR-E02-05-4][done] 수수료 관리 수정 통합테스트 완료"
+ },
+ {
+  "hash": "c0244",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-08-05",
+  "message": "[SCR-F01-03-4][done] 1:1 문의 상세 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0245",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-08-05",
+  "message": "[SCR-A03-06-3][done] 회원정보 관리 이력 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0246",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-08-05",
+  "message": "[SCR-B05-01-4][done] 배송 조회 메인 통합테스트 완료"
+ },
+ {
+  "hash": "c0247",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-08-05",
+  "message": "[SCR-B04-01-2][done] 취소·반품 메인 개발 완료"
+ },
+ {
+  "hash": "c0248",
+  "author_email": "figo.han@example.com",
+  "date": "2026-08-07",
+  "message": "[SCR-F02-02-1][done] FAQ 관리 목록 조회 분석 완료"
+ },
+ {
+  "hash": "c0249",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-08-07",
+  "message": "[SCR-F01-04-1][done] 1:1 문의 등록 분석 완료"
+ },
+ {
+  "hash": "c0250",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-08-07",
+  "message": "[SCR-B02-05-2][done] 주문서 작성 수정 개발 완료"
+ },
+ {
+  "hash": "c0251",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-08-07",
+  "message": "[SCR-B01-05-1][done] 장바구니 수정 분석 완료"
+ },
+ {
+  "hash": "c0252",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-08-07",
+  "message": "[SCR-B04-01-3][done] 취소·반품 메인 단위테스트 완료"
+ },
+ {
+  "hash": "c0253",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-08-10",
+  "message": "[SCR-E04-03-4][done] 정산 지급 상세 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0254",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-08-10",
+  "message": "[SCR-A03-06-4][done] 회원정보 관리 이력 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0255",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-08-10",
+  "message": "[SCR-B02-05-3][done] 주문서 작성 수정 단위테스트 완료"
+ },
+ {
+  "hash": "c0256",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-08-10",
+  "message": "[SCR-B01-05-2][done] 장바구니 수정 개발 완료"
+ },
+ {
+  "hash": "c0257",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-08-10",
+  "message": "[SCR-B04-01-4][done] 취소·반품 메인 통합테스트 완료"
+ },
+ {
+  "hash": "c0258",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-08-12",
+  "message": "[SCR-E04-04-1][done] 정산 지급 등록 분석 완료"
+ },
+ {
+  "hash": "c0259",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-08-12",
+  "message": "[SCR-F01-04-2][done] 1:1 문의 등록 개발 완료"
+ },
+ {
+  "hash": "c0260",
+  "author_email": "figo.han@example.com",
+  "date": "2026-08-13",
+  "message": "[SCR-F02-02-2][done] FAQ 관리 목록 조회 개발 완료"
+ },
+ {
+  "hash": "c0261",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-08-13",
+  "message": "[SCR-B03-03-1][done] 주문 조회 상세 조회 분석 완료"
+ },
+ {
+  "hash": "c0262",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-08-13",
+  "message": "[SCR-B03-03] 주문 조회 상세 조회 리뷰 반영"
+ },
+ {
+  "hash": "c0263",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-08-13",
+  "message": "[SCR-B02-05-4][done] 주문서 작성 수정 통합테스트 완료"
+ },
+ {
+  "hash": "c0264",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-08-13",
+  "message": "[SCR-B01-05-3][done] 장바구니 수정 단위테스트 완료"
+ },
+ {
+  "hash": "c0265",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-08-13",
+  "message": "[SCR-B04-02-1][done] 취소·반품 목록 조회 분석 완료"
+ },
+ {
+  "hash": "c0266",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-08-14",
+  "message": "[SCR-E04-04-2][done] 정산 지급 등록 개발 완료"
+ },
+ {
+  "hash": "c0267",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-08-14",
+  "message": "[SCR-F01-04-3][done] 1:1 문의 등록 단위테스트 완료"
+ },
+ {
+  "hash": "c0268",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-08-14",
+  "message": "[SCR-B03-03-2][done] 주문 조회 상세 조회 개발 완료"
+ },
+ {
+  "hash": "c0269",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-08-14",
+  "message": "[SCR-C01-02-1][done] 결제수단 관리 목록 조회 분석 완료"
+ },
+ {
+  "hash": "c0270",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-08-14",
+  "message": "[SCR-B01-05-4][done] 장바구니 수정 통합테스트 완료"
+ },
+ {
+  "hash": "c0271",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-08-14",
+  "message": "[SCR-B04-02-2][done] 취소·반품 목록 조회 개발 완료"
+ },
+ {
+  "hash": "c0272",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-08-17",
+  "message": "[SCR-E04-04-3][done] 정산 지급 등록 단위테스트 완료"
+ },
+ {
+  "hash": "c0273",
+  "author_email": "figo.han@example.com",
+  "date": "2026-08-17",
+  "message": "[SCR-F02-02-3][done] FAQ 관리 목록 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0274",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-08-19",
+  "message": "[SCR-F01-04-4][done] 1:1 문의 등록 통합테스트 완료"
+ },
+ {
+  "hash": "c0275",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-08-19",
+  "message": "[SCR-B03-03-3][done] 주문 조회 상세 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0276",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-08-19",
+  "message": "[SCR-B04-02-3][done] 취소·반품 목록 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0277",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-08-20",
+  "message": "[SCR-E04-04-4][done] 정산 지급 등록 통합테스트 완료"
+ },
+ {
+  "hash": "c0278",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-08-20",
+  "message": "[SCR-C01-02-2][done] 결제수단 관리 목록 조회 개발 완료"
+ },
+ {
+  "hash": "c0279",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-08-20",
+  "message": "[SCR-B05-02-1][done] 배송 조회 목록 조회 분석 완료"
+ },
+ {
+  "hash": "c0280",
+  "author_email": "figo.han@example.com",
+  "date": "2026-08-21",
+  "message": "[SCR-F02-02-4][done] FAQ 관리 목록 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0281",
+  "author_email": "figo.han@example.com",
+  "date": "2026-08-21",
+  "message": "[SCR-F02-03-1][done] FAQ 관리 상세 조회 분석 완료"
+ },
+ {
+  "hash": "c0282",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-08-21",
+  "message": "[SCR-G01-01-1][done] 매출 통계 메인 분석 완료"
+ },
+ {
+  "hash": "c0283",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-08-21",
+  "message": "[SCR-B03-03-4][done] 주문 조회 상세 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0284",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-08-21",
+  "message": "[SCR-C01-02-3][done] 결제수단 관리 목록 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0285",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-08-21",
+  "message": "[SCR-B04-02-4][done] 취소·반품 목록 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0286",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-08-24",
+  "message": "[SCR-F04-01-1][done] 상담 이력 메인 분석 완료"
+ },
+ {
+  "hash": "c0287",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-08-24",
+  "message": "[SCR-B05-02-2][done] 배송 조회 목록 조회 개발 완료"
+ },
+ {
+  "hash": "c0288",
+  "author_email": "figo.han@example.com",
+  "date": "2026-08-25",
+  "message": "[SCR-F02-03-2][done] FAQ 관리 상세 조회 개발 완료"
+ },
+ {
+  "hash": "c0289",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-08-26",
+  "message": "[SCR-B03-04-1][done] 주문 조회 등록 분석 완료"
+ },
+ {
+  "hash": "c0290",
+  "author_email": "figo.han@example.com",
+  "date": "2026-08-27",
+  "message": "[SCR-F02-03-3][done] FAQ 관리 상세 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0291",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-08-27",
+  "message": "[SCR-G01-01-2][done] 매출 통계 메인 개발 완료"
+ },
+ {
+  "hash": "c0292",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-08-27",
+  "message": "[SCR-C01-02-4][done] 결제수단 관리 목록 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0293",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-08-27",
+  "message": "[SCR-B04-03-1][done] 취소·반품 상세 조회 분석 완료"
+ },
+ {
+  "hash": "c0294",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-08-28",
+  "message": "[SCR-F04-01-2][done] 상담 이력 메인 개발 완료"
+ },
+ {
+  "hash": "c0295",
+  "author_email": "figo.han@example.com",
+  "date": "2026-08-28",
+  "message": "[SCR-F02-03-4][done] FAQ 관리 상세 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0296",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-08-28",
+  "message": "[SCR-B02-06-1][done] 주문서 작성 이력 조회 분석 완료"
+ },
+ {
+  "hash": "c0297",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-08-28",
+  "message": "[SCR-B05-02-3][done] 배송 조회 목록 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0298",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-08-31",
+  "message": "[SCR-G01-01-3][done] 매출 통계 메인 단위테스트 완료"
+ },
+ {
+  "hash": "c0299",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-08-31",
+  "message": "[SCR-B03-04-2][done] 주문 조회 등록 개발 완료"
+ },
+ {
+  "hash": "c0300",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-08-31",
+  "message": "[SCR-B02-06-2][done] 주문서 작성 이력 조회 개발 완료"
+ },
+ {
+  "hash": "c0301",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-08-31",
+  "message": "[SCR-B04-03-2][done] 취소·반품 상세 조회 개발 완료"
+ },
+ {
+  "hash": "c0302",
+  "author_email": "figo.han@example.com",
+  "date": "2026-09-01",
+  "message": "[SCR-F02-04-1][done] FAQ 관리 등록 분석 완료"
+ },
+ {
+  "hash": "c0303",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-09-01",
+  "message": "[SCR-B05-02-4][done] 배송 조회 목록 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0304",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-09-02",
+  "message": "[SCR-F04-01-3][done] 상담 이력 메인 단위테스트 완료"
+ },
+ {
+  "hash": "c0305",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-09-02",
+  "message": "[SCR-B02-06-3][done] 주문서 작성 이력 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0306",
+  "author_email": "figo.han@example.com",
+  "date": "2026-09-04",
+  "message": "[SCR-F02-04-2][done] FAQ 관리 등록 개발 완료"
+ },
+ {
+  "hash": "c0307",
+  "author_email": "figo.han@example.com",
+  "date": "2026-09-04",
+  "message": "[SCR-F02-04-3][done] FAQ 관리 등록 단위테스트 완료"
+ },
+ {
+  "hash": "c0308",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-09-04",
+  "message": "[SCR-G01-01-4][done] 매출 통계 메인 통합테스트 완료"
+ },
+ {
+  "hash": "c0309",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-09-04",
+  "message": "[SCR-B03-04-3][done] 주문 조회 등록 단위테스트 완료"
+ },
+ {
+  "hash": "c0310",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-09-04",
+  "message": "[SCR-B02-06-4][done] 주문서 작성 이력 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0311",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-09-04",
+  "message": "[SCR-B05-03-1][done] 배송 조회 상세 조회 분석 완료"
+ },
+ {
+  "hash": "c0312",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-09-04",
+  "message": "[SCR-B04-03-3][done] 취소·반품 상세 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0313",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-09-07",
+  "message": "[SCR-F04-01-4][done] 상담 이력 메인 통합테스트 완료"
+ },
+ {
+  "hash": "c0314",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-09-07",
+  "message": "[SCR-F01-05-1][done] 1:1 문의 수정 분석 완료"
+ },
+ {
+  "hash": "c0315",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-09-08",
+  "message": "[SCR-F01-05] 1:1 문의 수정 리뷰 반영"
+ },
+ {
+  "hash": "c0316",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-09-08",
+  "message": "[SCR-C01-03-1][done] 결제수단 관리 상세 조회 분석 완료"
+ },
+ {
+  "hash": "c0317",
+  "author_email": "figo.han@example.com",
+  "date": "2026-09-09",
+  "message": "[SCR-F02-04-4][done] FAQ 관리 등록 통합테스트 완료"
+ },
+ {
+  "hash": "c0318",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-09-09",
+  "message": "[SCR-F01-05-2][done] 1:1 문의 수정 개발 완료"
+ },
+ {
+  "hash": "c0319",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-09-09",
+  "message": "[SCR-B03-04-4][done] 주문 조회 등록 통합테스트 완료"
+ },
+ {
+  "hash": "c0320",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-09-09",
+  "message": "[SCR-B05-03-2][done] 배송 조회 상세 조회 개발 완료"
+ },
+ {
+  "hash": "c0321",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-09-10",
+  "message": "[SCR-C01-03] 결제수단 관리 상세 조회 리뷰 반영"
+ },
+ {
+  "hash": "c0322",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-09-11",
+  "message": "[SCR-E04-05-1][done] 정산 지급 수정 분석 완료"
+ },
+ {
+  "hash": "c0323",
+  "author_email": "figo.han@example.com",
+  "date": "2026-09-11",
+  "message": "[SCR-F03-01-1][done] 공지사항 메인 분석 완료"
+ },
+ {
+  "hash": "c0324",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-09-11",
+  "message": "[SCR-F01-05-3][done] 1:1 문의 수정 단위테스트 완료"
+ },
+ {
+  "hash": "c0325",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-09-11",
+  "message": "[SCR-F01-05-4][done] 1:1 문의 수정 통합테스트 완료"
+ },
+ {
+  "hash": "c0326",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-09-11",
+  "message": "[SCR-C02-01-1][done] 결제 승인 메인 분석 완료"
+ },
+ {
+  "hash": "c0327",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-09-11",
+  "message": "[SCR-C01-03-2][done] 결제수단 관리 상세 조회 개발 완료"
+ },
+ {
+  "hash": "c0328",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-09-11",
+  "message": "[SCR-B05-03-3][done] 배송 조회 상세 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0329",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-09-11",
+  "message": "[SCR-B04-04-1][done] 취소·반품 등록 분석 완료"
+ },
+ {
+  "hash": "c0330",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-09-15",
+  "message": "[SCR-E04-05-2][done] 정산 지급 수정 개발 완료"
+ },
+ {
+  "hash": "c0331",
+  "author_email": "figo.han@example.com",
+  "date": "2026-09-15",
+  "message": "[SCR-F03-01-2][done] 공지사항 메인 개발 완료"
+ },
+ {
+  "hash": "c0332",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-09-15",
+  "message": "[SCR-C02-01-2][done] 결제 승인 메인 개발 완료"
+ },
+ {
+  "hash": "c0333",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-09-16",
+  "message": "[SCR-G01-02-1][done] 매출 통계 목록 조회 분석 완료"
+ },
+ {
+  "hash": "c0334",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-09-16",
+  "message": "[SCR-C01-03-3][done] 결제수단 관리 상세 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0335",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-09-16",
+  "message": "[SCR-B04-04-2][done] 취소·반품 등록 개발 완료"
+ },
+ {
+  "hash": "c0336",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-09-17",
+  "message": "[SCR-B05-03-4][done] 배송 조회 상세 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0337",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-09-18",
+  "message": "[SCR-E04-05-3][done] 정산 지급 수정 단위테스트 완료"
+ },
+ {
+  "hash": "c0338",
+  "author_email": "figo.han@example.com",
+  "date": "2026-09-18",
+  "message": "[SCR-F03-01-3][done] 공지사항 메인 단위테스트 완료"
+ },
+ {
+  "hash": "c0339",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-09-18",
+  "message": "[SCR-G01-02-2][done] 매출 통계 목록 조회 개발 완료"
+ },
+ {
+  "hash": "c0340",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-09-18",
+  "message": "[SCR-C01-03-4][done] 결제수단 관리 상세 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0341",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-09-18",
+  "message": "[SCR-B05-04-1][done] 배송 조회 등록 분석 완료"
+ },
+ {
+  "hash": "c0342",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-09-18",
+  "message": "[SCR-B04-04-3][done] 취소·반품 등록 단위테스트 완료"
+ },
+ {
+  "hash": "c0343",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-09-21",
+  "message": "[SCR-B05-04-2][done] 배송 조회 등록 개발 완료"
+ },
+ {
+  "hash": "c0344",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-09-23",
+  "message": "[SCR-E04-05-4][done] 정산 지급 수정 통합테스트 완료"
+ },
+ {
+  "hash": "c0345",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-09-23",
+  "message": "[SCR-B03-05-1][done] 주문 조회 수정 분석 완료"
+ },
+ {
+  "hash": "c0346",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-09-23",
+  "message": "[SCR-B05-04-3][done] 배송 조회 등록 단위테스트 완료"
+ },
+ {
+  "hash": "c0347",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-09-24",
+  "message": "[SCR-G01-02-3][done] 매출 통계 목록 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0348",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-09-24",
+  "message": "[SCR-C01-04-1][done] 결제수단 관리 등록 분석 완료"
+ },
+ {
+  "hash": "c0349",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-09-24",
+  "message": "[SCR-B04-04-4][done] 취소·반품 등록 통합테스트 완료"
+ },
+ {
+  "hash": "c0350",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-09-25",
+  "message": "[SCR-F04-02-1][done] 상담 이력 목록 조회 분석 완료"
+ },
+ {
+  "hash": "c0351",
+  "author_email": "figo.han@example.com",
+  "date": "2026-09-25",
+  "message": "[SCR-F03-02-1][done] 공지사항 목록 조회 분석 완료"
+ },
+ {
+  "hash": "c0352",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-09-25",
+  "message": "[SCR-B03-05-2][done] 주문 조회 수정 개발 완료"
+ },
+ {
+  "hash": "c0353",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-09-25",
+  "message": "[SCR-B05-04-4][done] 배송 조회 등록 통합테스트 완료"
+ },
+ {
+  "hash": "c0354",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-09-25",
+  "message": "[SCR-C03-01-1][done] 환불 처리 메인 분석 완료"
+ },
+ {
+  "hash": "c0355",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-09-27",
+  "message": "[SCR-C01-04] 결제수단 관리 등록 리뷰 반영"
+ },
+ {
+  "hash": "c0356",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-09-28",
+  "message": "[SCR-F04-02-2][done] 상담 이력 목록 조회 개발 완료"
+ },
+ {
+  "hash": "c0357",
+  "author_email": "figo.han@example.com",
+  "date": "2026-09-28",
+  "message": "[SCR-F03-02] 공지사항 목록 조회 리뷰 반영"
+ },
+ {
+  "hash": "c0358",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-09-28",
+  "message": "[SCR-G01-02-4][done] 매출 통계 목록 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0359",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-09-28",
+  "message": "[SCR-C01-04-2][done] 결제수단 관리 등록 개발 완료"
+ },
+ {
+  "hash": "c0360",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-09-28",
+  "message": "[SCR-C04-01-1][done] 결제 이력 메인 분석 완료"
+ },
+ {
+  "hash": "c0361",
+  "author_email": "figo.han@example.com",
+  "date": "2026-09-29",
+  "message": "[SCR-F03-02-2][done] 공지사항 목록 조회 개발 완료"
+ },
+ {
+  "hash": "c0362",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-09-30",
+  "message": "[SCR-F04-02-3][done] 상담 이력 목록 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0363",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-09-30",
+  "message": "[SCR-G01-03-1][done] 매출 통계 상세 조회 분석 완료"
+ },
+ {
+  "hash": "c0364",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-09-30",
+  "message": "[SCR-C03-01-2][done] 환불 처리 메인 개발 완료"
+ },
+ {
+  "hash": "c0365",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-10-01",
+  "message": "[SCR-C04-01-2][done] 결제 이력 메인 개발 완료"
+ },
+ {
+  "hash": "c0366",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-10-02",
+  "message": "[SCR-F04-02-4][done] 상담 이력 목록 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0367",
+  "author_email": "figo.han@example.com",
+  "date": "2026-10-02",
+  "message": "[SCR-F03-02-3][done] 공지사항 목록 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0368",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-10-02",
+  "message": "[SCR-G01-03-2][done] 매출 통계 상세 조회 개발 완료"
+ },
+ {
+  "hash": "c0369",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-10-02",
+  "message": "[SCR-C02-02-1][done] 결제 승인 목록 조회 분석 완료"
+ },
+ {
+  "hash": "c0370",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-10-02",
+  "message": "[SCR-C02-02-2][done] 결제 승인 목록 조회 개발 완료"
+ },
+ {
+  "hash": "c0371",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-10-02",
+  "message": "[SCR-C01-04-3][done] 결제수단 관리 등록 단위테스트 완료"
+ },
+ {
+  "hash": "c0372",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-10-02",
+  "message": "[SCR-C04-01-3][done] 결제 이력 메인 단위테스트 완료"
+ },
+ {
+  "hash": "c0373",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-10-02",
+  "message": "[SCR-C03-01-3][done] 환불 처리 메인 단위테스트 완료"
+ },
+ {
+  "hash": "c0374",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-10-05",
+  "message": "[SCR-F04-03-1][done] 상담 이력 상세 조회 분석 완료"
+ },
+ {
+  "hash": "c0375",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-10-06",
+  "message": "[SCR-G01-03-3][done] 매출 통계 상세 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0376",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-10-07",
+  "message": "[SCR-F04-03-2][done] 상담 이력 상세 조회 개발 완료"
+ },
+ {
+  "hash": "c0377",
+  "author_email": "figo.han@example.com",
+  "date": "2026-10-07",
+  "message": "[SCR-F03-02-4][done] 공지사항 목록 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0378",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-10-07",
+  "message": "[SCR-C01-04-4][done] 결제수단 관리 등록 통합테스트 완료"
+ },
+ {
+  "hash": "c0379",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-10-07",
+  "message": "[SCR-C03-01-4][done] 환불 처리 메인 통합테스트 완료"
+ },
+ {
+  "hash": "c0380",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-10-08",
+  "message": "[SCR-C04-01-4][done] 결제 이력 메인 통합테스트 완료"
+ },
+ {
+  "hash": "c0381",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-10-09",
+  "message": "[SCR-F04-03-3][done] 상담 이력 상세 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0382",
+  "author_email": "figo.han@example.com",
+  "date": "2026-10-09",
+  "message": "[SCR-F03-03-1][done] 공지사항 상세 조회 분석 완료"
+ },
+ {
+  "hash": "c0383",
+  "author_email": "figo.han@example.com",
+  "date": "2026-10-09",
+  "message": "[SCR-F03-03-2][done] 공지사항 상세 조회 개발 완료"
+ },
+ {
+  "hash": "c0384",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-10-09",
+  "message": "[SCR-G01-03-4][done] 매출 통계 상세 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0385",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-10-09",
+  "message": "[SCR-G01-04-1][done] 매출 통계 등록 분석 완료"
+ },
+ {
+  "hash": "c0386",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-10-09",
+  "message": "[SCR-D02-01-1][done] 카테고리 관리 메인 분석 완료"
+ },
+ {
+  "hash": "c0387",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-10-09",
+  "message": "[SCR-B04-05-1][done] 취소·반품 수정 분석 완료"
+ },
+ {
+  "hash": "c0388",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-10-12",
+  "message": "[SCR-F04-03-4][done] 상담 이력 상세 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0389",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-10-12",
+  "message": "[SCR-B05-05-1][done] 배송 조회 수정 분석 완료"
+ },
+ {
+  "hash": "c0390",
+  "author_email": "figo.han@example.com",
+  "date": "2026-10-13",
+  "message": "[SCR-F03-03-3][done] 공지사항 상세 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0391",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-10-13",
+  "message": "[SCR-B03-06-1][done] 주문 조회 이력 조회 분석 완료"
+ },
+ {
+  "hash": "c0392",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-10-13",
+  "message": "[SCR-D02-01-2][done] 카테고리 관리 메인 개발 완료"
+ },
+ {
+  "hash": "c0393",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-10-14",
+  "message": "[SCR-G01-04-2][done] 매출 통계 등록 개발 완료"
+ },
+ {
+  "hash": "c0394",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-10-16",
+  "message": "[SCR-F04-04-1][done] 상담 이력 등록 분석 완료"
+ },
+ {
+  "hash": "c0395",
+  "author_email": "figo.han@example.com",
+  "date": "2026-10-16",
+  "message": "[SCR-F03-03-4][done] 공지사항 상세 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0396",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-10-16",
+  "message": "[SCR-G01-04-3][done] 매출 통계 등록 단위테스트 완료"
+ },
+ {
+  "hash": "c0397",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-10-16",
+  "message": "[SCR-B03-06-2][done] 주문 조회 이력 조회 개발 완료"
+ },
+ {
+  "hash": "c0398",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-10-16",
+  "message": "[SCR-D02-01-3][done] 카테고리 관리 메인 단위테스트 완료"
+ },
+ {
+  "hash": "c0399",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-10-16",
+  "message": "[SCR-B05-05-2][done] 배송 조회 수정 개발 완료"
+ },
+ {
+  "hash": "c0400",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-10-16",
+  "message": "[SCR-B04-05-2][done] 취소·반품 수정 개발 완료"
+ },
+ {
+  "hash": "c0401",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-10-20",
+  "message": "[SCR-F04-04] 상담 이력 등록 리뷰 반영"
+ },
+ {
+  "hash": "c0402",
+  "author_email": "figo.han@example.com",
+  "date": "2026-10-20",
+  "message": "[SCR-F03-04-1][done] 공지사항 등록 분석 완료"
+ },
+ {
+  "hash": "c0403",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-10-20",
+  "message": "[SCR-G01-04-4][done] 매출 통계 등록 통합테스트 완료"
+ },
+ {
+  "hash": "c0404",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-10-20",
+  "message": "[SCR-D02-01-4][done] 카테고리 관리 메인 통합테스트 완료"
+ },
+ {
+  "hash": "c0405",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-10-20",
+  "message": "[SCR-B05-05-3][done] 배송 조회 수정 단위테스트 완료"
+ },
+ {
+  "hash": "c0406",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-10-21",
+  "message": "[SCR-F04-04-2][done] 상담 이력 등록 개발 완료"
+ },
+ {
+  "hash": "c0407",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-10-22",
+  "message": "[SCR-B03-06-3][done] 주문 조회 이력 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0408",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-10-22",
+  "message": "[SCR-C01-05-1][done] 결제수단 관리 수정 분석 완료"
+ },
+ {
+  "hash": "c0409",
+  "author_email": "figo.han@example.com",
+  "date": "2026-10-23",
+  "message": "[SCR-F03-04-2][done] 공지사항 등록 개발 완료"
+ },
+ {
+  "hash": "c0410",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-10-23",
+  "message": "[SCR-G04-01-1][done] 대시보드 메인 분석 완료"
+ },
+ {
+  "hash": "c0411",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-10-23",
+  "message": "[SCR-C01-05-2][done] 결제수단 관리 수정 개발 완료"
+ },
+ {
+  "hash": "c0412",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-10-23",
+  "message": "[SCR-B05-05-4][done] 배송 조회 수정 통합테스트 완료"
+ },
+ {
+  "hash": "c0413",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-10-26",
+  "message": "[SCR-F04-04-3][done] 상담 이력 등록 단위테스트 완료"
+ },
+ {
+  "hash": "c0414",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-10-26",
+  "message": "[SCR-G04-01] 대시보드 메인 리뷰 반영"
+ },
+ {
+  "hash": "c0415",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-10-27",
+  "message": "[SCR-G04-01-2][done] 대시보드 메인 개발 완료"
+ },
+ {
+  "hash": "c0416",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-10-27",
+  "message": "[SCR-B03-06] 주문 조회 이력 조회 통합테스트 진행"
+ },
+ {
+  "hash": "c0417",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-10-27",
+  "message": "[SCR-C04-02-1][done] 결제 이력 목록 조회 분석 완료"
+ },
+ {
+  "hash": "c0418",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-10-28",
+  "message": "[SCR-F02-07] FAQ 화면 추가 시안"
+ },
+ {
+  "hash": "c0419",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-10-28",
+  "message": "[SCR-C01-05-3][done] 결제수단 관리 수정 단위테스트 완료"
+ },
+ {
+  "hash": "c0420",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-10-28",
+  "message": "[SCR-C03-02-1][done] 환불 처리 목록 조회 분석 완료"
+ },
+ {
+  "hash": "c0421",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-10-29",
+  "message": "[SCR-C02-03-1][done] 결제 승인 상세 조회 분석 완료"
+ },
+ {
+  "hash": "c0422",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-10-30",
+  "message": "[SCR-F04-04-4][done] 상담 이력 등록 통합테스트 완료"
+ },
+ {
+  "hash": "c0423",
+  "author_email": "figo.han@example.com",
+  "date": "2026-10-30",
+  "message": "[SCR-F03-04-3][done] 공지사항 등록 단위테스트 완료"
+ },
+ {
+  "hash": "c0424",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-10-30",
+  "message": "[SCR-G04-01-3][done] 대시보드 메인 단위테스트 완료"
+ },
+ {
+  "hash": "c0425",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-10-30",
+  "message": "[SCR-C02-03-2][done] 결제 승인 상세 조회 개발 완료"
+ },
+ {
+  "hash": "c0426",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-10-30",
+  "message": "[SCR-C01-05-4][done] 결제수단 관리 수정 통합테스트 완료"
+ },
+ {
+  "hash": "c0427",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-10-30",
+  "message": "[SCR-C04-02-2][done] 결제 이력 목록 조회 개발 완료"
+ },
+ {
+  "hash": "c0428",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-10-30",
+  "message": "[SCR-C03-02-2][done] 환불 처리 목록 조회 개발 완료"
+ },
+ {
+  "hash": "c0429",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-11-02",
+  "message": "[SCR-C02-03-3][done] 결제 승인 상세 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0430",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-11-02",
+  "message": "[SCR-D02-02-1][done] 카테고리 관리 목록 조회 분석 완료"
+ },
+ {
+  "hash": "c0431",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-11-03",
+  "message": "[SCR-G04-01-4][done] 대시보드 메인 통합테스트 완료"
+ },
+ {
+  "hash": "c0432",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-11-04",
+  "message": "[SCR-G03-01-1][done] 상품 통계 메인 분석 완료"
+ },
+ {
+  "hash": "c0433",
+  "author_email": "figo.han@example.com",
+  "date": "2026-11-04",
+  "message": "[SCR-F03-04-4][done] 공지사항 등록 통합테스트 완료"
+ },
+ {
+  "hash": "c0434",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-11-04",
+  "message": "[SCR-D02-02-2][done] 카테고리 관리 목록 조회 개발 완료"
+ },
+ {
+  "hash": "c0435",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-11-05",
+  "message": "[SCR-C02-03-4][done] 결제 승인 상세 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0436",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-11-06",
+  "message": "[SCRG02-01] 회원 통계 차트 색상 변경"
+ },
+ {
+  "hash": "c0437",
+  "author_email": "figo.han@example.com",
+  "date": "2026-11-06",
+  "message": "[SCR-G02-01-1][done] 회원 통계 메인 분석 완료"
+ },
+ {
+  "hash": "c0438",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-11-06",
+  "message": "[SCR-G01-05-1][done] 매출 통계 수정 분석 완료"
+ },
+ {
+  "hash": "c0439",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-11-06",
+  "message": "[SCR-C02-04-1][done] 결제 승인 등록 분석 완료"
+ },
+ {
+  "hash": "c0440",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-11-06",
+  "message": "[SCR-D02-02-3][done] 카테고리 관리 목록 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0441",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-11-06",
+  "message": "[SCR-D02-02-4][done] 카테고리 관리 목록 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0442",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-11-06",
+  "message": "[SCR-C03-03-1][done] 환불 처리 상세 조회 분석 완료"
+ },
+ {
+  "hash": "c0443",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-11-09",
+  "message": "[SCR-G03-01-2][done] 상품 통계 메인 개발 완료"
+ },
+ {
+  "hash": "c0444",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-11-09",
+  "message": "[SCR-G01-05-2][done] 매출 통계 수정 개발 완료"
+ },
+ {
+  "hash": "c0445",
   "author_email": "kane.lee@example.com",
   "date": "2026-11-09",
-  "message": "[TASK-007-1][done] 알림 큐 구현"
+  "message": "[SCR-C02-04-2][done] 결제 승인 등록 개발 완료"
  },
  {
-  "hash": "c013",
-  "author_email": "kane.lee@example.com",
-  "date": "2026-11-10",
-  "message": "[TASK-007-2][done] 알림 전송기 구현"
- },
- {
-  "hash": "c014",
-  "author_email": "kane.lee@example.com",
-  "date": "2026-11-16",
-  "message": "[TASK-007-3][done] 재시도 로직"
- },
- {
-  "hash": "c015",
-  "author_email": "kane.lee@example.com",
-  "date": "2026-11-18",
-  "message": "[TASK-007-4] 마무리 정리 작업"
- },
- {
-  "hash": "c016",
-  "author_email": "kane.lee@example.com",
-  "date": "2026-11-23",
-  "message": "[TASK-019-1][done] 템플릿 저장소 (기준 주 이후)"
- },
- {
-  "hash": "c017",
-  "author_email": "kane.lee@example.com",
-  "date": "2026-11-20",
-  "message": "[TASK-019] 템플릿 초안"
- },
- {
-  "hash": "c018",
+  "hash": "c0446",
   "author_email": "pele.choi@example.com",
-  "date": "2026-11-16",
-  "message": "[TASK-016-1][done] 역할 모델"
+  "date": "2026-11-09",
+  "message": "[SCR-C04-03-1][done] 결제 이력 상세 조회 분석 완료"
  },
  {
-  "hash": "c019",
+  "hash": "c0447",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-11-11",
+  "message": "[SCR-C02-04-3][done] 결제 승인 등록 단위테스트 완료"
+ },
+ {
+  "hash": "c0448",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-11-11",
+  "message": "[SCR-C03-03-2][done] 환불 처리 상세 조회 개발 완료"
+ },
+ {
+  "hash": "c0449",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-11-12",
+  "message": "[SCR-G01-05-3][done] 매출 통계 수정 단위테스트 완료"
+ },
+ {
+  "hash": "c0450",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-11-12",
+  "message": "[SCR-C01-06-1][done] 결제수단 관리 이력 조회 분석 완료"
+ },
+ {
+  "hash": "c0451",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-11-12",
+  "message": "[SCR-C04-03-2][done] 결제 이력 상세 조회 개발 완료"
+ },
+ {
+  "hash": "c0452",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-11-13",
+  "message": "[SCR-G03-01-3][done] 상품 통계 메인 단위테스트 완료"
+ },
+ {
+  "hash": "c0453",
+  "author_email": "figo.han@example.com",
+  "date": "2026-11-13",
+  "message": "[SCR-G02-01-2][done] 회원 통계 메인 개발 완료"
+ },
+ {
+  "hash": "c0454",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-11-13",
+  "message": "[SCR-G01-05-4][done] 매출 통계 수정 통합테스트 완료"
+ },
+ {
+  "hash": "c0455",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-11-13",
+  "message": "[SCR-C02-04-4][done] 결제 승인 등록 통합테스트 완료"
+ },
+ {
+  "hash": "c0456",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-11-13",
+  "message": "[SCR-C04-03-3][done] 결제 이력 상세 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0457",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-11-13",
+  "message": "[SCR-C03-03-3][done] 환불 처리 상세 조회 단위테스트 완료"
+ },
+ {
+  "hash": "c0458",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-11-16",
+  "message": "[SCR-A09-01] 신규 화면 시안"
+ },
+ {
+  "hash": "c0459",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-11-16",
+  "message": "[SCR-C01-06-2][done] 결제수단 관리 이력 조회 개발 완료"
+ },
+ {
+  "hash": "c0460",
+  "author_email": "figo.han@example.com",
+  "date": "2026-11-17",
+  "message": "[SCR-F03-01] 공지사항 메인 통합테스트 진행"
+ },
+ {
+  "hash": "c0461",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-11-17",
+  "message": "[SCR-B03-05] 주문 조회 수정 단위테스트 진행"
+ },
+ {
+  "hash": "c0462",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-11-17",
+  "message": "[SCR-C02-01] 결제 승인 메인 단위테스트 진행"
+ },
+ {
+  "hash": "c0463",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-11-17",
+  "message": "[SCR-C02-02] 결제 승인 목록 조회 단위테스트 진행"
+ },
+ {
+  "hash": "c0464",
   "author_email": "pele.choi@example.com",
   "date": "2026-11-17",
-  "message": "[TASK-016-2][done] 권한 검사기"
+  "message": "[SCR-C04-02] 결제 이력 목록 조회 단위테스트 진행"
  },
  {
-  "hash": "c020",
+  "hash": "c0465",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-11-17",
+  "message": "[SCR-B04-03] 취소·반품 상세 조회 통합테스트 진행"
+ },
+ {
+  "hash": "c0466",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-11-17",
+  "message": "[SCR-B04-05] 취소·반품 수정 단위테스트 진행"
+ },
+ {
+  "hash": "c0467",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-11-17",
+  "message": "[SCR-C03-02] 환불 처리 목록 조회 단위테스트 진행"
+ },
+ {
+  "hash": "c0468",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-11-17",
+  "message": "로그인 오류 긴급 수정"
+ },
+ {
+  "hash": "c0469",
+  "author_email": "figo.han@example.com",
+  "date": "2026-11-18",
+  "message": "[SCR-G02-01-3][done] 회원 통계 메인 단위테스트 완료"
+ },
+ {
+  "hash": "c0470",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-11-18",
+  "message": "[SCR-G04-02-1][done] 대시보드 목록 조회 분석 완료"
+ },
+ {
+  "hash": "c0471",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-11-18",
+  "message": "[SCR-B2-03] 주문서 버튼 정렬 수정"
+ },
+ {
+  "hash": "c0472",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-11-18",
+  "message": "[SCR-D01-01-1][done] 상품 등록 메인 분석 완료"
+ },
+ {
+  "hash": "c0473",
   "author_email": "pele.choi@example.com",
   "date": "2026-11-18",
-  "message": "[TASK-016-3][done] 정책 로더"
+  "message": "[SCR-C04-02-5][done] 결제 이력 목록 조회 배포 완료"
  },
  {
-  "hash": "c021",
+  "hash": "c0474",
   "author_email": "pele.choi@example.com",
+  "date": "2026-11-18",
+  "message": "[SCR-C04-03-4][done] 결제 이력 상세 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0475",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-11-18",
+  "message": "[SCR-C03-03-4][done] 환불 처리 상세 조회 통합테스트 완료"
+ },
+ {
+  "hash": "c0476",
+  "author_email": "bale.yoon@example.com",
   "date": "2026-11-19",
-  "message": "[TASK-16-4][done] 감사 로그 (업무 ID 형식 오류)"
+  "message": "[SCR-G03-01-4][done] 상품 통계 메인 통합테스트 완료"
  },
  {
-  "hash": "c022",
-  "author_email": "pele.choi@example.com",
-  "date": "2026-11-20",
-  "message": "fix: 로그 오타 수정"
+  "hash": "c0477",
+  "author_email": "figo.han@example.com",
+  "date": "2026-11-19",
+  "message": "[SCR-G02-01] 회원 통계 메인 통합테스트 진행"
  },
  {
-  "hash": "c023",
-  "author_email": "kaka.jung@example.com",
-  "date": "2026-11-18",
-  "message": "[TASK-017] 환경 구성 스크립트 작성"
- },
- {
-  "hash": "c024",
-  "author_email": "kaka.jung@example.com",
-  "date": "2026-11-16",
-  "message": "[TASK-020-1][done] 차트 컴포넌트"
- },
- {
-  "hash": "c025",
-  "author_email": "kaka.jung@example.com",
-  "date": "2026-11-17",
-  "message": "[TASK-020-2][done] 데이터 어댑터"
- },
- {
-  "hash": "c026",
-  "author_email": "kaka.jung@example.com",
-  "date": "2026-11-18",
-  "message": "[TASK-020-3][done] 범례 구현"
- },
- {
-  "hash": "c027",
+  "hash": "c0478",
   "author_email": "kaka.jung@example.com",
   "date": "2026-11-19",
-  "message": "[TASK-020-4][done] 툴팁 구현"
+  "message": "[SCR-E01-1][done] 판매 정산 분석 완료"
  },
  {
-  "hash": "c028",
+  "hash": "c0479",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-11-19",
+  "message": "[SCR-D01-01] 상품 등록 메인 개발 진행"
+ },
+ {
+  "hash": "c0480",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-11-19",
+  "message": "[SCR-D03-05] 재고 관리 수정 분석 선행 착수"
+ },
+ {
+  "hash": "c0481",
+  "author_email": "bale.yoon@example.com",
+  "date": "2026-11-20",
+  "message": "[SCR-G03-02] 상품 통계 목록 조회 분석 진행"
+ },
+ {
+  "hash": "c0482",
+  "author_email": "figo.han@example.com",
+  "date": "2026-11-20",
+  "message": "빌드 스크립트 정리"
+ },
+ {
+  "hash": "c0483",
   "author_email": "kaka.jung@example.com",
   "date": "2026-11-20",
-  "message": "TASK020 마무리 작업 (업무 ID 형식 오류)"
+  "message": "[SCR-G04-02-2][done] 대시보드 목록 조회 개발 완료"
  },
  {
-  "hash": "c029",
-  "author_email": "figo.han@example.com",
-  "date": "2026-11-16",
-  "message": "[TASK-018-1][done] 수집기 골격"
+  "hash": "c0484",
+  "author_email": "kaka.jung@example.com",
+  "date": "2026-11-20",
+  "message": "[SCR-G04-02] 대시보드 목록 조회 단위테스트 진행"
  },
  {
-  "hash": "c030",
-  "author_email": "figo.han@example.com",
-  "date": "2026-11-17",
-  "message": "[TASK-018-2][done] 파서 구현"
+  "hash": "c0485",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-11-20",
+  "message": "[SCR-C01-06-3][done] 결제수단 관리 이력 조회 단위테스트 완료"
  },
  {
-  "hash": "c031",
-  "author_email": "figo.han@example.com",
-  "date": "2026-11-18",
-  "message": "[TASK-018-3][done] 저장소 연동"
+  "hash": "c0486",
+  "author_email": "messi.kim@example.com",
+  "date": "2026-11-20",
+  "message": "[SCR-C01-06] 결제수단 관리 이력 조회 통합테스트 진행"
  },
  {
-  "hash": "c032",
-  "author_email": "figo.han@example.com",
-  "date": "2026-11-21",
-  "message": "[TASK-099] 실험 코드 (fixture에 없는 업무)"
+  "hash": "c0487",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-11-20",
+  "message": "[SCR-C04-04-1][done] 결제 이력 등록 분석 완료"
  },
  {
-  "hash": "c033",
-  "author_email": "figo.han@example.com",
-  "date": "2026-11-16",
-  "message": "[TASK-021-1][done] 설정 폼"
+  "hash": "c0488",
+  "author_email": "pele.choi@example.com",
+  "date": "2026-11-20",
+  "message": "[SCR-C04-04] 결제 이력 등록 개발 진행"
  },
  {
-  "hash": "c034",
-  "author_email": "figo.han@example.com",
-  "date": "2026-11-17",
-  "message": "[TASK-021-2][done] 설정 저장"
+  "hash": "c0489",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-11-20",
+  "message": "[SCR-C03-04-1][done] 환불 처리 등록 분석 완료"
  },
  {
-  "hash": "c035",
-  "author_email": "figo.han@example.com",
-  "date": "2026-11-22",
-  "message": "[TASK-0123-1][done] 배포 점검 (업무 ID 형식 오류)"
+  "hash": "c0490",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-11-20",
+  "message": "[SCR-C03-04] 환불 처리 등록 개발 진행"
+ },
+ {
+  "hash": "c0491",
+  "author_email": "kane.lee@example.com",
+  "date": "2026-11-24",
+  "message": "[SCR-B03-05-3][done] 주문 조회 수정 단위테스트 완료"
+ },
+ {
+  "hash": "c0492",
+  "author_email": "zidane.park@example.com",
+  "date": "2026-11-25",
+  "message": "[SCR-B04-03-4][done] 취소·반품 상세 조회 통합테스트 완료"
  }
 ]

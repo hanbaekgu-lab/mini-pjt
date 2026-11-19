@@ -12,7 +12,7 @@ MD = """> 자동 작성 문서
 ## 진척 현황
 | 업무 | 진척률 | 진행 |
 |---|---:|---|
-| TASK-012 결제 <API> | **40.00%** | `████░░░░░░` |
+| SCR-C02-01 결제 <승인> | **40.00%** | `████░░░░░░` |
 
 ## 결정사항
 - 목 서버로 개발
@@ -27,7 +27,7 @@ def test_converter_makes_confluence_storage():
     assert '<ac:structured-macro ac:name="info">' in s
     assert "<h2>진척 현황</h2>" in s
     assert "<table><tbody><tr><th>업무</th><th style=\"text-align: right;\">진척률</th><th>진행</th></tr>" in s
-    assert "<td>TASK-012 결제 &lt;API&gt;</td>" in s  # 특수문자 이스케이프
+    assert "<td>SCR-C02-01 결제 &lt;승인&gt;</td>" in s  # 특수문자 이스케이프
     assert "<strong>40.00%</strong>" in s and "<code>████░░░░░░</code>" in s
     assert "<ul><li>목 서버로 개발</li></ul>" in s
     assert s.count("<ac:task>") == 2 and "<ac:task-status>complete</ac:task-status>" in s
@@ -36,6 +36,20 @@ def test_converter_makes_confluence_storage():
 def test_meeting_material_converts_tables():
     s = md_to_storage(meeting.build_meeting_material())
     assert s.count("<table>") >= 3 and "<ac:task-list>" in s and "|---" not in s
+
+
+def test_converter_colors_week_over_week_markers():
+    s = md_to_storage("| 항목 | 증감 |\n|---|---|\n| 진척 | ▲ +1.86%p |\n| 차이 | ▼ -0.36%p |\n| 화면 | ▲ +3 |\n| 기타 | - |")
+    assert '<td><span style="color: rgb(0,135,90);">▲ +1.86%p</span></td>' in s  # 증가 초록
+    assert '<td><span style="color: rgb(222,53,11);">▼ -0.36%p</span></td>' in s  # 감소 빨강
+    assert '<span style="color: rgb(0,135,90);">▲ +3</span>' in s and "<td>-</td>" in s
+    assert "<span" not in md_to_storage("- 일정 경과율 -7.63%p, 증감 없음")  # 마커 없는 부호는 그대로
+
+
+def test_meeting_material_storage_has_colored_deltas():
+    s = md_to_storage(meeting.build_meeting_material())
+    assert s.count('<span style="color: rgb(0,135,90);">▲ +') >= 10
+    assert '<span style="color: rgb(222,53,11);">▼ -0.36%p</span>' in s  # 계획 대비 차이 악화
 
 
 def test_fake_mode_writes_storage_preview(tmp_path, monkeypatch):

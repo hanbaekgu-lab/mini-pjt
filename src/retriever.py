@@ -80,11 +80,11 @@ def levers() -> set[str]:
 
 
 def _words(s: str) -> list[str]:
-    return re.findall(r"TASK-\d{3}|[0-9A-Za-z가-힣_]+", s)
+    return re.findall(r"SCR-[A-Z]\d{2}-\d{2}|[0-9A-Za-z가-힣_]+", s)
 
 
 def _stem(w: str) -> str:
-    if w.startswith("TASK-"):
+    if w.startswith("SCR-"):
         return w
     for p in PARTICLES:
         if w.endswith(p) and len(w) > len(p) + 1:
@@ -175,11 +175,17 @@ def bm25_scores(terms: list[str], docs: list[dict], k1: float = 1.5, b: float = 
 
 
 def doc_meta(doc: dict) -> dict:
-    """주차·업무 ID·유형 메타데이터."""
+    """주차·화면 ID·유형 메타데이터."""
     m = re.search(r"\((\d{4}-\d{2}-\d{2})\)", doc["text"].splitlines()[0]) if doc["text"] else None
-    kind = ("회의록" if doc["doc_id"].startswith("MIN-") else "업무정의서" if doc["doc_id"].startswith("TASK-DEF")
-            else "팀규칙" if doc["doc_id"].startswith("RULE-") else "Confluence회의자료")
-    return {"date": m.group(1) if m else None, "kind": kind, "tasks": set(re.findall(r"TASK-\d{3}", doc["text"]))}
+    kind = ("회의록" if doc["doc_id"].startswith("MIN-") else "화면정의서" if doc["doc_id"].startswith("SCR-DEF")
+            else "팀규칙" if doc["doc_id"].startswith("RULE-") else "일정" if doc["doc_id"].startswith("PLAN-")
+            else "Confluence회의자료")
+    return {"date": m.group(1) if m else None, "kind": kind, "screens": set(_screen_ids(doc["text"]))}
+
+
+def _screen_ids(text: str) -> list[str]:
+    from src import tools
+    return tools.SCREEN_ID_RE.findall(text)
 
 
 def _week_start(date: str):
@@ -215,21 +221,21 @@ def search_scored(query: str, k: int = 3, docs: list[dict] | None = None) -> lis
         return {i: r for r, i in enumerate(order)}
     rb, rd = rank(bm), rank(dn)
     fused = [1 / (60 + rb[i]) + 1 / (60 + rd[i]) for i in range(len(docs))]
-    # 리랭킹: 질의 용어 커버리지 + 업무 ID 일치
-    task_ids = set(re.findall(r"TASK-\d{3}", query))
+    # 리랭킹: 질의 용어 커버리지 + 화면 ID 일치
+    screen_ids = set(_screen_ids(query))
     scored = []
     for i, d in enumerate(docs):
         meta = doc_meta(d)
         cov = sum(1 for t in terms if t.lower() in d["text"].lower()) / max(len(terms), 1)
-        sc = fused[i] + 0.05 * cov + (0.05 if task_ids & meta["tasks"] else 0)
+        sc = fused[i] + 0.05 * cov + (0.05 if screen_ids & meta["screens"] else 0)
         if "filter" in lv:
             tw = _target_week(query)
             if tw is not None and meta["kind"] == "회의록" and meta["date"]:
                 if _week_start(meta["date"]) != tw:
                     sc *= 0.2  # 주차 혼입 방지
-            if task_ids and meta["kind"] != "팀규칙" and not (task_ids & meta["tasks"]):
+            if screen_ids and meta["kind"] != "팀규칙" and not (screen_ids & meta["screens"]):
                 sc *= 0.3
-            if re.search(r"완료\s*조건|정의서", query) and meta["kind"] == "업무정의서":
+            if re.search(r"완료\s*조건|정의서", query) and meta["kind"] == "화면정의서":
                 sc *= 1.5
             if re.search(r"규칙|형식|양식|템플릿|가이드", query) and meta["kind"] == "팀규칙":
                 sc *= 1.5

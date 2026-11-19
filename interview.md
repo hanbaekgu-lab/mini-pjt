@@ -58,3 +58,17 @@
 - Team 6 devs (example; any team size); PM/PL weekly doc 3h → 5min; dev manual entry 30min/week → 0; ≈5h55m/week saved (estimate; general: 2h55m + devs × 30min). Non-time value: commit-evidenced freshness/objectivity; meeting time on blockers.
 - Expansion A (internal contribution): team pilot with real Git/Jira/Confluence → company-wide standardization → template to other teams. No monetization.
 - State: "보고 부담을 줄이는 도구이며 개인 평가에는 사용하지 않음".
+
+## Domain redesign (user-confirmed)
+- Project: platform migration, 2026-03-02 ~ 2027-02-26 (1 year). Reference week unchanged (2026-11-16 Mon ~ 11-22 Sun, month 9).
+- Menus: 8 large (A~H) → 34 medium → exactly 170 screens. Screen ID = menu code (`SCR-A01-03`); one screen = one task.
+- Fixed 4 phases per screen: 1 analysis, 2 development, 3 unit test, 4 integration test. Commits `[SCR-A01-03] summary`, phase done `[SCR-A01-03-2][done]`.
+- Team of 10: PM 1, PL 2 (PL1 = A~D with 4 devs, PL2 = E~H with 3 devs), developers 7.
+- Roles `pm` (all) / `pl` (own part's menus and devs) / `developer` (own screens). PM and PL can approve meeting material; developers cannot.
+- Meeting material shows menu/phase/developer rollups and the top 10 delayed screens instead of all 170 screens.
+- Fixtures and ground truth come from a fixed-seed generator (`data/fixtures/make_fixtures.py`). Stored eval results predate the redesign; their checks are skipped until re-evaluation.
+- Identity & scope (added): identity comes from the session (`user_id`/`role`), not from what the user types. Self-identification wording ("I'm a PL, show my part") is not refused by itself; only requests outside the session identity's scope (another person, another part, whole team for a developer) get the fixed refusal. A request whose role differs from the user's registered role gets HTTP 403 (still demo-level, no auth).
+- Meeting material visibility (added): the material is shared with all attendees (PM, PL, developers), so it shows progress only by work classification (overall, large/medium menu, phase, delayed screens without an owner column). The per-developer table is removed and no individual progress rate appears. Action items still name the assignee. Only PM/PL create and approve; anyone can read the published page.
+- Individual progress (added): on demand for managers only — PM for anyone, PL for own-part members, developer for self.
+- Schedule context & week-over-week flow (added): the meeting material shows schedule elapsed, planned vs actual progress, gap (%p) and a status (on track / caution / delayed at -3%p / -10%p) overall, per part and per menu, plus deltas against the previous meeting snapshot (▲ green, ▼ red). The previous snapshot lives in long-term memory (seeded from the stored meeting history when empty) and this week's snapshot is saved after publishing. Issues are tracked across meetings by stable IDs (resolved / open for N weeks / new), and last week's action items are checked against commit data. No person names appear anywhere in the material, including decisions, blockers and action items.
+- Shared documents (added): role scope applies only to individual progress and people data. Screen definitions, team rules, the migration plan and minutes are readable by everyone, so a developer asking for the completion criteria of a screen owned by someone else gets an answer, while that screen's progress stays refused. The PL part report includes the medium-menu rollup and the part's planned-vs-actual progress.

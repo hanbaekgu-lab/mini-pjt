@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 
 ROUTES = ("progress", "docs_qa", "meeting_material")
 MEETING_KW = ("회의 자료", "회의자료", "회의 초안", "주간회의")
-PROGRESS_KW = ("진척", "남은", "MM", "mm", "현황", "업무", "진행률")
+PROGRESS_KW = ("진척", "남은", "MM", "mm", "현황", "업무", "진행률", "대메뉴", "중메뉴", "지연 화면", "지연된 화면")
 
 _llm_router: Optional[Callable[[str], str]] = None
 
@@ -20,14 +20,14 @@ _llm_router: Optional[Callable[[str], str]] = None
 class RouteDecision(BaseModel):
     """Supervisor가 고른 담당 에이전트."""
     route: Literal["progress", "docs_qa", "meeting_material"] = Field(
-        description="progress=진척률·남은 MM·커밋·업무 현황 수치, docs_qa=지연 이유·결정사항·규칙·완료 조건 등 문서 질문, "
+        description="progress=진척률·남은 MM·커밋·화면/메뉴 현황 수치, docs_qa=지연 이유·결정사항·규칙·완료 조건 등 문서 질문, "
                     "meeting_material=주간 회의 자료 작성·게시")
     reason: str = Field(description="한 문장 이유")
 
 
 ROUTER_SYSTEM = (
     "너는 '주간 진척 보고 에이전트'의 Supervisor다. 사용자 질문을 담당 에이전트 하나에 배정한다.\n"
-    "- progress: 진척률, 남은 업무, 남은 MM, 커밋, 업무 ID 현황처럼 숫자·현황을 계산해야 하는 질문\n"
+    "- progress: 진척률, 남은 화면·단계, 남은 MM, 커밋, 화면 ID(SCR-A01-03)·대메뉴·중메뉴 현황처럼 숫자·현황을 계산해야 하는 질문\n"
     "- docs_qa: 왜 지연됐는지, 회의에서 무엇을 결정했는지, 규칙·형식·완료 조건, 액션아이템 등 문서에 적힌 내용, "
     "그리고 서비스 범위 밖이거나 문서에 없을 수 있는 질문\n"
     "- meeting_material: 주간 회의 자료를 만들거나 Confluence에 올려 달라는 요청")

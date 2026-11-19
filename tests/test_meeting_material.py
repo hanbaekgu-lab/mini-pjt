@@ -20,7 +20,7 @@ def _reset(tmp_path, monkeypatch):
 
 
 def post(**kw):
-    b = {"question": Q, "user_id": "pm01", "role": "pm_pl"}
+    b = {"question": Q, "user_id": "pm01", "role": "pm"}
     b.update(kw)
     return client.post("/query", json=b).json()
 
@@ -41,9 +41,45 @@ def test_material_has_sections_and_matching_numbers():
     team = rep["progress"]
     assert f"**{team['progress']*100:.2f}%**" in body
     assert f"{team['remaining_mm']:.2f}MM" in body
-    for t in team["tasks"]:  # 업무별 표의 행마다 도구 수치가 그대로 들어간다
-        row = next(ln for ln in body.splitlines() if ln.startswith(f"| {t['task_id']} {t['title']} |"))
-        assert f"| {t['progress']*100:.2f}% |" in row and f"| {t['remaining_mm']:.2f}MM |" in row
+    for m in rep["large_menus"] + rep["medium_menus"]:  # 메뉴별 표의 행마다 도구 수치가 그대로 들어간다
+        row = next(ln for ln in body.splitlines() if ln.startswith(f"| {m['code']} {m['name']} |"))
+        assert f"| {m['progress']*100:.2f}% |" in row and f"| {m['remaining_mm']:.2f}MM |" in row
+        assert f"| {m['screens_done']}/{m['screens_total']} |" in row
+    for ph in rep["phases"]:
+        assert f"| {ph['no']} {ph['name']} | {ph['done']}/{ph['total']} |" in body
+
+
+def test_material_is_readable_for_170_screens():
+    body = meeting.build_meeting_material()
+    rep = tools.build_progress_report()
+    for sec in ("### 대메뉴별", "### 중메뉴별", "### 단계별 완료 현황", "계획 대비 지연 화면"):
+        assert sec in body
+    section = body.split("### ⏰", 1)[1].split("### ⚠️", 1)[0]
+    delayed_rows = [ln for ln in section.splitlines() if ln.startswith("| SCR-")]
+    assert len(delayed_rows) == min(len(rep["delayed"]), tools.TOP_N)  # 지연 화면 상위 N개만
+    assert [r.split(" ")[1] for r in delayed_rows] == [s["screen_id"] for s in rep["delayed"][:tools.TOP_N]]
+    assert f"전체 {len(rep['delayed'])}개" in body
+    assert len(body.splitlines()) < 250
+
+
+def test_material_has_no_individual_progress():
+    # 회의 자료는 참석자 전원에게 공유된다: 개인별 진척 표·담당자 열 없음, 사람 이름 옆에 진척률(%) 없음
+    body = meeting.build_meeting_material()
+    assert "### 개발자별" not in body and "| 담당 |" not in body and "| 작성자 |" not in body
+    names = [d["name"] for d in tools.load_developers()]
+    progress = body.split("## 결정사항", 1)[0]
+    assert not any(n in progress for n in names)  # 진척 현황 섹션에는 사람 이름이 없다
+    assert not any(n in ln and "%" in ln for ln in body.splitlines() for n in names)
+
+
+def test_developer_can_read_published_page():
+    # 게시된 회의 자료는 누구나 읽을 수 있다. 개발자 RAG 경로의 타인 수치 제외 가드는 그대로 둔다.
+    from src import guardrails
+    pid = publish()
+    page = mcp_client.call_tool("get_page", {"page_id": pid})
+    ctx, _ = guardrails.sanitize_contexts("developer", "dev01", [{"doc_id": pid, "text": page["body"]}])
+    team = tools.build_progress_report()["progress"]
+    assert "### 대메뉴별" in ctx[0]["text"] and f"**{team['progress']*100:.2f}%**" in ctx[0]["text"]
 
 
 def test_published_page_retrievable_via_mcp():
@@ -71,3 +107,128 @@ def test_republish_replaces_without_duplicates():
     assert [d["doc_id"] for d in retriever.runtime_documents()].count(p1) == 1
     assert len(mcp_client.call_tool("search_pages", {"query": "결정사항"})) == 1
     assert len(list(retriever.generated_dir().glob("*.md"))) == 1
+
+
+def test_no_person_names_anywhere_in_meeting_material():
+    """회의 자료는 참석자 전원 공유 문서: 결정사항·블로커·액션아이템 어디에도 팀원 이름이 없다."""
+    body = meeting.build_meeting_material()
+    assert not [d["name"] for d in tools.load_developers() if d["name"] in body]
+    assert meeting.strip_names("SCR-A01-03 개발 완료 (담당: 김메시님)") == "SCR-A01-03 개발 완료"
+
+
+# --- 일정 대비 진척 · 지난주 대비 · 이슈 추적 (정답: 생성기가 따로 계산한 expected_progress.json)
+import json
+from pathlib import Path
+
+EXPECTED = json.loads((Path(tools.FIXTURE_DIR) / "expected_progress.json").read_text(encoding="utf-8"))
+SCH = EXPECTED["schedule"]
+PLAN_KEYS = ("progress", "planned_progress", "gap_pp", "schedule_status")
+
+
+def test_plan_vs_actual_matches_expected():
+    rep = tools.build_progress_report()
+    assert rep["schedule"]["elapsed"] == SCH["elapsed"] and 0.70 < SCH["elapsed"] < 0.75
+    assert {k: rep["progress"][k] for k in PLAN_KEYS} == SCH["team"]
+    for group in ("parts", "large_menus", "medium_menus"):
+        assert {m["code"]: {k: m[k] for k in PLAN_KEYS} for m in rep[group]} == SCH[group]
+    assert {s["schedule_status"] for s in SCH["large_menus"].values()} == {"정상", "주의", "지연"}
+    assert tools.schedule_status(-3.0) == "정상" and tools.schedule_status(-3.01) == "주의"
+    assert tools.schedule_status(-10.0) == "주의" and tools.schedule_status(-10.01) == "지연"
+    body = meeting.build_meeting_material()
+    t = SCH["team"]
+    assert (f"| **전체** | {t['planned_progress']*100:.2f}% | **{t['progress']*100:.2f}%** | {t['gap_pp']:+.2f}%p |"
+            in body)
+    assert f"일정 경과율 **{SCH['elapsed']*100:.2f}%**" in body
+    for code, m in SCH["large_menus"].items():
+        row = next(ln for ln in body.splitlines() if ln.startswith(f"| {code} "))
+        assert f"| {m['planned_progress']*100:.2f}% | {m['progress']*100:.2f}% | {m['gap_pp']:+.2f}%p |" in row
+
+
+def test_planned_ratio_linear_and_clamped():
+    s = {"planned_start": "2026-11-02", "planned_end": "2026-11-12"}
+    assert tools.planned_ratio(s, "2026-11-01") == 0 and tools.planned_ratio(s, "2026-11-12") == 1
+    assert tools.planned_ratio(s, "2026-11-07") == tools.Fraction(1, 2)
+    assert all(x["planned_start"] < x["planned_end"] for x in tools.load_screens())
+
+
+def test_previous_snapshot_and_week_over_week_deltas():
+    prev = tools.previous_snapshot()
+    exp = EXPECTED["previous_week"]
+    assert prev["week"] == exp["week"] == {"start": "2026-11-09", "end": "2026-11-15"}
+    assert prev["team"] == exp["team"]
+    assert {k: v["progress"] for k, v in prev["large_menus"].items()} == exp["large_menus"]
+    assert {k: v["progress"] for k, v in prev["medium_menus"].items()} == exp["medium_menus"]
+    # 지난주 → 이번 주: 진척·완료 화면·단계 완료는 줄지 않는다
+    assert all(EXPECTED["medium_menus"][k]["progress"] >= v for k, v in exp["medium_menus"].items())
+    assert all(EXPECTED["phases"][k] >= v for k, v in exp["phases"].items())
+    assert EXPECTED["team"]["screens_done"] - exp["team"]["screens_done"] == len(exp["completed_this_week"]) > 0
+    body = meeting.build_meeting_material()
+    cur = EXPECTED["team"]["progress"]
+    d = round((cur - exp["team"]["progress"]) * 100, 2)
+    assert f"| 전체 실적 진척률 | {exp['team']['progress']*100:.2f}% | **{cur*100:.2f}%** | ▲ +{d:.2f}%p |" in body
+    for code, before in exp["large_menus"].items():
+        row = next(ln for ln in body.splitlines() if ln.startswith(f"| {code} "))
+        dd = round((EXPECTED["large_menus"][code]["progress"] - before) * 100, 2)
+        assert f"| {before*100:.2f}% | {f'▲ +{dd:.2f}%p' if dd > 0 else '-'} |" in row
+    assert "▼" in body.split("### 대메뉴별")[0]  # 계획 대비 차이 악화는 감소 표시
+
+
+def test_issue_tracking_resolved_persistent_new():
+    ctx = meeting.meeting_context()
+    tr, exp = ctx["issues"], EXPECTED["issue_tracking"]
+    assert sorted(i["id"] for i in tr["resolved"]) == exp["resolved"]
+    assert sorted(i["id"] for i in tr["new"]) == exp["new"]
+    assert {i["id"]: i["weeks"] for i in tr["persistent"]} == exp["persistent"]
+    assert tr["resolved"] and tr["persistent"] and tr["new"]  # 해결·지속·신규가 모두 있다
+    assert {i["id"] for i in tools.previous_snapshot()["issues"]} == set(EXPECTED["previous_week"]["issue_ids"])
+    section = meeting.build_meeting_material().split("## 이슈 추적", 1)[1].split("## 지난주 액션아이템 이행", 1)[0]
+    assert "| ✅ 해결 | " in section and f"**{len(exp['resolved'])}** |" in section
+    assert "| DLY-SCR-C02-01 |" in section and "| 🔁 미해결 | 12주 |" in section
+
+
+def test_previous_action_items_completion_from_data():
+    ctx = meeting.meeting_context()
+    got = {t: ok for t, ok, _ in ctx["prev_actions"]}
+    assert got == EXPECTED["previous_action_items"]
+    assert any(got.values()) and not all(got.values())
+    screens = {s["screen_id"]: s for s in tools.calc_progress()["screens"]}
+    assert meeting.action_status("PG사 테스트 계정 재요청", screens, set())[0] is None  # 데이터로 확인 불가
+    body = meeting.build_meeting_material()
+    assert "| ✅ 완료 | 단계 완료 표시 확인 |" in body and "| ⬜ 미완료 |" in body
+
+
+def test_without_history_everything_is_new():
+    body = meeting.build_meeting_material(load_history=False)
+    assert "### 지난주 대비 변화" not in body and "모두 신규로 등록" in body
+    ctx = meeting.meeting_context(load_history=False)
+    assert not ctx["issues"]["resolved"] and not ctx["issues"]["persistent"]
+
+
+def test_week_snapshot_feeds_next_week():
+    ctx = meeting.meeting_context()
+    snap = meeting.week_snapshot(ctx, ["SCR-C02-01 결제 승인 메인: SCR-C02-01-3 완료"])
+    assert snap["week"]["start"] == "2026-11-16" and snap["team"]["progress"] == EXPECTED["team"]["progress"]
+    nxt = meeting.track_issues(tools.current_issues(ctx["report"]), snap, "2026-11-23")
+    assert not nxt["resolved"] and not nxt["new"]  # 같은 데이터면 모두 미해결로 이어진다
+    assert next(i for i in nxt["persistent"] if i["id"] == "DLY-SCR-C02-01")["weeks"] == 13
+
+
+def test_previous_week_page_from_snapshot():
+    page = meeting.render_snapshot_page(tools.previous_snapshot())
+    prev = EXPECTED["previous_week"]["team"]
+    assert f"**{prev['progress']*100:.2f}%**" in page and "## 이슈 목록" in page and "## 액션아이템" in page
+    assert not [d["name"] for d in tools.load_developers() if d["name"] in page]
+
+
+def test_committed_meeting_pages_are_current():
+    # 저장소에 커밋한 회의 자료 페이지는 결정적 렌더 결과와 같다 (이번 주·지난주)
+    from src import middleware
+    from src.confluence_convert import md_to_storage
+    root = Path(__file__).resolve().parent.parent / "data" / "confluence_pages"
+    prev = tools.previous_snapshot()
+    for week, body in (("2026-11-16", meeting.build_meeting_material()), ("2026-11-09", meeting.render_snapshot_page(prev))):
+        body = middleware.mask_pii(body)
+        md = (root / f"{meeting.meeting_page_id(week)}.md").read_text(encoding="utf-8")
+        assert md == f"# {meeting.meeting_title(week)}\n\n{body}\n"
+        assert (root / f"{meeting.meeting_page_id(week)}.storage.xml").read_text(encoding="utf-8") == md_to_storage(body)
+

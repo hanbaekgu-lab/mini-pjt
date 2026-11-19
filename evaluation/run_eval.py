@@ -45,10 +45,13 @@ RAW_EMAIL = re.compile(r"[A-Za-z0-9._%+-]{2,}@")  # 마스킹된 'k***@'는 loca
 PHONE = re.compile(r"(?<![\d*-])0\d{1,2}[-. ]?\d{3,4}[-. ]?\d{4}(?![\d-])")
 TOOL_ALIAS = {"build_progress_report": ["calc_progress", "calc_remaining_mm", "check_mismatch"],
               "confluence_publish": ["create_page"]}
-GUARDRAIL_IDS = {11, 13, 18, 19, 20}   # 가드레일 차단 대상 케이스
-NUMERIC_IDS = {1, 2, 4, 14}            # 수치 exact-match 대상 케이스
+GUARDRAIL_IDS = {11, 13, 18, 19, 20}   # 가드레일 차단 대상 케이스 (11 승인 없는 게시, 13 세션 범위 밖 요청, 18 PL 타 파트, 19 인젝션, 20 순위)
+NUMERIC_IDS = {1, 2, 4, 14}            # 수치 exact-match 대상 케이스 (1 회의 자료, 2 개발자 본인, 4 PL2 파트, 14 화면 단건)
+APPROVAL_ID, DRAFT_ID = 8, 1           # 8번은 1번 응답의 thread_id로 승인(approve) 재개
+NUMERIC_PART, NUMERIC_DEV, NUMERIC_SCREEN = "PL2", "dev01", "SCR-A04-05"
 EXPECTED = json.loads((ROOT / "data/fixtures/expected_progress.json").read_text(encoding="utf-8"))
 DEVS = {d["developer_id"]: d for d in json.loads((ROOT / "data/fixtures/developers.json").read_text(encoding="utf-8"))}
+PARTS = json.loads((ROOT / "data/fixtures/project.json").read_text(encoding="utf-8"))["parts"]
 JUDGE_PROMPT = (ROOT / "evaluation/judge_prompt.md").read_text(encoding="utf-8")
 
 
@@ -63,17 +66,22 @@ def mm(x: float) -> str:
 # ----------------------------------------------------------------------------- 결정적 검사
 def numeric_check(cid: int, ans: str) -> bool:
     """도구 계산 결과(fixture 정답)와의 exact-match."""
-    if cid == 1:
-        return all(f"{DEVS[k]['name']}({k}): 진척률 {pct(v['progress'])}, 남은 {mm(v['remaining_mm'])}" in ans
-                   for k, v in EXPECTED["developers"].items()) \
-            and f"진척률 {pct(EXPECTED['team']['progress'])}" in ans and mm(EXPECTED["team"]["remaining_mm"]) in ans
+    if cid == 1:  # 회의 자료 표: 전체 요약 + 대메뉴별 행 (개인별 진척률은 싣지 않는다)
+        team, rows = EXPECTED["team"], ans.splitlines()
+        return f"**{pct(team['progress'])}**" in ans and mm(team["remaining_mm"]) in ans and all(
+            any(r.startswith(f"| {k} ") and f"| {pct(v['progress'])} |" in r and f"| {mm(v['remaining_mm'])} |" in r
+                for r in rows) for k, v in EXPECTED["large_menus"].items()) and not any(
+            d["name"] in r and "%" in r for r in rows for d in DEVS.values())
     if cid == 2:
-        v = EXPECTED["developers"]["dev01"]
+        v = EXPECTED["developers"][NUMERIC_DEV]
         return f"진척률 {pct(v['progress'])}" in ans and f"남은 {mm(v['remaining_mm'])}" in ans
-    if cid == 4:
-        return f"진척률 {pct(EXPECTED['team']['progress'])}" in ans and f"남은 {mm(EXPECTED['team']['remaining_mm'])}" in ans
+    if cid == 4:  # PL2 파트 합계 + 파트 대메뉴별
+        v = EXPECTED["parts"][NUMERIC_PART]
+        large = [EXPECTED["large_menus"][c] for c in PARTS[NUMERIC_PART]["large_menus"]]
+        return f"진척률 {pct(v['progress'])}" in ans and f"남은 {mm(v['remaining_mm'])}" in ans and all(
+            f"진척률 {pct(m['progress'])}, 남은 {mm(m['remaining_mm'])}" in ans for m in large)
     if cid == 14:
-        v = EXPECTED["tasks"]["TASK-007"]
+        v = EXPECTED["screens"][NUMERIC_SCREEN]
         return f"진척률 {pct(v['progress'])}" in ans and f"남은 {mm(v['remaining_mm'])}" in ans
     return True
 
@@ -166,7 +174,7 @@ def ragas_scores(question: str, answer: str, contexts: list[dict], reference: st
     from ragas.metrics import Faithfulness, LLMContextRecall
 
     llm = LangchainLLMWrapper(config.get_llm())
-    # 인용 표기([doc_id])는 주장이 아니므로 제거한다. 실제 문서 ID만 지워야 본문의 '[TASK-ID]' 같은 형식 예시가 남는다.
+    # 인용 표기([doc_id])는 주장이 아니므로 제거한다. 실제 문서 ID만 지워야 본문의 '[화면ID]' 같은 형식 예시가 남는다.
     doc_ids = {c["doc_id"] for c in contexts} | {d["doc_id"] for d in _corpus()}
     response = re.sub(r"\s*\[([^\]]+)\]", lambda m: "" if m.group(1) in doc_ids else m.group(0), answer)
     sample = SingleTurnSample(user_input=question, response=response,
@@ -196,16 +204,17 @@ def run_once(rows: list[dict], work: Path) -> dict:
     out, tid1 = {}, None
     for r in rows:
         cid = int(r["id"])
-        meta = dict(re.findall(r"(role|user_id)=(\w+)", r["note"]))
-        body = {"question": r["input"], "user_id": meta["user_id"], "role": meta["role"]}
-        if cid == 8:
+        role = re.search(r"role=(pm|pl|developer)\b", r["note"]).group(1)
+        user_id = re.search(r"user_id=(\w+)", r["note"]).group(1)
+        body = {"question": r["input"], "user_id": user_id, "role": role}
+        if cid == APPROVAL_ID:
             body.update(thread_id=tid1, approval="approve")
         resp = client.post("/query", json=body)
         d = resp.json()
-        if cid == 1:
+        if cid == DRAFT_ID:
             tid1 = d["thread_id"]
         extra = ""
-        if cid == 8:
+        if cid == APPROVAL_ID:
             for p in (work / "confluence").rglob("*.md"):
                 extra += p.read_text(encoding="utf-8")
         out[cid] = {**d, "status": resp.status_code, "extra": extra}
@@ -302,8 +311,8 @@ def write_report(res: dict, prev: dict | None) -> str:
         L.append(f"| {c['id']} | {c['category']} | {c['passes']}/3 | {'PASS' if c['pass'] else 'FAIL'} | {why} |")
     if res["round"] == 2:
         L += ["", "## 적용한 개선 레버", "",
-              "1. 하이브리드 검색: BM25 + Titan 벡터 RRF 결합 + 용어 커버리지/업무 ID 리랭킹",
-              "2. 쿼리 확장: 지연→블로커, 조치→결정사항·액션아이템 등", "3. 주차(지난주/지난 회의)·업무 ID 메타데이터 필터",
+              "1. 하이브리드 검색: BM25 + Titan 벡터 RRF 결합 + 용어 커버리지/화면 ID 리랭킹",
+              "2. 쿼리 확장: 지연→블로커, 조치→결정사항·액션아이템 등", "3. 주차(지난주/지난 회의)·화면 ID 메타데이터 필터",
               "4. 인용 규칙 + 문서에 근거가 없으면 '알 수 없다'고 답하는 grounded 프롬프트"]
     return "\n".join(L) + "\n"
 

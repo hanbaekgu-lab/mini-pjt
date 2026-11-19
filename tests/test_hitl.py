@@ -1,4 +1,4 @@
-"""HITL 승인 흐름 테스트: 승인 없이는 게시 없음, PM/PL만 승인, 멱등."""
+"""HITL 승인 흐름 테스트: 승인 없이는 게시 없음, PM·PL만 승인(개발자 불가), 멱등."""
 import pytest
 from fastapi.testclient import TestClient
 
@@ -16,7 +16,7 @@ def _reset(tmp_path, monkeypatch):
 
 
 def post(**kw):
-    b = {"question": Q, "user_id": "pm01", "role": "pm_pl"}
+    b = {"question": Q, "user_id": "pm01", "role": "pm"}
     b.update(kw)
     return client.post("/query", json=b)
 
@@ -53,7 +53,7 @@ def test_developer_cannot_approve():
     assert r.status_code == 200
     assert r.json()["answer"] == "해당 정보는 조회 권한이 없습니다"
     assert confluence.list_pages() == []
-    # 여전히 승인 대기 → PM/PL은 이후 승인 가능
+    # 여전히 승인 대기 → PM·PL은 이후 승인 가능
     assert post(thread_id=tid, approval="approve").json()["pending_approval"] is False
     assert len(confluence.list_pages()) == 1
 
@@ -83,3 +83,17 @@ def test_duplicate_reject_then_approve_stays_rejected():
 
 def test_unknown_thread_404():
     assert post(thread_id="nope", approval="approve").status_code == 404
+
+
+def test_pl_can_create_and_approve():
+    d = post(user_id="pl02", role="pl").json()
+    assert d["pending_approval"] is True and confluence.list_pages() == []
+    ok = post(user_id="pl02", role="pl", thread_id=d["thread_id"], approval="approve").json()
+    assert ok["pending_approval"] is False and "게시했습니다" in ok["answer"]
+    assert len(confluence.list_pages()) == 1
+
+
+def test_pl_can_approve_pm_draft():
+    tid = pending()
+    assert post(user_id="pl01", role="pl", thread_id=tid, approval="approve").json()["pending_approval"] is False
+    assert len(confluence.list_pages()) == 1

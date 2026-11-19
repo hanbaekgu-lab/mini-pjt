@@ -1,9 +1,82 @@
 [
-  {"developer_id": "dev01", "name": "김메시", "email": "messi.kim@example.com", "role": "developer"},
-  {"developer_id": "dev02", "name": "박지단", "email": "zidane.park@example.com", "role": "developer"},
-  {"developer_id": "dev03", "name": "이케인", "email": "kane.lee@example.com", "role": "developer"},
-  {"developer_id": "dev04", "name": "최펠레", "email": "pele.choi@example.com", "role": "developer"},
-  {"developer_id": "dev05", "name": "정카카", "email": "kaka.jung@example.com", "role": "developer"},
-  {"developer_id": "dev06", "name": "한피구", "email": "figo.han@example.com", "role": "developer"},
-  {"developer_id": "pm01", "name": "오루니", "email": "rooney.oh@example.com", "role": "pm_pl"}
+ {
+  "developer_id": "pm01",
+  "name": "오루니",
+  "email": "rooney.oh@example.com",
+  "role": "pm",
+  "part": null,
+  "lead": null
+ },
+ {
+  "developer_id": "pl01",
+  "name": "강앙리",
+  "email": "henry.kang@example.com",
+  "role": "pl",
+  "part": "PL1",
+  "lead": "pm01"
+ },
+ {
+  "developer_id": "pl02",
+  "name": "서살라",
+  "email": "salah.seo@example.com",
+  "role": "pl",
+  "part": "PL2",
+  "lead": "pm01"
+ },
+ {
+  "developer_id": "dev01",
+  "name": "김메시",
+  "email": "messi.kim@example.com",
+  "role": "developer",
+  "part": "PL1",
+  "lead": "pl01"
+ },
+ {
+  "developer_id": "dev02",
+  "name": "박지단",
+  "email": "zidane.park@example.com",
+  "role": "developer",
+  "part": "PL1",
+  "lead": "pl01"
+ },
+ {
+  "developer_id": "dev03",
+  "name": "이케인",
+  "email": "kane.lee@example.com",
+  "role": "developer",
+  "part": "PL1",
+  "lead": "pl01"
+ },
+ {
+  "developer_id": "dev04",
+  "name": "최펠레",
+  "email": "pele.choi@example.com",
+  "role": "developer",
+  "part": "PL1",
+  "lead": "pl01"
+ },
+ {
+  "developer_id": "dev05",
+  "name": "정카카",
+  "email": "kaka.jung@example.com",
+  "role": "developer",
+  "part": "PL2",
+  "lead": "pl02"
+ },
+ {
+  "developer_id": "dev06",
+  "name": "한피구",
+  "email": "figo.han@example.com",
+  "role": "developer",
+  "part": "PL2",
+  "lead": "pl02"
+ },
+ {
+  "developer_id": "dev07",
+  "name": "윤베일",
+  "email": "bale.yoon@example.com",
+  "role": "developer",
+  "part": "PL2",
+  "lead": "pl02"
+ }
 ]

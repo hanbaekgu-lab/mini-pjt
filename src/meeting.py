@@ -2,55 +2,246 @@
 
 - build_meeting_material(): LLM 없는 결정적 초안 (테스트·기본 핸들러용)
 - MeetingFlow: Plan-Execute LangGraph (계획 → 실행 단계들 → interrupt() 승인 → MCP 게시)
-  장기 메모리(LangGraph Store)에는 주차별 액션아이템 진행 상태만 저장한다.
+  장기 메모리(LangGraph Store)에는 주차별 회의 스냅샷(진척·이슈·액션아이템)을 저장한다. Store가 비어 있으면
+  지난 회의 기록(data/fixtures/meeting_history.json)으로 초기화하고, 게시 후에는 이번 주 스냅샷을 저장해 다음 주에 쓴다.
+- 회의 자료 구성: 안내 → 일정 대비 진척 → 지난주 대비 변화 → 대메뉴별 → 중메뉴별 → 단계별 → 이슈 추적 →
+  지난주 액션아이템 이행 → 계획 대비 지연 화면 → 불일치·미연결 → 결정사항 → 블로커 → 이번 주 액션아이템
 """
 from __future__ import annotations
 
+import re
 import uuid
+from datetime import date
 from typing import Optional, TypedDict
 
 from pydantic import BaseModel, Field
 
 from src import tools
 
+NOTICE = ("> 주간 진척 보고 에이전트가 커밋·화면 데이터로 자동 작성하고, PM 또는 PL 승인 후 게시한 문서입니다. "
+          "참석자 전원에게 공유되므로 업무 단위 진척만 싣습니다(개인별 진척률·이름 없음).")
+LONG_ISSUE_WEEKS = 8  # 이 주수 이상 지속된 미해결 이슈는 기본 초안의 블로커로 올린다
+SNAPSHOT_NS = ("meeting_snapshot",)  # 장기 메모리 네임스페이스 (키: 주 시작일)
 
-def meeting_page_id() -> str:
+
+def meeting_page_id(week: str | None = None) -> str:
     """게시 파일명(page_id)은 영문으로 둔다."""
-    return f"weekly_meeting_{tools.load_reference_week()['start']}"
+    return f"weekly_meeting_{week or tools.load_reference_week()['start']}"
 
 
-def meeting_title() -> str:
-    return f"주간회의 자료 {tools.load_reference_week()['start']}"
+def meeting_title(week: str | None = None) -> str:
+    return f"주간회의 자료 {week or tools.load_reference_week()['start']}"
 
 
-def build_meeting_material() -> str:
+# ----------------------------------------------------------------------------- 지난주 대비·이슈 추적 (결정적)
+def _weeks(since: str, week: str) -> int:
+    return (date.fromisoformat(week) - date.fromisoformat(since)).days // 7 + 1
+
+
+def track_issues(current: list[dict], previous: dict | None, week: str) -> dict:
+    """지난주 스냅샷 이슈와 이번 주 이슈를 ID로 비교: 해결(지난주에만) / 미해결(둘 다, 지속 N주) / 신규(이번 주에만)."""
+    prev = {i["id"]: i for i in (previous or {}).get("issues", [])}
+    now = {i["id"] for i in current}
+    persistent = [{**i, "since": prev[i["id"]]["since"], "weeks": _weeks(prev[i["id"]]["since"], week)}
+                  for i in current if i["id"] in prev]
+    return {"resolved": [{**i, "weeks": _weeks(i["since"], week) - 1} for i in prev.values() if i["id"] not in now],
+            "persistent": sorted(persistent, key=lambda i: (-i["weeks"], i["id"])),
+            "new": [{**i, "since": week, "weeks": 1} for i in current if i["id"] not in prev]}
+
+
+def action_status(text: str, screens: dict, unlinked: set[str]) -> tuple[Optional[bool], str]:
+    """지난주 액션아이템 이행 여부를 데이터로 판단한다. (완료 여부, 근거). 판단할 수 없으면 None.
+    - 단계 ID(SCR-A01-03-4): 그 단계 완료 표시가 있으면 완료
+    - 화면 ID만: 화면 상태가 '완료'면 완료
+    - 커밋 해시(c0418): 더 이상 미연결이 아니면 완료"""
+    refs = [m for m in tools.SCREEN_REF_RE.finditer(text) if f"SCR-{m.group(1)}{m.group(2)}-{m.group(3)}" in screens]
+    phases = [(f"SCR-{m.group(1)}{m.group(2)}-{m.group(3)}", int(m.group(4))) for m in refs if m.group(4)]
+    if phases:
+        left = [f"{sid}-{n}({tools.PHASES.get(n, n)})" for sid, n in phases if n not in screens[sid]["phases_done"]]
+        return (not left, "단계 완료 표시 확인" if not left else f"남은 단계 {', '.join(left)}")
+    if refs:
+        sids = sorted({f"SCR-{m.group(1)}{m.group(2)}-{m.group(3)}" for m in refs})
+        left = [s for s in sids if screens[s]["status"] != tools.STATUS_DONE]
+        return (not left, "상태 '완료' 확인" if not left else f"상태 '{screens[left[0]]['status']}'")
+    hashes = re.findall(r"(?<![A-Za-z0-9])c\d{4}(?!\d)", text)
+    if hashes:
+        left = [h for h in hashes if h in unlinked]
+        return (not left, "미연결 커밋 없음" if not left else f"미연결 그대로 {', '.join(left)}")
+    return None, "데이터로 확인할 수 없음(회의에서 확인)"
+
+
+def meeting_context(previous: dict | None = None, load_history: bool = True) -> dict:
+    """회의 자료에 필요한 결정적 계산 묶음. previous가 없고 load_history면 지난 회의 기록에서 직전 스냅샷을 읽는다."""
     report = tools.build_progress_report()
-    names = {d["developer_id"]: d["name"] for d in tools.load_developers()}
-    tasks = report["progress"]["tasks"]
-    warns, unlinked = report["mismatch_warnings"], report["unlinked_commits"]
-    decisions = ["진척 수치는 도구 계산값(계획 MM 가중, 하위 작업 완료 기준)을 사용한다.",
-                 f"업무 상태와 커밋이 불일치하면 업무 상태를 우선하고 경고로 표시한다 (이번 주 {len(warns)}건)."]
-    blockers = [f"[{w['task_id']}] {w['message']}" for w in warns]
-    blockers += [f"미연결 커밋 {c['hash']}: {c['reason']}" for c in unlinked]
+    week = tools.load_reference_week()["start"]
+    if previous is None and load_history:
+        previous = tools.previous_snapshot(week)
+    screens = {s["screen_id"]: s for s in report["progress"]["screens"]}
+    unlinked = {c["hash"] for c in report["unlinked_commits"]}
+    actions = [(t, *action_status(t, screens, unlinked)) for t in (previous or {}).get("action_items", [])]
+    return {"week": week, "report": report, "previous": previous,
+            "issues": track_issues(tools.current_issues(report), previous, week), "prev_actions": actions}
+
+
+def week_snapshot(ctx: dict, action_items: list[str]) -> dict:
+    """이번 주 회의 스냅샷 (다음 주 회의의 '지난주'). meeting_history.json과 같은 형식."""
+    r, week = ctx["report"], tools.load_reference_week()
+    p = r["progress"]
+    return {"week": {"start": week["start"], "end": week["end"]}, "page_id": meeting_page_id(),
+            "schedule_elapsed": r["schedule"]["elapsed"],
+            "team": {k: p[k] for k in ("progress", "planned_progress", "remaining_mm", "screens_done", "screens_total",
+                                       "delayed_count")},
+            "parts": {m["code"]: {"progress": m["progress"], "planned_progress": m["planned_progress"]} for m in r["parts"]},
+            "large_menus": {m["code"]: {k: m[k] for k in ("progress", "planned_progress", "screens_done", "screens_total")}
+                            for m in r["large_menus"]},
+            "medium_menus": {m["code"]: {k: m[k] for k in ("progress", "screens_done", "screens_total")}
+                             for m in r["medium_menus"]},
+            "phases": {str(ph["no"]): ph["done"] for ph in r["phases"]},
+            "issues": [{k: i[k] for k in ("id", "kind", "target", "title", "since")}
+                       for i in ctx["issues"]["persistent"] + ctx["issues"]["new"]],
+            "action_items": action_items}
+
+
+def _issue_markdown(ctx: dict) -> str:
+    iss, prev = ctx["issues"], ctx["previous"]
+    if prev is None:
+        return "지난 회의 기록이 없어 이번 주 이슈를 모두 신규로 등록합니다."
+    kinds = ("지연", "불일치", "미연결")
+    row = lambda label, xs: (f"| {label} | " + " | ".join(str(sum(1 for i in xs if i["kind"] == k)) for k in kinds)  # noqa: E731
+                             + f" | **{len(xs)}** |")
+    L = [f"지난주 회의({prev['week']['start']} 주) 이슈와 ID로 비교합니다. ID: DLY-화면(계획 대비 지연), "
+         "MIS-화면(상태-커밋 불일치), UNL-커밋(미연결 커밋). 지속 주수는 처음 발생한 주부터 셉니다.", "",
+         "| 구분 | 지연 | 불일치 | 미연결 | 합계 |", "|---|---:|---:|---:|---:|",
+         row("✅ 해결", iss["resolved"]), row("🔁 미해결(지속)", iss["persistent"]), row("🆕 신규", iss["new"]), "",
+         "| 이슈 | 내용 | 상태 | 지속 |", "|---|---|---|---:|"]
+    L += [f"| {i['id']} | {i['title']} | ✅ 해결 | {i['weeks']}주 |" for i in iss["resolved"]]
+    L += [f"| {i['id']} | {i['title']} | 🆕 신규 | 1주 |" for i in iss["new"]]
+    L += [f"| {i['id']} | {i['title']} | 🔁 미해결 | {i['weeks']}주 |" for i in iss["persistent"]]
+    return "\n".join(L)
+
+
+def _prev_actions_markdown(ctx: dict) -> str:
+    acts = ctx["prev_actions"]
+    if not acts:
+        return "지난주 액션아이템 기록이 없습니다."
+    mark = {True: "✅ 완료", False: "⬜ 미완료", None: "❔ 확인 필요"}
+    done = sum(1 for _, ok, _ in acts if ok)
+    return "\n".join([f"지난주 액션아이템 {len(acts)}건 중 완료 {done}건 · 미완료 {len(acts) - done}건 "
+                      "(커밋의 단계 완료 표시·화면 상태·미연결 커밋으로 판단)", "",
+                      "| 지난주 액션아이템 | 이행 | 확인 근거 |", "|---|---|---|",
+                      *[f"| {strip_names(t)} | {mark[ok]} | {why} |" for t, ok, why in acts]])
+
+
+def default_draft(ctx: dict) -> tuple[list[str], list[str], list[str]]:
+    """LLM 없는 결정적 결정사항·블로커·액션아이템 (사람 이름 없이 화면·메뉴 단위)."""
+    report, iss = ctx["report"], ctx["issues"]
+    p, warns, unlinked, delayed = report["progress"], report["mismatch_warnings"], report["unlinked_commits"], report["delayed"]
+    behind = [f"{m['code']} {m['name']}" for m in report["large_menus"] if m["schedule_status"] == "지연"]
+    new_kinds = {k: sum(1 for i in iss["new"] if i["kind"] == k) for k in ("지연", "불일치", "미연결")}
+    decisions = ["진척 수치는 도구 계산값(화면별 4단계 완료 비율, 계획 MM 가중)을 사용한다.",
+                 f"전체 실적이 계획 대비 {p['gap_pp']:+.2f}%p({p['schedule_status']})이므로, 차이가 "
+                 f"{tools.STATUS_WARN_PP:+.0f}%p보다 큰 대메뉴({', '.join(behind) or '없음'})는 담당 PL이 다음 회의까지 만회 계획을 공유한다.",
+                 f"화면 상태와 커밋이 불일치하면 상태를 우선하고 경고로 표시한다 (이번 주 {len(warns)}건, 신규 {new_kinds['불일치']}건).",
+                 "지난주 액션아이템 중 미완료 항목은 이번 주 액션아이템으로 이어서 관리한다."]
+    blockers = [f"{i['title']} (지속 {i['weeks']}주)" for i in iss["persistent"] if i["weeks"] >= LONG_ISSUE_WEEKS]
+    if unlinked:
+        blockers.append(f"미연결 커밋 {len(unlinked)}건(신규 {new_kinds['미연결']}건)이 화면 진척에 반영되지 않고 있다.")
     actions = []
-    for t in tasks:
-        if t["subtasks_remaining"]:
-            rest = ",".join(f"{t['task_id']}-{n}" for n in t["subtasks_remaining"])
-            actions.append(f"{names.get(t['owner'], t['owner'])}: {rest} 완료 (남은 {t['remaining_mm']:.2f}MM)")
-    return render(decisions, blockers, actions, tools.format_progress_markdown(report))
+    for s in delayed[:tools.TOP_N]:
+        rest = ",".join(f"{s['screen_id']}-{n}" for n in s["phases_remaining"])
+        todo = f"{rest} 완료" if rest else f"{s['screen_id']} 상태를 '완료'로 갱신"
+        actions.append(f"{s['screen_id']} {s['title']}: {todo} (계획 종료 {s['planned_end']})")
+    if unlinked:
+        actions.append(f"미연결 커밋 {', '.join(c['hash'] for c in unlinked)}: 올바른 화면 ID로 커밋 메시지 정정")
+    return decisions, blockers, actions
 
 
-def render(decisions, blockers, actions, progress_md: str) -> str:
-    lines = ["> 주간 진척 보고 에이전트가 커밋·업무 데이터로 자동 작성하고, PM/PL 승인 후 게시한 문서입니다.", "",
-             "## 진척 현황", progress_md, "",  # 숫자는 도구 결과 그대로 (LLM이 바꾸지 않음)
+def build_meeting_material(previous: dict | None = None, load_history: bool = True) -> str:
+    """화면 170개를 모두 싣지 않는다: 집계 표와 계획 대비 지연 화면 상위 N개, 이슈 추적만.
+    회의 자료는 참석자 전원에게 공유되므로 진척은 업무 분류 단위로만 싣는다(개인별 진척률 없음).
+    결정사항·블로커·액션아이템에도 사람 이름을 싣지 않는다(화면·메뉴 단위로만 표기)."""
+    ctx = meeting_context(previous, load_history)
+    return render(*default_draft(ctx), ctx)
+
+
+def strip_names(text: str) -> str:
+    """회의 자료 문장에서 팀원 이름을 지운다 (LLM 초안이 이름을 쓰더라도 공유 문서에는 남기지 않음)."""
+    for d in tools.load_developers():
+        text = re.sub(re.escape(d["name"]) + r"(님|씨)?", "", text)
+    text = re.sub(r"\(\s*(담당자?\s*:?)?\s*[,/·]?\s*\)", "", text)  # 이름만 있던 괄호 제거
+    return re.sub(r"^\s*[:,/·-]\s*", "", re.sub(r"\s{2,}", " ", text)).strip()
+
+
+def render(decisions, blockers, actions, ctx: dict) -> str:
+    decisions, blockers, actions = ([strip_names(x) for x in xs] for xs in (decisions, blockers, actions))
+    report = ctx["report"]
+    lines = [NOTICE, "",
+             "## 진척 현황", tools.format_progress_markdown(report, ctx["previous"]), "",  # 숫자는 도구 결과 그대로
+             "## 이슈 추적", _issue_markdown(ctx), "",
+             "## 지난주 액션아이템 이행", _prev_actions_markdown(ctx), "",
+             "## 계획 대비 지연·불일치·미연결", tools.format_findings_markdown(report), "",
              "## 결정사항", *[f"- {x}" for x in decisions or ["없음"]], "",
              "## 블로커", *[f"- {x}" for x in blockers or ["없음"]], "",
              "## 액션아이템", *[f"- [ ] {x}" for x in actions or ["없음"]]]
     return "\n".join(lines)
 
 
+def context_summary(ctx: dict) -> str:
+    """LLM 초안 입력용 요약: 계획 대비 차이·지난주 대비 증감·이슈 상태·지난주 액션아이템 이행 (개인별 수치 없음)."""
+    r, prev, iss = ctx["report"], ctx["previous"] or {}, ctx["issues"]
+    p, pct = r["progress"], tools._pct
+    L = [f"일정 경과율 {pct(r['schedule']['elapsed'])}, 계획 진척률 {pct(p['planned_progress'])}, 실적 진척률 "
+         f"{pct(p['progress'])}, 차이 {p['gap_pp']:+.2f}%p ({p['schedule_status']})"]
+    L += [f"{tools.part_label(m['code'])}: 계획 {pct(m['planned_progress'])}, 실적 {pct(m['progress'])}, "
+          f"차이 {m['gap_pp']:+.2f}%p ({m['schedule_status']})" for m in r["parts"]]
+    if prev:
+        L.append(f"지난주 대비 전체 실적 {tools.delta_pp(p['progress'], prev['team']['progress'])}, 완료 화면 "
+                 f"{prev['team']['screens_done']} → {p['screens_done']}, 지연 화면 {prev['team']['delayed_count']} → "
+                 f"{p['delayed_count']}")
+    L += [f"대메뉴 {m['code']} {m['name']}: 계획 대비 {m['gap_pp']:+.2f}%p ({m['schedule_status']}), 지난주 대비 "
+          f"{tools.delta_pp(m['progress'], prev.get('large_menus', {}).get(m['code'], {}).get('progress'))}"
+          for m in r["large_menus"]]
+    L.append(f"이슈: 해결 {len(iss['resolved'])}건({', '.join(i['id'] for i in iss['resolved'])}), "
+             f"미해결 {len(iss['persistent'])}건(장기: {', '.join(f'{i['id']} {i['weeks']}주' for i in iss['persistent'][:5])}), "
+             f"신규 {len(iss['new'])}건({', '.join(i['id'] for i in iss['new'])})")
+    L += [f"지난주 액션아이템 '{t}': {'완료' if ok else '미완료' if ok is False else '확인 필요'} ({why})"
+          for t, ok, why in ctx["prev_actions"]]
+    return "\n".join(L)
+
+
+def render_snapshot_page(snap: dict) -> str:
+    """지난 회의 스냅샷으로 그 주 회의 자료 페이지를 결정적으로 재구성한다 (LLM 없음, 사람 이름 없음)."""
+    names = {}
+    for s in tools.load_screens():
+        names[s["large_code"]], names[s["medium_code"]] = s["large_name"], s["medium_name"]
+    t, pct = snap["team"], tools._pct
+    gap = lambda x: round((x["progress"] - x["planned_progress"]) * 100, 2)  # noqa: E731
+    L = ["> 지난주 회의 스냅샷(장기 메모리)으로 재구성한 회의 자료입니다. 업무 단위 진척만 싣습니다(개인별 진척률·이름 없음).", "",
+         "## 진척 현황", f"{tools.load_project()['name']} · 기준 주: {snap['week']['start']} ~ {snap['week']['end']}", "",
+         "### 일정 대비 진척", "", "| 구분 | 계획 진척률 | 실적 진척률 | 차이 | 상태 | 화면(완료/전체) | 남은 공수 | 지연 화면 |",
+         "|---|---:|---:|---:|---|---:|---:|---:|",
+         f"| **전체** | {pct(t['planned_progress'])} | **{pct(t['progress'])}** | {gap(t):+.2f}%p | "
+         f"{tools.SCHEDULE_ICON[tools.schedule_status(gap(t))]} | {t['screens_done']}/{t['screens_total']} | "
+         f"{t['remaining_mm']:.2f}MM | {t['delayed_count']}개 |",
+         *[f"| {tools.part_label(k)} | {pct(v['planned_progress'])} | {pct(v['progress'])} | {gap(v):+.2f}%p | "
+           f"{tools.SCHEDULE_ICON[tools.schedule_status(gap(v))]} | - | - | - |" for k, v in snap["parts"].items()], "",
+         f"일정 경과율 **{pct(snap['schedule_elapsed'])}** (프로젝트 기간 중 {snap['week']['end']}까지)", "",
+         "### 대메뉴별", "", "| 대메뉴 | 계획 | 실적 | 차이 | 화면(완료/전체) |", "|---|---:|---:|---:|---:|",
+         *[f"| {k} {names[k]} | {pct(v['planned_progress'])} | {pct(v['progress'])} | {gap(v):+.2f}%p | "
+           f"{v['screens_done']}/{v['screens_total']} |" for k, v in snap["large_menus"].items()], "",
+         "### 중메뉴별", "", "| 중메뉴 | 실적 | 화면(완료/전체) |", "|---|---:|---:|",
+         *[f"| {k} {names[k]} | {pct(v['progress'])} | {v['screens_done']}/{v['screens_total']} |"
+           for k, v in snap["medium_menus"].items()], "",
+         "### 단계별 완료 현황", "", "| 단계 | 완료 화면 |", "|---|---:|",
+         *[f"| {k} {tools.PHASES[int(k)]} | {v}/{t['screens_total']} |" for k, v in snap["phases"].items()], "",
+         "## 이슈 목록", "", "| 이슈 | 내용 | 발생 주 |", "|---|---|---|",
+         *[f"| {i['id']} | {i['title']} | {i['since']} |" for i in snap["issues"]], "",
+         "## 액션아이템", *[f"- [ ] {strip_names(x)}" for x in snap["action_items"] or ["없음"]]]
+    return "\n".join(L)
+
+
 # ----------------------------------------------------------------------------- Plan-Execute 그래프
-STEPS = ("collect_progress", "check_previous_action_items", "draft_material")
+STEPS = ("collect_progress", "check_previous_meeting", "draft_material")
 
 
 class Plan(BaseModel):
@@ -61,16 +252,17 @@ class Plan(BaseModel):
 class MeetingDraft(BaseModel):
     """회의 자료 본문 (숫자는 쓰지 않는다. 진척 수치는 도구 결과를 그대로 붙인다)."""
     decisions: list[str] = Field(description="이번 회의 결정사항 후보")
-    blockers: list[str] = Field(description="블로커 (경고·미연결 커밋·지난주 미완료 포함)")
-    action_items: list[str] = Field(description="담당자가 드러나는 다음 액션아이템")
+    blockers: list[str] = Field(description="블로커 (장기 미해결 이슈·경고·미연결 커밋·지난주 미완료 포함)")
+    action_items: list[str] = Field(description="화면·메뉴 단위의 다음 액션아이템 (사람 이름 없이)")
 
 
 class MeetingState(TypedDict, total=False):
     plan: list[str]
     report_text: str
     warnings: list[str]
-    previous_items: list[str]
+    previous: Optional[dict]
     previous_source: str
+    previous_minutes: str
     body: str
     approval: str
     page_id: str
@@ -78,14 +270,15 @@ class MeetingState(TypedDict, total=False):
     log: list[dict]
 
 
-def _previous_items_from_corpus() -> list[str]:
-    """Store가 비어 있으면 지난주 회의록의 액션아이템 섹션으로 초기화한다 (고정 스냅샷)."""
+def _previous_minutes(week_start: str) -> tuple[str, str]:
+    """지난주 회의록(MIN-YYYY-Www)의 결정사항·블로커 섹션 (문서 검색 대상 코퍼스)."""
     from src import retriever
+    prev = date.fromordinal(date.fromisoformat(week_start).toordinal() - 7).isocalendar()
+    doc_id = f"MIN-{prev.year}-W{prev.week:02d}"
     for d in retriever.corpus_documents():
-        if d["doc_id"] == "MIN-2026-W46":
-            sec = d["text"].split("## 액션아이템", 1)[-1].split("\n\n", 1)[0]
-            return [ln.lstrip("- ").strip() for ln in sec.splitlines() if ln.strip().startswith("-")]
-    return []
+        if d["doc_id"] == doc_id:
+            return doc_id, d["text"].split("## 액션아이템", 1)[0].strip()
+    return doc_id, ""
 
 
 class MeetingFlow:
@@ -95,7 +288,7 @@ class MeetingFlow:
         from langgraph.store.memory import InMemoryStore
 
         self.llm, self.publish_fn = llm, publish
-        self.store = InMemoryStore()  # 장기 메모리: ("action_items",) / 주차 시작일
+        self.store = InMemoryStore()  # 장기 메모리: SNAPSHOT_NS / 주차 시작일 → 회의 스냅샷
         g = StateGraph(MeetingState)
         g.add_node("plan", self._plan)
         g.add_node("execute", self._execute)
@@ -111,8 +304,8 @@ class MeetingFlow:
     # --- Plan
     def _plan(self, state: MeetingState) -> MeetingState:
         plan = self.llm.with_structured_output(Plan).invoke(
-            "주간 진척 회의 자료를 만들기 위한 실행 계획을 세워라. 진척 수치를 먼저 모으고, 지난주 액션아이템을 확인한 뒤 "
-            f"초안을 작성해야 한다. 사용 가능한 단계: {', '.join(STEPS)}")
+            "주간 진척 회의 자료를 만들기 위한 실행 계획을 세워라. 진척 수치를 먼저 모으고, 지난주 회의(진척 스냅샷·이슈·"
+            f"액션아이템)를 확인한 뒤 초안을 작성해야 한다. 사용 가능한 단계: {', '.join(STEPS)}")
         steps = [s for s in plan.steps if s in STEPS]
         steps += [s for s in STEPS if s not in steps]  # 필수 단계 누락은 코드가 보완
         steps.sort(key=STEPS.index)                    # 데이터 의존 순서 보장
@@ -127,32 +320,45 @@ class MeetingFlow:
 
     def _collect_progress(self, state):
         report = tools.build_progress_report()
-        warns = [f"[{w['task_id']}] {w['message']}" for w in report["mismatch_warnings"]]
+        team_only = {k: v for k, v in report.items() if k != "developers"}  # 개인별 진척률은 초안 입력에서 제외
+        warns = [f"[{w['screen_id']}] {w['message']}" for w in report["mismatch_warnings"]]
         warns += [f"미연결 커밋 {c['hash']}: {c['reason']}" for c in report["unlinked_commits"]]
         log = state["log"] + [{"step": "tool_call", "input": {"tool": n, "plan_step": "collect_progress"}, "output": "ok"}
                               for n in ("calc_progress", "calc_remaining_mm", "check_mismatch")]
-        return {"report_text": tools.format_progress_report(report), "warnings": warns, "log": log}
+        return {"report_text": tools.format_progress_report(team_only), "warnings": warns, "log": log}
 
-    def _check_previous_action_items(self, state):
+    def snapshots(self) -> list:
+        return sorted(self.store.search(SNAPSHOT_NS, limit=1000), key=lambda it: it.key)
+
+    def _check_previous_meeting(self, state):
+        """장기 메모리에서 지난주 회의 스냅샷(진척·이슈·액션아이템)을 읽고, 지난주 회의록을 검색한다."""
         week = tools.load_reference_week()["start"]
-        prev = self.store.search(("action_items",))
-        prev = [it for it in prev if it.key < week]
-        if prev:
-            items, src = prev[-1].value["items"], f"store:{prev[-1].key}"
-        else:
-            items, src = _previous_items_from_corpus(), "corpus:MIN-2026-W46"
-        log = state["log"] + [{"step": "tool_call", "input": {"tool": "retrieve_docs", "plan_step": "check_previous_action_items"},
-                               "output": src}]
-        return {"previous_items": items, "previous_source": src, "log": log}
+        seeded = ""
+        if not [it for it in self.snapshots() if it.key < week]:  # Store가 비면 지난 회의 기록으로 초기화
+            for k, v in tools.load_meeting_history().items():
+                self.store.put(SNAPSHOT_NS, k, v)
+            seeded = " (meeting_history.json으로 초기화)"
+        prev = [it for it in self.snapshots() if it.key < week]
+        previous, src = (prev[-1].value, f"store:{prev[-1].key}{seeded}") if prev else (None, "store:없음")
+        doc_id, minutes = _previous_minutes(week)
+        log = state["log"] + [
+            {"step": "tool_call", "input": {"tool": "memory_store", "plan_step": "check_previous_meeting"}, "output": src},
+            {"step": "tool_call", "input": {"tool": "retrieve_docs", "plan_step": "check_previous_meeting"},
+             "output": doc_id if minutes else "없음"}]
+        return {"previous": previous, "previous_source": src, "previous_minutes": minutes, "log": log}
 
     def _draft_material(self, state):
+        ctx = meeting_context(state.get("previous"), load_history=False)
         draft = self.llm.with_structured_output(MeetingDraft).invoke(
             "아래 자료로 주간 진척 회의 자료의 결정사항·블로커·액션아이템을 한국어로 작성하라. "
-            "진척률·MM 같은 숫자는 쓰지 마라(도구 결과가 따로 붙는다). 사람을 평가하거나 순위를 매기지 마라.\n\n"
-            f"[도구 계산 결과]\n{state['report_text']}\n\n[불일치 경고·미연결 커밋]\n" + "\n".join(state["warnings"])
-            + "\n\n[지난주 액션아이템]\n" + "\n".join(state["previous_items"]))
-        body = render(draft.decisions, draft.blockers, draft.action_items,
-                      tools.format_progress_markdown(tools.build_progress_report()))
+            "진척률·MM 같은 숫자는 쓰지 마라(도구 결과가 따로 붙는다). 사람을 평가하거나 순위를 매기지 마라.\n"
+            "이 자료는 회의 참석자 전원(PM·PL·개발자)에게 공유된다. 개인별 진척률이나 개인 간 진척 비교는 언급하지 말고, "
+            "진척은 대메뉴·중메뉴·단계·화면 같은 업무 단위로만 말하라. 결정사항·블로커·액션아이템 어디에도 사람 이름을 쓰지 마라.\n"
+            "계획 대비 차이가 큰 대메뉴, 오래 지속된 미해결 이슈, 지난주 미완료 액션아이템을 결정사항·블로커·액션아이템에 반영하라.\n\n"
+            f"[도구 계산 결과]\n{state['report_text']}\n\n[일정 대비·지난주 대비·이슈 추적]\n{context_summary(ctx)}\n\n"
+            "[불일치 경고·미연결 커밋]\n" + "\n".join(state["warnings"])
+            + "\n\n[지난주 회의록 결정사항·블로커]\n" + state.get("previous_minutes", ""))
+        body = render(draft.decisions, draft.blockers, draft.action_items, ctx)
         log = state["log"] + [{"step": "llm_draft", "input": "meeting_material", "output": "drafted"}]
         return {"body": body, "log": log}
 
@@ -172,9 +378,11 @@ class MeetingFlow:
         week = tools.load_reference_week()["start"]
         items = [ln.removeprefix("- [ ] ") for ln in state["body"].split("## 액션아이템", 1)[1].splitlines()
                  if ln.startswith("- [ ] ")]
-        self.store.put(("action_items",), week, {"items": items})  # 이번 주 액션아이템 상태 저장
-        return {"page_id": page_id, "log": state["log"] + [{"step": "confluence_publish", "input": meeting_title(),
-                                                           "output": page_id}]}
+        snap = week_snapshot(meeting_context(state.get("previous"), load_history=False), items)
+        self.store.put(SNAPSHOT_NS, week, snap)  # 이번 주 스냅샷 저장 → 다음 주 회의의 '지난주'
+        return {"page_id": page_id, "log": state["log"] + [
+            {"step": "confluence_publish", "input": meeting_title(), "output": page_id},
+            {"step": "memory_store", "input": f"snapshot:{week}", "output": "saved"}]}
 
     # --- 외부 진입점
     def start(self) -> tuple[str, dict]:
@@ -190,5 +398,5 @@ class MeetingFlow:
         return self.graph.get_state(cfg).values
 
     def reset_store(self) -> None:
-        for it in self.store.search(("action_items",)):
-            self.store.delete(("action_items",), it.key)
+        for it in self.snapshots():
+            self.store.delete(SNAPSHOT_NS, it.key)

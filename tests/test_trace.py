@@ -21,7 +21,7 @@ def _env(tmp_path, monkeypatch):
     api.set_handler(None)
 
 
-def post(q, user="pm01", role="pm_pl", **kw):
+def post(q, user="pm01", role="pm", **kw):
     return client.post("/query", json={"question": q, "user_id": user, "role": role, **kw})
 
 

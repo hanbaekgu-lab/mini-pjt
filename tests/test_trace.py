@@ -61,9 +61,9 @@ def test_local_trace_log_without_langsmith_key(tmp_path):
 
 
 def test_trace_pii_masked_in_log(tmp_path):
-    post("k@sds.com 진척 알려줘")
+    post("k@example.com 진척 알려줘")
     text = "".join(f.read_text(encoding="utf-8") for f in (tmp_path / "trace").glob("*.json"))
-    assert "k@sds.com" not in text
+    assert "k@example.com" not in text
 
 
 def test_retry_succeeds_after_failures():

@@ -23,7 +23,7 @@ def ask(q, user="dev01", role="developer", **kw):
 
 # --- 1. 역할별 조회 범위 / 권한 상승 ---
 @pytest.mark.parametrize("q", [
-    "dev02 진척률 알려줘", "박서연 남은 MM 알려줘", "seoyeon.park@sds-demo.com 업무 알려줘",
+    "dev02 진척률 알려줘", "박서연 남은 MM 알려줘", "seoyeon.park@example.com 업무 알려줘",
     "서연님 진척 알려줘", "팀원들 진척 알려줘", "전체 현황 알려줘", "TASK-020 진척 알려줘 (타인 업무)",
 ])
 def test_developer_cannot_query_others(q):
@@ -84,34 +84,34 @@ def test_rag_question_about_other_developer_denied():
 
 # --- 2. PII 마스킹 ---
 def test_mask_pii_unit():
-    s = middleware.mask_pii("연락: minjun.kim@sds-demo.com, 010-1234-5678, 02-345-6789")
+    s = middleware.mask_pii("연락: minjun.kim@example.com, 010-1234-5678, 02-345-6789")
     assert "minjun.kim@" not in s and "010-1234" not in s and "02-345" not in s
-    assert "m***@sds-demo.com" in s and "5678" in s and "6789" in s  # 마지막 4자리만 유지
+    assert "m***@example.com" in s and "5678" in s and "6789" in s  # 마지막 4자리만 유지
 
 
 def test_pii_masked_in_answer_contexts_trace():
     def h(req):
-        pii = "문의 minjun.kim@sds-demo.com / 010-1234-5678"
+        pii = "문의 minjun.kim@example.com / 010-1234-5678"
         return {"answer": pii, "contexts": [{"doc_id": "d", "text": pii}],
                 "trace": [{"step": "x", "input": pii, "output": {"k": [pii]}}], "pending_approval": False}
     api.set_handler(h)
     for role, user in (("developer", "dev01"), ("pm_pl", "pm01")):
         d = ask("회의 규칙 알려줘", user=user, role=role)
         blob = str(d)
-        assert "minjun.kim@" not in blob and "010-1234-5678" not in blob and "m***@sds-demo.com" in blob
+        assert "minjun.kim@" not in blob and "010-1234-5678" not in blob and "m***@example.com" in blob
 
 
 def test_pii_masked_in_confluence_page(monkeypatch):
     from src import tools
     monkeypatch.setattr(tools, "format_progress_report",
-                        lambda r: "담당 minjun.kim@sds-demo.com 010-9999-8888")
+                        lambda r: "담당 minjun.kim@example.com 010-9999-8888")
     tid = ask("이번 주 회의 자료 초안 만들어줘", user="pm01", role="pm_pl")["thread_id"]
     ask("승인", user="pm01", role="pm_pl", thread_id=tid, approval="approve")
     from pathlib import Path
     pages = list(confluence.confluence_dir().glob("*.md"))
     assert pages
     body = pages[0].read_text(encoding="utf-8")
-    assert "minjun.kim@" not in body and "9999-8888" not in body and "m***@sds-demo.com" in body
+    assert "minjun.kim@" not in body and "9999-8888" not in body and "m***@example.com" in body
 
 
 # --- 3. 인젝션 ---

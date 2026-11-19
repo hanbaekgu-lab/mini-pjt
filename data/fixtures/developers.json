@@ -1,9 +1,9 @@
 [
-  {"developer_id": "dev01", "name": "김민준", "email": "minjun.kim@sds-demo.com", "role": "developer"},
-  {"developer_id": "dev02", "name": "박서연", "email": "seoyeon.park@sds-demo.com", "role": "developer"},
-  {"developer_id": "dev03", "name": "이도윤", "email": "doyun.lee@sds-demo.com", "role": "developer"},
-  {"developer_id": "dev04", "name": "최지우", "email": "jiwoo.choi@sds-demo.com", "role": "developer"},
-  {"developer_id": "dev05", "name": "정하준", "email": "hajun.jung@sds-demo.com", "role": "developer"},
-  {"developer_id": "dev06", "name": "한서윤", "email": "seoyun.han@sds-demo.com", "role": "developer"},
-  {"developer_id": "pm01", "name": "오수진", "email": "sujin.oh@sds-demo.com", "role": "pm_pl"}
+  {"developer_id": "dev01", "name": "김민준", "email": "minjun.kim@example.com", "role": "developer"},
+  {"developer_id": "dev02", "name": "박서연", "email": "seoyeon.park@example.com", "role": "developer"},
+  {"developer_id": "dev03", "name": "이도윤", "email": "doyun.lee@example.com", "role": "developer"},
+  {"developer_id": "dev04", "name": "최지우", "email": "jiwoo.choi@example.com", "role": "developer"},
+  {"developer_id": "dev05", "name": "정하준", "email": "hajun.jung@example.com", "role": "developer"},
+  {"developer_id": "dev06", "name": "한서윤", "email": "seoyun.han@example.com", "role": "developer"},
+  {"developer_id": "pm01", "name": "오수진", "email": "sujin.oh@example.com", "role": "pm_pl"}
 ]

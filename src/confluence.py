@@ -19,12 +19,12 @@ def page_id_for(title: str) -> str:
     return re.sub(r"[^0-9A-Za-z가-힣_-]+", "_", title).strip("_") or "page"
 
 
-def create_page(title: str, body: str) -> dict:
+def create_page(title: str, body: str, page_id: str | None = None) -> dict:
     if os.environ.get("CONFLUENCE_MODE", "fake") == "real":
         raise NotImplementedError("real 모드 어댑터는 별도 구성 필요")
     d = confluence_dir()
     d.mkdir(parents=True, exist_ok=True)
-    page_id = page_id_for(title)
+    page_id = page_id or page_id_for(title)
     (d / f"{page_id}.md").write_text(f"# {title}\n\n{body}\n", encoding="utf-8")
     return {"page_id": page_id, "title": title, "published_at": datetime.now().isoformat(timespec="seconds")}
 

@@ -77,7 +77,8 @@ def _resume(req: QueryRequest, saved: dict) -> dict:
     if req.approval == "approve":
         try:
             title, body = middleware.mask_pii(draft["title"]), middleware.mask_pii(draft["body"])
-            page = middleware.call_with_retry(mcp_client.call_tool, "create_page", {"title": title, "body": body})
+            page = middleware.call_with_retry(mcp_client.call_tool, "create_page",
+                                              {"title": title, "body": body, "page_id": meeting.meeting_page_id()})
             retriever.index_generated(page["page_id"], title, body)
         except Exception as e:  # 게시 실패: 게시하지 않음
             return {**resp, "answer": f"게시 실패(게시하지 않음): {e}",

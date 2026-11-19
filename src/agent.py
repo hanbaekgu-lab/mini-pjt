@@ -146,7 +146,8 @@ def _publish(title: str, body: str) -> str:
     """Confluence(가짜 MCP 서버) 게시. PII 마스킹 후 10초 타임아웃·2회 재시도."""
     body += "\n\n---\n※ 이메일·전화번호 등 개인정보는 마스킹 처리되며, 업무 담당 확인을 위해 이름만 표기합니다."
     title, body = middleware.mask_pii(title), middleware.mask_pii(body)
-    page = middleware.call_with_retry(mcp_client.call_tool, "create_page", {"title": title, "body": body})
+    page = middleware.call_with_retry(mcp_client.call_tool, "create_page",
+                                      {"title": title, "body": body, "page_id": meeting.meeting_page_id()})
     retriever.index_generated(page["page_id"], title, body)  # 게시물은 런타임 검색 대상 (평가 제외)
     return page["page_id"]
 

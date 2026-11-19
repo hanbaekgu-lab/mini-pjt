@@ -148,7 +148,7 @@ assumptions:
   사용하고, tests/test_eval_reports.py는 저장된 결과 JSON만 읽어 판정함
 - 가짜 Confluence MCP 서버의 쓰기 폴더는 설정 가능한 경로이며, 테스트는 임시 디렉터리를 사용함
 - 커밋 완료 표시 형식은 '[TASK-012-3][done]'처럼 예시를 따르지만 정확한 문법은 작업자가 정함
-- 'PII 마스킹 출력 형식(예: k***@sds.com)은 작업자가 정함'
+- 'PII 마스킹 출력 형식(예: k***@example.com)은 작업자가 정함'
 - 구체 모델명은 교육에서 제공된 API 기준으로 README에 명시함
 ontology_schema:
   name: WeeklyProgressReportAgent

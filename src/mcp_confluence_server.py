@@ -14,7 +14,8 @@ TOOLS = [
     {"name": "get_page", "description": "page_id로 페이지 조회",
      "inputSchema": {"type": "object", "properties": {"page_id": {"type": "string"}}, "required": ["page_id"]}},
     {"name": "create_page", "description": "페이지 생성(같은 제목이면 교체)",
-     "inputSchema": {"type": "object", "properties": {"title": {"type": "string"}, "body": {"type": "string"}},
+     "inputSchema": {"type": "object", "properties": {"title": {"type": "string"}, "body": {"type": "string"},
+                                                    "page_id": {"type": "string"}},
                      "required": ["title", "body"]}},
     {"name": "search_pages", "description": "본문/제목 키워드 검색",
      "inputSchema": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}},
@@ -28,7 +29,7 @@ def call_tool(name: str, args: dict):
             raise KeyError("page not found")
         return page
     if name == "create_page":
-        return confluence.create_page(args["title"], args["body"])
+        return confluence.create_page(args["title"], args["body"], args.get("page_id"))
     if name == "search_pages":
         return confluence.search_pages(args["query"])
     raise KeyError(f"unknown tool {name}")

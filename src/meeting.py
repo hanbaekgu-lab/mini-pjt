@@ -14,6 +14,11 @@ from pydantic import BaseModel, Field
 from src import tools
 
 
+def meeting_page_id() -> str:
+    """게시 파일명(page_id)은 영문으로 둔다."""
+    return f"weekly_meeting_{tools.load_reference_week()['start']}"
+
+
 def meeting_title() -> str:
     return f"주간회의 자료 {tools.load_reference_week()['start']}"
 

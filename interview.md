@@ -1,7 +1,7 @@
 # Interview summary (session interview_20261118_060344, MCP ambiguity 0.14, seed_ready)
 
 ## Context / constraints (course)
-- AX course, Day 8~10 individual mini project, ~1.5 days real dev. Deliverables: src/(agent.py, tools.py, retriever.py), data/, POST /query API returning {answer, contexts:[{doc_id,text}], trace:[{step,input,output}]}, SERVICE.md (user/problem/value, expansion, tools/data, 3~5 guardrails, success criteria), test_queries.csv (>=10, recommended 15~20; cols id,category,input,expected_traits,forbidden,expected_tools,note; categories positive 40/negative 20/edge 25/guardrail 15), evaluation/round1_report.md & round2_report.md (RAGAS), README (patterns used, trial-and-error retrospective). Public GitHub repo. Required patterns 1,3,11,12; >=6 recommended; user wants ALL 12.
+- AX course, individual mini PJT, ~1.5 days real dev. Deliverables: src/(agent.py, tools.py, retriever.py), data/, POST /query API returning {answer, contexts:[{doc_id,text}], trace:[{step,input,output}]}, SERVICE.md (user/problem/value, expansion, tools/data, 3~5 guardrails, success criteria), test_queries.csv (>=10, recommended 15~20; cols id,category,input,expected_traits,forbidden,expected_tools,note; categories positive 40/negative 20/edge 25/guardrail 15), evaluation/round1_report.md & round2_report.md (RAGAS), README (patterns used, trial-and-error retrospective). Public GitHub repo. Required patterns 1,3,11,12; >=6 recommended; user wants ALL 12.
 - Grading: SERVICE.md quality, sharpness of problem/value, agent completeness, in-out pass rate & round1->round2 improvement, guardrail adherence.
 
 ## Product (user-confirmed)

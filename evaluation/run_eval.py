@@ -127,14 +127,49 @@ def judge(case: dict, res: dict) -> dict:
 
 
 # ----------------------------------------------------------------------------- RAGAS
+def _corpus() -> list[dict]:
+    from src import retriever
+    return retriever.corpus_documents()
+
+
+def rescore_ragas(round_no: int) -> dict:
+    """저장된 답변·근거 문서로 RAGAS 지표만 다시 계산한다 (에이전트·judge 판정은 그대로)."""
+    ev = ROOT / "evaluation"
+    res = json.loads((ev / f"round{round_no}_results.json").read_text(encoding="utf-8"))
+    rows = {int(r["id"]): r for r in csv.DictReader(open(ROOT / "test_queries.csv", encoding="utf-8-sig"))}
+    docs = {d["doc_id"]: d for d in _corpus()}
+    config.get_llm().callbacks = [CallCounter()]
+    for case in res["cases"]:
+        if "faithfulness" not in case:
+            continue
+        r = rows[case["id"]]
+        for run in case["runs"]:
+            if any(i not in docs for i in run["context_doc_ids"]):
+                continue  # 평가 중 생성된 문서(임시 폴더, 삭제됨)를 근거로 쓴 실행은 재구성할 수 없어 원래 점수를 유지
+            ctx = [docs[i] for i in run["context_doc_ids"]]
+            run.pop("ragas_error", None)
+            run.update(ragas_scores(r["input"], run["answer"], ctx, r["reference"]))
+        case["faithfulness"] = round(sum(p["faithfulness"] for p in case["runs"]) / RUNS, 4)
+        case["context_recall"] = round(sum(p["context_recall"] for p in case["runs"]) / RUNS, 4)
+        print(f"rescored case {case['id']}: faithfulness {case['faithfulness']}", flush=True)
+    expl = [c for c in res["cases"] if "faithfulness" in c]
+    res["summary"]["faithfulness"] = round(sum(c["faithfulness"] for c in expl) / len(expl), 4)
+    res["summary"]["context_recall"] = round(sum(c["context_recall"] for c in expl) / len(expl), 4)
+    res["config"]["ragas_rescored"] = ("인용 제거 정규식 수정 후 저장된 답변으로 RAGAS만 재채점 "
+                                       f"(LLM 호출 {CallCounter.count}회, 에이전트·judge 판정 불변)")
+    return res
+
+
 def ragas_scores(question: str, answer: str, contexts: list[dict], reference: str) -> dict:
     from ragas import SingleTurnSample
     from ragas.llms import LangchainLLMWrapper
     from ragas.metrics import Faithfulness, LLMContextRecall
 
     llm = LangchainLLMWrapper(config.get_llm())
-    sample = SingleTurnSample(user_input=question,
-                              response=re.sub(r"\s*\[[A-Z]+-[\w-]+\]", "", answer),  # 인용 표기는 주장이 아니므로 제거
+    # 인용 표기([doc_id])는 주장이 아니므로 제거한다. 실제 문서 ID만 지워야 본문의 '[TASK-ID]' 같은 형식 예시가 남는다.
+    doc_ids = {c["doc_id"] for c in contexts} | {d["doc_id"] for d in _corpus()}
+    response = re.sub(r"\s*\[([^\]]+)\]", lambda m: "" if m.group(1) in doc_ids else m.group(0), answer)
+    sample = SingleTurnSample(user_input=question, response=response,
                               retrieved_contexts=[c["text"] for c in contexts] or [""], reference=reference)
 
     async def run():
@@ -222,7 +257,7 @@ def evaluate(round_no: int) -> dict:
         "config": {"rag_levers": ROUND_LEVERS[round_no], "runs_per_case": RUNS, "pass_rule": "3회 중 2회 이상 통과",
                    "judge_mode": "llm", "judge_prompt": "evaluation/judge_prompt.md",
                    "judge_prompt_sha256_12": judge_sha,
-                   "model": f"{config.MODEL} (Bedrock {config.region()}, temperature=0, 에이전트·judge 공용)",
+                   "model": f"{config.MODEL} (Bedrock, temperature=0, 에이전트·judge 공용)",
                    "embeddings": config.EMBED_MODEL,
                    "metric_impl": f"ragas {ragas.__version__} Faithfulness / LLMContextRecall (Bedrock LLM)",
                    "baseline": "dense-only" if round_no == 1 else None,
@@ -245,7 +280,8 @@ def write_report(res: dict, prev: dict | None) -> str:
          f"- 설정: RAG_LEVERS=`{cfg['rag_levers']}`, 케이스당 {RUNS}회, 2회 이상 통과 시 pass",
          f"- judge: LLM-as-Judge (judge_prompt.md sha256[:12]={cfg['judge_prompt_sha256_12']}) + 결정적 검사"
          "(expected_tools·수치 exact-match·PII 원문), 1·2차 동일",
-         f"- 모델: {cfg['model']}, 임베딩: {cfg['embeddings']}", f"- 지표: {cfg['metric_impl']} (설명형 케이스 3·5·6·7·16)", "",
+         f"- 모델: {cfg['model']}, 임베딩: {cfg['embeddings']}", f"- 지표: {cfg['metric_impl']} (설명형 케이스 3·5·6·7·16)",
+         *([f"- RAGAS 재채점: {cfg['ragas_rescored']}"] if cfg.get("ragas_rescored") else []), "",
          "## 요약", "", "| 지표 | 값 |", "|---|---|",
          f"| 통과 | {s['pass_count']} / {s['total']} |",
          f"| 수치 exact-match | {s['numeric_exact_match_rate']*100:.1f}% |",
@@ -275,8 +311,10 @@ def write_report(res: dict, prev: dict | None) -> str:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--round", type=int, choices=(1, 2), required=True)
-    n = ap.parse_args().round
-    res = evaluate(n)
+    ap.add_argument("--rescore-ragas", action="store_true", help="저장된 결과로 RAGAS 지표만 다시 계산")
+    args = ap.parse_args()
+    n = args.round
+    res = rescore_ragas(n) if args.rescore_ragas else evaluate(n)
     ev = ROOT / "evaluation"
     (ev / f"round{n}_results.json").write_text(json.dumps(res, ensure_ascii=False, indent=2), encoding="utf-8")
     prev = json.loads((ev / "round1_results.json").read_text(encoding="utf-8")) if n == 2 else None

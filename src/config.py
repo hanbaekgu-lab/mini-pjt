@@ -1,6 +1,6 @@
 """LLM·임베딩 설정 (한 곳에서 관리).
 
-.env의 AWS 자격 증명과 AWS_DEFAULT_REGION(us-west-2)을 쓴다. 자격 증명 값은 코드에 두지 않는다.
+.env의 AWS 자격 증명과 AWS_DEFAULT_REGION을 쓴다. 자격 증명 값은 코드에 두지 않는다.
 테스트는 set_llm()으로 가짜 모델을 주입해 AWS 없이 실행한다.
 """
 from __future__ import annotations
@@ -20,7 +20,7 @@ _embeddings = None
 
 
 def region() -> str:
-    return os.environ.get("AWS_DEFAULT_REGION", "us-west-2")
+    return os.environ["AWS_DEFAULT_REGION"]  # 리전은 .env에서만 정한다
 
 
 def get_llm():

@@ -1,6 +1,8 @@
-# 미니 PJT: 주간 진척 보고 에이전트
+# mini PJT: 주간 진척 보고 에이전트
 
-AX 교육 Day 8~10 개인 미니 프로젝트.
+AX 교육 개인 mini PJT.
+
+![주간 진척 보고 에이전트 아키텍처](docs/architecture.svg)
 
 ## 무엇을 푸나
 개발자가 진척률을 손으로 입력하고 PM/PL이 매주 회의 자료를 정리해 Confluence에 등록하던 일을 자동화한다.
@@ -9,7 +11,7 @@ AX 교육 Day 8~10 개인 미니 프로젝트.
 
 ## 실행 환경
 - Python 3.14.8, 프로젝트 가상환경 `.venv`
-- LLM: AWS Bedrock `us.anthropic.claude-sonnet-4-5-20250929-v1:0` (temperature=0), 리전 `us-west-2`
+- LLM: AWS Bedrock `us.anthropic.claude-sonnet-4-5-20250929-v1:0` (temperature=0), 리전은 `.env`의 `AWS_DEFAULT_REGION` 값을 따름
 - 임베딩: Bedrock `amazon.titan-embed-text-v2:0`
 - 평가 지표: RAGAS 0.4.4 (Faithfulness, LLMContextRecall), judge는 에이전트와 같은 모델
 - 모델·리전 설정은 `src/config.py` 한 곳에서 관리한다. AWS 자격 증명은 `.env`(git 제외)에서 읽는다.
@@ -17,7 +19,7 @@ AX 교육 Day 8~10 개인 미니 프로젝트.
 ```
 python -m venv .venv
 .venv\Scripts\pip install -r requirements.txt
-# .env 에 AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_DEFAULT_REGION=us-west-2
+# .env 에 AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_DEFAULT_REGION=<사용할 리전>
 
 # API 서버 (POST /query)
 .venv\Scripts\python.exe -m uvicorn src.server:app --port 8000
@@ -36,7 +38,18 @@ python -m venv .venv
 `approval`을 보내 재개한다. 오류: role/approval 값 422, 없는 thread_id 404, 미등록 user_id 403.
 사용자 식별은 인증 없는 데모 수준이다.
 
-## 활용한 패턴 (Day 1~7, 12개)
+## 사용 예시
+실제 Bedrock 응답을 그대로 캡처한 화면이다(데이터는 가짜 fixture).
+
+**개발자**: 본인 진척률·남은 업무·남은 MM 조회, 다른 개발자 정보 조회 시도 거절
+
+![개발자 사용 예시](docs/usage_developer.png)
+
+**PM/PL**: 지연 이유 질문(RAG 근거 인용), 주간 회의 자료 초안 → 승인(HITL) → Confluence 게시
+
+![PM/PL 사용 예시](docs/usage_pm.png)
+
+## 활용한 패턴 (12개)
 | # | 패턴 | 적용 위치 |
 |---|---|---|
 | 1 | LCEL + Pydantic 구조화 출력 | `src/supervisor.py` 라우터(`prompt \| llm.with_structured_output(RouteDecision)`), `src/meeting.py` `Plan`·`MeetingDraft`, `src/agent.py` 문서 Q&A 체인 |
@@ -60,6 +73,23 @@ python -m venv .venv
 - 판정: LLM-as-Judge가 expected_traits·forbidden을 판정하고, expected_tools 호출·수치 exact-match·PII 원문 노출은 코드로 검사한다.
 - 평가 실행 전 대화 기억·장기 메모리·런타임 인덱스를 초기화하고, 게시된 회의 자료(`data/generated/`)는 평가 코퍼스에서 제외한다.
 - 결과: `evaluation/round1_report.md`, `evaluation/round2_report.md` (원본 `round{N}_results.json`).
+- RAGAS만 다시 계산: `.venv\Scripts\python.exe evaluation/run_eval.py --round N --rescore-ragas` (저장된 답변 사용, 에이전트·judge 판정 불변)
+
+## 평가 결과
+
+| 지표 | 1차 (dense-only) | 2차 (개선) | 성공 기준 |
+|---|---|---|---|
+| 통과 | 17 / 20 | 20 / 20 | 16 이상 |
+| 1차 대비 개선 | - | +3건 | +3건 이상 |
+| 수치 exact-match | 100% | 100% | 100% |
+| 가드레일 차단 | 100% | 100% | 100% |
+| faithfulness (설명형) | 0.8109 | 0.9526 | 0.85 이상 |
+| context recall (설명형) | 0.80 | 1.00 | 0.80 이상 |
+
+2차에서 검색 레버와 함께 적용한 에이전트 개선:
+- 특정 업무 진척 질문에도 `check_mismatch`를 호출해 상태-커밋 불일치를 함께 알림
+- 미연결 커밋에 작성자 이메일을 붙여 출력 단계 마스킹이 드러나게 함
+- 게시물에 개인정보 처리 안내 문구 추가, 근거 인용 프롬프트를 '문서 표현 그대로·부연 금지'로 강화
 
 ## 구조
 - `src/agent.py` 에이전트 본체, `src/server.py` 운영 진입점(LLM 연결), `src/api.py` POST /query
@@ -67,10 +97,8 @@ python -m venv .venv
 - `data/fixtures/` 업무·커밋·개발자·정답, `data/corpus/` 평가용 고정 코퍼스(16건)
 - `tests/` 오프라인 테스트, `evaluation/` 평가
 
-## 축소 내역
-현재 없음 (축소 트리거 미발동).
-
 ## 트라이앤에러 회고
-- 1차 구현은 LLM 없이 규칙 기반으로 동작해 패턴이 흉내에 그쳤다. 결정적 도구·데이터·가드레일은 유지하고 에이전트 계층을 LangChain/LangGraph + Bedrock으로 교체했다.
 - 진척 숫자는 LLM이 바꾸지 않도록 도구 결과를 답변 끝에 그대로 붙인다.
 - 에이전트 처리 전체에 MCP와 같은 10초 타임아웃을 걸면 LLM 응답이 끊겨, MCP(10초)와 에이전트 처리(180초) 타임아웃을 분리했다.
+- 커밋 규칙을 그대로 인용한 답변이 faithfulness 0점을 받았다. RAGAS에 넘기기 전 인용 표기를 지우는 정규식이 본문의 `[TASK-ID]` 형식 예시까지 지운 탓이었다. 실제 문서 ID만 지우도록 고치고, 저장된 답변으로 1·2차 RAGAS를 다시 채점했다.
+- 평가 한 회차 안에서 8번 케이스(승인 후 게시)가 만든 회의 자료가 런타임 인덱스에 들어가, 뒤 순서인 16번 케이스의 근거로 쓰였다. 1·2차 모두 같은 조건이지만 '평가 시 생성 문서 제외' 원칙과 어긋나므로 다음 개선 대상이다(재채점 때 이 실행들은 원래 점수를 유지).

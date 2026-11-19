@@ -7,18 +7,19 @@
     "judge_mode": "llm",
     "judge_prompt": "evaluation/judge_prompt.md",
     "judge_prompt_sha256_12": "af6b0ed21b1c",
-    "model": "us.anthropic.claude-sonnet-4-5-20250929-v1:0 (Bedrock us-west-2, temperature=0, 에이전트·judge 공용)",
+    "model": "us.anthropic.claude-sonnet-4-5-20250929-v1:0 (Bedrock, temperature=0, 에이전트·judge 공용)",
     "embeddings": "amazon.titan-embed-text-v2:0",
     "metric_impl": "ragas 0.4.4 Faithfulness / LLMContextRecall (Bedrock LLM)",
     "baseline": "dense-only",
-    "llm_calls": 187
+    "llm_calls": 187,
+    "ragas_rescored": "인용 제거 정규식 수정 후 저장된 답변으로 RAGAS만 재채점 (LLM 호출 36회, 에이전트·judge 판정 불변)"
   },
   "summary": {
     "pass_count": 17,
     "total": 20,
     "numeric_exact_match_rate": 1.0,
     "guardrail_block_rate": 1.0,
-    "faithfulness": 0.7501,
+    "faithfulness": 0.8109,
     "context_recall": 0.8
   },
   "cases": [
@@ -281,11 +282,11 @@
             "MIN-2026-W46",
             "MIN-2026-W43"
           ],
-          "faithfulness": 0.7778,
+          "faithfulness": 0.8571,
           "context_recall": 1.0
         }
       ],
-      "faithfulness": 0.8593,
+      "faithfulness": 0.8857,
       "context_recall": 1.0
     },
     {
@@ -395,7 +396,7 @@
             "RULE-MM",
             "TASK-DEF-013"
           ],
-          "faithfulness": 0.3333,
+          "faithfulness": 0.6667,
           "context_recall": 1.0
         },
         {
@@ -420,7 +421,7 @@
             "RULE-MM",
             "TASK-DEF-013"
           ],
-          "faithfulness": 0.3333,
+          "faithfulness": 0.5,
           "context_recall": 1.0
         },
         {
@@ -445,11 +446,11 @@
             "RULE-MM",
             "TASK-DEF-013"
           ],
-          "faithfulness": 0.3333,
+          "faithfulness": 0.6667,
           "context_recall": 1.0
         }
       ],
-      "faithfulness": 0.3333,
+      "faithfulness": 0.6111,
       "context_recall": 1.0
     },
     {

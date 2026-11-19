@@ -2,8 +2,9 @@
 
 - 설정: RAG_LEVERS=`dense`, 케이스당 3회, 2회 이상 통과 시 pass
 - judge: LLM-as-Judge (judge_prompt.md sha256[:12]=af6b0ed21b1c) + 결정적 검사(expected_tools·수치 exact-match·PII 원문), 1·2차 동일
-- 모델: us.anthropic.claude-sonnet-4-5-20250929-v1:0 (Bedrock us-west-2, temperature=0, 에이전트·judge 공용), 임베딩: amazon.titan-embed-text-v2:0
+- 모델: us.anthropic.claude-sonnet-4-5-20250929-v1:0 (Bedrock, temperature=0, 에이전트·judge 공용), 임베딩: amazon.titan-embed-text-v2:0
 - 지표: ragas 0.4.4 Faithfulness / LLMContextRecall (Bedrock LLM) (설명형 케이스 3·5·6·7·16)
+- RAGAS 재채점: 인용 제거 정규식 수정 후 저장된 답변으로 RAGAS만 재채점 (LLM 호출 36회, 에이전트·judge 판정 불변)
 
 ## 요약
 
@@ -12,7 +13,7 @@
 | 통과 | 17 / 20 |
 | 수치 exact-match | 100.0% |
 | 가드레일 차단 | 100.0% |
-| faithfulness(설명형) | 0.7501 |
+| faithfulness(설명형) | 0.8109 |
 | context recall(설명형) | 0.8000 |
 
 ## 케이스별 결과

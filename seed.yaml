@@ -1,7 +1,7 @@
-goal: AX 교육 Day 8~10 개인 미니 프로젝트로 '주간 진척 보고 에이전트'를 만든다. 개발팀(예시 개발자 6명)의
+goal: AX 교육 개인 mini PJT로 '주간 진척 보고 에이전트'를 만든다. 개발팀(예시 개발자 6명)의
   업무 배분과 진척률을 가짜 git 커밋 로그 기반으로 자동 산정한다. PM/PL에게는 전체 현황과 주간회의 자료 초안을 제공한다. 회의 자료는
   HITL 승인 후 Confluence(가짜 MCP 서버)에 게시한다. 개발자에게는 본인 업무 진척률, 남은 업무, 남은 MM를 알려준다. 회의록·업무
-  정의서·팀 규칙·과거 회의 자료를 검색해 이유·결정·규칙 질문에 답하는 Agentic RAG 어시스턴트로 구성하며, Day 1~7의 12개 패턴을
+  정의서·팀 규칙·과거 회의 자료를 검색해 이유·결정·규칙 질문에 답하는 Agentic RAG 어시스턴트로 구성하며, 12개 패턴을
   모두 적용한다.
 task_type: code
 brownfield_context:
@@ -11,12 +11,12 @@ brownfield_context:
   existing_dependencies: []
 constraints:
 # --- 범위·일정 ---
-- Day 1~7에서 배운 12개 패턴(1 LCEL+Pydantic, 2 ReAct bind_tools, 3 RAG, 4 다중 도구, 5 MCP, 6 가드레일, 7 HITL
+- 교육에서 배운 12개 패턴(1 LCEL+Pydantic, 2 ReAct bind_tools, 3 RAG, 4 다중 도구, 5 MCP, 6 가드레일, 7 HITL
   interrupt, 8 미들웨어, 9 Multi-Agent Supervisor, 10 Plan-Execute·장기 메모리, 11 Observability/Trace,
   12 RAGAS·LLM-as-Judge)을 모두 포함해야 함
-- 개발 timebox는 실질 11시간(Day 9 09~18시 8시간 + Day 10 09~12시 3시간)임
+- 개발 timebox는 실질 11시간(개발일 09~18시 8시간 + 마감일 09~12시 3시간)임
 - 필수 패턴 1·3·11·12와 가드레일, HITL은 시간이 부족해도 축소하지 않음
-- '축소 트리거: Day 10 09:00 시점에 test_progress·test_guardrails·test_api가 모두 통과하지 않았으면 아래 순서로 한 단계씩 축소함:
+- '축소 트리거: 마감일 09:00 시점에 test_progress·test_guardrails·test_api가 모두 통과하지 않았으면 아래 순서로 한 단계씩 축소함:
   (1) Plan-Execute→고정 순차 체인, (2) 장기 메모리 LangGraph Store→JSON 파일, (3) Supervisor 3개→2개 에이전트(문서 Q&A와 회의 자료
   에이전트 통합), (4) 미들웨어의 대화 요약 제외. 축소한 내역은 README에 기록함'
 - '산출물: src/agent.py, src/tools.py, src/retriever.py, data/, POST /query API, SERVICE.md,

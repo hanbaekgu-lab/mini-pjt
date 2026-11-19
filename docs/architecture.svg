@@ -1,0 +1,139 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" font-family="'Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+    </marker>
+    <marker id="arrG" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#b45309"/>
+    </marker>
+    <style>
+      .box{fill:#ffffff;stroke:#94a3b8;stroke-width:1.5;rx:10}
+      .t{font-size:15px;font-weight:700;fill:#0f172a}
+      .s{font-size:12px;fill:#334155}
+      .p{font-size:11px;font-weight:700;fill:#ffffff}
+      .ln{stroke:#475569;stroke-width:1.6;fill:none;marker-end:url(#arr)}
+      .lg{stroke:#b45309;stroke-width:1.6;fill:none;stroke-dasharray:6 4;marker-end:url(#arrG)}
+    </style>
+  </defs>
+
+  <rect width="1200" height="760" fill="#f8fafc"/>
+  <text x="40" y="44" font-size="24" font-weight="800" fill="#0f172a">주간 진척 보고 에이전트 · 아키텍처</text>
+  <text x="40" y="70" class="s">커밋으로 진척을 계산하고, PM/PL이 승인하면 Confluence에 주간 회의 자료를 등록합니다. 원 안 숫자 = 패턴 번호</text>
+
+  <!-- 사용자 -->
+  <rect x="40" y="110" width="170" height="96" rx="10" class="box"/>
+  <text x="56" y="138" class="t">사용자</text>
+  <text x="56" y="160" class="s">PM/PL · 개발자</text>
+  <text x="56" y="180" class="s">POST /query</text>
+  <text x="56" y="198" class="s">question, user_id, role</text>
+
+  <!-- API + 가드레일 -->
+  <rect x="250" y="100" width="210" height="116" rx="10" fill="#fff7ed" stroke="#f97316" stroke-width="1.5"/>
+  <text x="266" y="128" class="t">API · 가드레일</text>
+  <text x="266" y="150" class="s">api.py / guardrails.py</text>
+  <text x="266" y="170" class="s">역할 범위 · 인젝션 차단</text>
+  <text x="266" y="188" class="s">순위 금지 · 도구 실행 전 권한 체크</text>
+  <circle cx="440" cy="118" r="11" fill="#f97316"/><text x="440" y="122" text-anchor="middle" class="p">6</text>
+
+  <!-- Supervisor -->
+  <rect x="500" y="100" width="220" height="116" rx="10" fill="#eef2ff" stroke="#6366f1" stroke-width="1.5"/>
+  <text x="516" y="128" class="t">Supervisor</text>
+  <text x="516" y="150" class="s">supervisor.py</text>
+  <text x="516" y="170" class="s">LLM 라우팅 (구조화 출력)</text>
+  <text x="516" y="188" class="s">→ 진척 / 문서 Q&amp;A / 회의 자료</text>
+  <circle cx="680" cy="118" r="11" fill="#6366f1"/><text x="680" y="122" text-anchor="middle" class="p">9</text>
+  <circle cx="704" cy="118" r="11" fill="#6366f1"/><text x="704" y="122" text-anchor="middle" class="p">1</text>
+
+  <!-- Bedrock -->
+  <rect x="770" y="100" width="390" height="116" rx="10" fill="#f1f5f9" stroke="#64748b" stroke-width="1.5"/>
+  <text x="786" y="128" class="t">AWS Bedrock (리전: .env 설정)</text>
+  <text x="786" y="150" class="s">Claude Sonnet 4.5 · temperature 0 (config.py)</text>
+  <text x="786" y="170" class="s">Titan Embeddings v2 (벡터 검색)</text>
+  <text x="786" y="190" class="s">에이전트·라우터·채점자가 같은 모델 사용</text>
+
+  <path d="M210,158 L246,158" class="ln"/>
+  <path d="M460,158 L496,158" class="ln"/>
+  <path d="M720,158 L766,158" class="lg"/>
+
+  <!-- 세 에이전트 -->
+  <!-- 진척 -->
+  <rect x="40" y="270" width="350" height="190" rx="10" class="box"/>
+  <text x="56" y="298" class="t">① 진척 에이전트 (ReAct)</text>
+  <text x="56" y="320" class="s">agent.py · create_agent + bind_tools</text>
+  <text x="56" y="346" class="s">tools.py (숫자는 도구가 결정적으로 계산)</text>
+  <text x="70" y="366" class="s">· calc_progress  계획 MM 가중 진척률</text>
+  <text x="70" y="384" class="s">· calc_remaining_mm  남은 MM</text>
+  <text x="70" y="402" class="s">· get_commits  [TASK-ID] 매핑 · 미연결</text>
+  <text x="70" y="420" class="s">· check_mismatch  상태-커밋 불일치 경고</text>
+  <text x="56" y="446" class="s">data/fixtures/ 업무 · 커밋 · 개발자</text>
+  <circle cx="320" cy="290" r="11" fill="#0ea5e9"/><text x="320" y="294" text-anchor="middle" class="p">2</text>
+  <circle cx="344" cy="290" r="11" fill="#0ea5e9"/><text x="344" y="294" text-anchor="middle" class="p">4</text>
+
+  <!-- 문서 Q&A -->
+  <rect x="425" y="270" width="350" height="190" rx="10" class="box"/>
+  <text x="441" y="298" class="t">② 문서 Q&amp;A (Agentic RAG)</text>
+  <text x="441" y="320" class="s">retriever.py · 이유 · 결정 · 규칙 질문</text>
+  <text x="455" y="346" class="s">1차: 벡터 검색만 (baseline)</text>
+  <text x="455" y="366" class="s">2차: BM25 + 벡터 하이브리드 · 리랭킹</text>
+  <text x="455" y="384" class="s">       쿼리 확장 · 주차/업무 메타데이터 필터</text>
+  <text x="455" y="402" class="s">근거 인용 · "문서에 없으면 모른다"</text>
+  <text x="455" y="420" class="s">간접 인젝션 청크 제외</text>
+  <text x="441" y="446" class="s">data/corpus/ 회의록 · 업무 정의서 · 팀 규칙</text>
+  <circle cx="752" cy="290" r="11" fill="#10b981"/><text x="752" y="294" text-anchor="middle" class="p">3</text>
+
+  <!-- 회의 자료 -->
+  <rect x="810" y="270" width="350" height="190" rx="10" class="box"/>
+  <text x="826" y="298" class="t">③ 회의 자료 (Plan-Execute)</text>
+  <text x="826" y="320" class="s">meeting.py · LangGraph</text>
+  <text x="840" y="346" class="s">1. 진척 수집 (①의 도구)</text>
+  <text x="840" y="366" class="s">2. 지난 액션아이템 확인 (Store)</text>
+  <text x="840" y="384" class="s">3. 초안 작성 (구조화 출력)</text>
+  <text x="840" y="402" class="s">4. PM/PL 승인 대기 · interrupt()</text>
+  <text x="840" y="420" class="s">5. Confluence 게시</text>
+  <text x="826" y="446" class="s">결정사항 · 블로커 · 액션아이템 섹션</text>
+  <circle cx="1090" cy="290" r="11" fill="#a855f7"/><text x="1090" y="294" text-anchor="middle" class="p">10</text>
+  <circle cx="1114" cy="290" r="11" fill="#a855f7"/><text x="1114" y="294" text-anchor="middle" class="p">7</text>
+  <circle cx="1138" cy="290" r="11" fill="#a855f7"/><text x="1138" y="294" text-anchor="middle" class="p">1</text>
+
+  <path d="M560,216 L215,266" class="ln"/>
+  <path d="M600,216 L600,266" class="ln"/>
+  <path d="M650,216 L985,266" class="ln"/>
+
+  <!-- HITL 승인 루프 -->
+  <path d="M985,460 L985,500" class="ln"/>
+  <rect x="810" y="500" width="350" height="88" rx="10" fill="#fdf4ff" stroke="#a855f7" stroke-width="1.5"/>
+  <text x="826" y="526" class="t">HITL 승인</text>
+  <text x="826" y="548" class="s">승인 대기 응답에 thread_id 반환</text>
+  <text x="826" y="568" class="s">같은 /query에 approval=approve|reject (PM/PL만)</text>
+
+  <!-- MCP Confluence -->
+  <path d="M810,544 L730,544" class="ln"/>
+  <rect x="425" y="500" width="300" height="88" rx="10" fill="#ecfeff" stroke="#06b6d4" stroke-width="1.5"/>
+  <text x="441" y="526" class="t">Confluence (가짜 MCP 서버)</text>
+  <text x="441" y="548" class="s">mcp_confluence_server.py · stdio</text>
+  <text x="441" y="568" class="s">get_page · create_page · search_pages</text>
+  <circle cx="704" cy="518" r="11" fill="#06b6d4"/><text x="704" y="522" text-anchor="middle" class="p">5</text>
+  <path d="M575,500 L575,466" class="lg"/>
+  <text x="583" y="488" class="s" fill="#b45309">게시 자료 → 런타임 검색 대상 (평가 제외)</text>
+
+  <!-- 공통 레이어 -->
+  <rect x="40" y="500" width="350" height="88" rx="10" fill="#fefce8" stroke="#eab308" stroke-width="1.5"/>
+  <text x="56" y="526" class="t">미들웨어 · 장기 메모리</text>
+  <text x="56" y="548" class="s">middleware.py: PII 마스킹(한 곳) · 대화 요약 · 재시도</text>
+  <text x="56" y="568" class="s">LangGraph Store: 주차별 액션아이템 상태</text>
+  <circle cx="344" cy="518" r="11" fill="#eab308"/><text x="344" y="522" text-anchor="middle" class="p">8</text>
+  <circle cx="368" cy="518" r="11" fill="#eab308"/><text x="368" y="522" text-anchor="middle" class="p">10</text>
+
+  <!-- 하단: trace / 평가 -->
+  <rect x="40" y="628" width="540" height="96" rx="10" fill="#f0fdf4" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="56" y="656" class="t">Observability · Trace</text>
+  <text x="56" y="678" class="s">tracing.py · LangSmith (키 없으면 logs/trace/ 로컬 JSON)</text>
+  <text x="56" y="698" class="s">응답의 trace 필드: 라우팅 결과 · 도구 호출 · 단계별 입력/출력</text>
+  <circle cx="556" cy="648" r="11" fill="#22c55e"/><text x="556" y="652" text-anchor="middle" class="p">11</text>
+
+  <rect x="620" y="628" width="540" height="96" rx="10" fill="#fef2f2" stroke="#ef4444" stroke-width="1.5"/>
+  <text x="636" y="656" class="t">평가 (RAGAS · LLM-as-Judge)</text>
+  <text x="636" y="678" class="s">evaluation/run_eval.py · test_queries.csv 20건 × 3회</text>
+  <text x="636" y="698" class="s">1차 baseline(벡터만) → 2차 개선 레버 · faithfulness · context recall</text>
+  <circle cx="1136" cy="648" r="11" fill="#ef4444"/><text x="1136" y="652" text-anchor="middle" class="p">12</text>
+</svg>

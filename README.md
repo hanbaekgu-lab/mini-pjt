@@ -142,6 +142,9 @@ copy .env.example .env
 - **실제 내용과 맞지 않는 게시 꼬리말**: '업무 담당 확인을 위해 이름만 표기합니다'가 이름 없는 회의 자료에 붙어 있었다. '참석자 공용 자료로, 개인 이름·연락처·개인별 진척률을 싣지 않습니다'로 바꿨다.
 - **LLM 구조화 출력 길이 무제한**(2차 두 번째 실행 1·8·11번): 회의 초안(`MeetingDraft`)이 출력 토큰 한도(2048)에 잘려 `action_items`가 빠지자 요청 전체가 검증 오류로 끝났다. 섹션별 5개 이내·한 문장으로 제한하고(출력 약 1,100토큰), 실패해도 결정적 초안으로 대체한다.
 - **문자열 포함 기반 BM25**: '지연됐고'와 '지연되어'처럼 활용형이 다르면 맞지 않았다. kiwipiepy 형태소 토큰화로 바꿨다.
+- **긴 문서를 통째로 임베딩**(사용 예시 캡처 중 발견): 회의 자료를 게시하면 그 페이지(약 1.6만 자)가 런타임 검색 대상이 되는데, Titan 입력 한도(8,192토큰)를 넘어 이후 문서 Q&A가 모두 오류로 끝났다. 평가는 생성 문서를 검색에서 빼므로 드러나지 않았다. 긴 문서는 문단 경계로 3,000자 이하 조각을 만들어 각각 임베딩하고, 질의와 가장 가까운 조각의 유사도를 문서 점수로 쓴다.
+- **도구 인자에 ID만 기대**(사용 예시 캡처 중 발견): ReAct LLM은 개발자 ID를 모르므로 `developer_id`에 이름('정카카')을 넣었고, 도구가 이를 그대로 찾아 PM에게는 '찾을 수 없음', PL에게는 본인 파트 팀원인데도 '권한 없음'으로 답했다. 도구가 이름을 ID로 바꾼 뒤 범위를 검사한다.
+- **Bedrock 호출 타임아웃 미지정**: 일일 토큰 한도에 걸리자 기본 재시도·대기로 RAGAS 재채점이 20분 넘게 멈춰 있었다. 클라이언트에 연결 10초·응답 120초·재시도 3회(standard)를 명시했다.
 
 ### 최종 채택한 접근과 이유
 - 숫자는 `src/tools.py`가 결정적으로 계산하고 LLM은 설명만 한다 → exact-match 100%를 버그 기준으로 관리할 수 있다.
@@ -169,17 +172,18 @@ copy .env.example .env
 | 가드레일 검사(라우팅·도구 실행 전) | `src/api.py:285`, `src/guardrails.py:83` `check_question`, `src/guardrails.py:150` `filter_injected_chunks` |
 | 출력 단계 PII 마스킹 | `src/api.py:267`, `src/middleware.py:20` `mask_pii` |
 | Supervisor 구조화 출력 라우터 | `src/supervisor.py:20` `RouteDecision`, `src/supervisor.py:36` `make_llm_router` |
-| 진척 ReAct 에이전트 | `src/agent.py:59` `PROGRESS_SYSTEM`, `src/agent.py:75` `_progress_tools`, `src/agent.py:138` `answer_progress` |
-| 문서 Q&A (RAG) | `src/agent.py:24` `BASELINE_PROMPT`, `src/agent.py:25` `GROUNDED_PROMPT`, `src/agent.py:36` `answer_docs_qa`, `src/retriever.py:235` `week_note`(기준 주 안내) |
-| 하이브리드 검색·형태소 BM25 | `src/retriever.py:173` `ko_tokens`, `src/retriever.py:187` `bm25_scores`, `src/retriever.py:256` `search_scored` |
-| 평가 시 생성 문서 제외 | `src/retriever.py:56` `runtime_documents`, `evaluation/run_eval.py:295` |
+| 진척 ReAct 에이전트 | `src/agent.py:60` `PROGRESS_SYSTEM`, `src/agent.py:76` `_progress_tools`(`src/agent.py:88` 이름→ID), `src/agent.py:145` `answer_progress` |
+| 문서 Q&A (RAG) | `src/agent.py:25` `BASELINE_PROMPT`, `src/agent.py:26` `GROUNDED_PROMPT`, `src/agent.py:37` `answer_docs_qa`, `src/retriever.py:261` `week_note`(기준 주 안내) |
+| 하이브리드 검색·형태소 BM25 | `src/retriever.py:199` `ko_tokens`, `src/retriever.py:213` `bm25_scores`, `src/retriever.py:295` `search_scored` |
+| 이력 질문 검색 확대·긴 문서 조각 임베딩 | `src/retriever.py:285` `top_k`, `src/retriever.py:150` `embed_chunks`, `src/retriever.py:179` `dense_sim` |
+| 평가 시 생성 문서 제외 | `src/retriever.py:56` `runtime_documents`, `evaluation/run_eval.py:320` |
 | 진척 결정적 계산 | `src/tools.py:269` `calc_progress`, `src/tools.py:314` `build_progress_report`, `src/tools.py:375` `format_progress_report` |
 | 회의 자료 표·기간 도식·대메뉴 일정표 | `src/tools.py:501` `format_progress_markdown`, `src/tools.py:606` `timeline_lines`, `src/tools.py:624` `large_menu_schedule` |
 | 회의 자료 Plan-Execute·HITL | `src/meeting.py:294` `MeetingFlow`, `src/meeting.py:347` `_check_previous_meeting`(MCP `get_page`), `src/meeting.py:377` `_draft_material`(초안 실패 시 결정적 초안), `src/meeting.py:403` `interrupt()` |
 | MCP 서버·클라이언트 | `src/mcp_confluence_server.py:16` `FastMCP`, `src/mcp_client.py:24` `make_client`, `src/mcp_client.py:61` `call_tool` |
 | Markdown → Confluence 변환 | `src/confluence_convert.py:46` `md_to_storage` |
-| 재시도·타임아웃 | `src/middleware.py:55` `call_with_retry` |
-| judge 입력·RAGAS 4개 지표 | `evaluation/run_eval.py:164` `judge_message`, `evaluation/run_eval.py:254` `ragas_metrics`, `evaluation/run_eval.py:267` `ragas_scores`, `evaluation/run_eval.py:69` `RERUN_FIXES`(2차 재실행 결함 기록) |
+| 재시도·타임아웃 | `src/middleware.py:55` `call_with_retry`, `src/config.py:26` `boto_config`(Bedrock 타임아웃) |
+| judge 입력·RAGAS 4개 지표 | `evaluation/run_eval.py:177` `judge_message`, `evaluation/run_eval.py:273` `ragas_metrics`(`evaluation/run_eval.py:264` 역질문 언어 고정), `evaluation/run_eval.py:291` `ragas_scores`, `evaluation/run_eval.py:69` `RERUN_FIXES`(2차 재실행 결함 기록) |
 
 ## 산출물 구성
 강의 산출물 구성(3-1)과 이 저장소의 실제 구성:
@@ -287,22 +291,21 @@ POST /query {"question": "승인", "thread_id": "3f2a...", "approval": "approve"
   승인·게시 후에는 이번 주 스냅샷을 Store에 저장해 다음 주 회의의 '지난주'로 쓴다(미해결 이슈는 처음 발생 주를 유지).
 
 ## 사용 예시
-아래 화면은 `POST /query`에 실제 요청을 보내 받은 실제 AWS Bedrock 응답을 그대로 캡처한 것이다(데이터는 모두 가짜 fixture).
+아래 화면은 `POST /login`으로 로그인한 뒤 `POST /query`에 실제 요청을 보내 받은 실제 AWS Bedrock 응답을 그대로 캡처한 것이다(데이터는 모두 가짜 fixture).
+화면마다 맨 위에 로그인 단계(사용자·역할·파트)를 한 번 보여 주고, 이후 요청 본문은 `{"question"}`만 담는다(승인 요청만 `thread_id`·`approval` 추가). 신원은 세션에서 온다.
 긴 답변은 앞부분만 보여 주고 생략 줄 수를 표시했다. 각 응답 아래에 `trace` 단계, `contexts` 문서 ID, `thread_id`를 함께 표시했다.
-캡처는 MCP SDK 전환·후속 질문 도구 재호출 수정 **이전** 버전으로 찍었다.
 
 ### PM (pm01 오루니)
-**진척 조회와 문서 Q&A**: 프로젝트 전체 진척률과 계획보다 늦은 대메뉴, 특정 개발자(정카카) 개인 진척률, 지연 이유와 지난 회의 조치(회의록 근거 인용)
+**진척 조회와 문서 Q&A**: 프로젝트 전체 진척률과 계획보다 늦은 대메뉴, 특정 개발자(정카카) 개인 진척률, 지연 이유와 지난 회의 조치(회의록 근거 인용), 여러 주차 회의 이력 요약(회의록 5건까지 검색)
 
 ![PM 진척 조회와 문서 Q&A](docs/images/usage_pm_progress.png)
 
-**주간 회의 자료(HITL)**: 회의 자료 요청 → 진척 수집·지난주 회의 확인(장기 메모리 스냅샷·회의록) 후 초안과 승인 대기(`pending_approval`, `thread_id`) → 같은 `thread_id`로 승인 → Confluence(fake 모드) 게시와 이번 주 스냅샷 저장
+**주간 회의 자료(HITL)**: 회의 자료 요청 → 진척 수집·지난주 회의 확인(장기 메모리 스냅샷·회의록) 후 초안과 승인 대기(`pending_approval`, `thread_id`) → 같은 `thread_id`로 승인(스레드 소유자 확인) → Confluence(fake 모드) 게시와 이번 주 스냅샷 저장
 
 ![PM 주간 회의 자료](docs/images/usage_pm_meeting.png)
 
 ### PL (pl01 강앙리, PL1: 대메뉴 A~D)
-**본인 파트 진척**: 내 파트 진척(일정 대비 계획·실적·차이 포함), 내 파트 중메뉴별·단계별 현황. 캡처 당시 두 번째 질문에서 LLM이 직전 결과를 재사용해 도구를 다시 부르지 않았고
-요약 문장의 '중메뉴 15개'는 오기다(도구 결과는 PL1 중메뉴 19개). 이 문제는 회고의 '같은 대화의 후속 질문' 항목대로 고쳤다.
+**본인 파트 진척**: '내 파트'는 세션의 파트(PL1)로 풀린다. 내 파트 진척(일정 대비 계획·실적·차이 포함), 내 파트 중메뉴별·단계별 현황(질문마다 도구 재호출)
 
 ![PL 본인 파트 진척](docs/images/usage_pl_progress.png)
 
@@ -311,7 +314,7 @@ POST /query {"question": "승인", "thread_id": "3f2a...", "approval": "approve"
 ![PL 팀원 조회 범위](docs/images/usage_pl_scope.png)
 
 ### 개발자 (dev01 김메시)
-**본인 진척과 팀 공용 문서**: 본인 진척률·남은 화면·남은 MM(일정 대비 포함), 커밋 메시지 규칙(RULE-COMMIT 인용), 다른 개발자 담당 화면의 정의서 질문은 팀 공용 문서라 답변(그 화면의 진척 질문은 거절)
+**본인 진척과 팀 공용 문서**: 본인 진척률·남은 화면·남은 MM(일정 대비 포함, 범위는 세션 사용자), 커밋 메시지 규칙(RULE-COMMIT 인용), 다른 개발자 담당 화면의 정의서 질문은 팀 공용 문서라 답변(그 화면의 진척 질문은 거절)
 
 ![개발자 본인 진척과 팀 규칙 문서](docs/images/usage_dev.png)
 
@@ -320,7 +323,7 @@ POST /query {"question": "승인", "thread_id": "3f2a...", "approval": "approve"
 ![개발자 가드레일](docs/images/usage_dev_guardrail.png)
 
 ### 공통 예외 처리 (pm01로 요청)
-개발자 성과 순위 요청 거절, 없는 화면 ID(SCR-Z99-99) 안내, 범위 밖 질문(회사 매출)은 문서 근거 없음 안내, 담당자 연락처 요청 시 이메일 마스킹
+개발자 성과 순위 요청 거절, 없는 화면 ID(SCR-Z99-99) 안내, 범위 밖 질문(회사 매출)은 문서 근거 없음 안내, 담당자 연락처 요청 시 이메일 마스킹, 로그인 없는 요청은 401
 
 ![공통 예외 처리](docs/images/usage_common.png)
 

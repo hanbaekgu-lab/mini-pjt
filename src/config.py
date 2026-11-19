@@ -23,11 +23,18 @@ def region() -> str:
     return os.environ["AWS_DEFAULT_REGION"]  # 리전은 .env에서만 정한다
 
 
+def boto_config():
+    """Bedrock 호출 타임아웃·재시도. 기본값에 맡기면 응답 없는 호출 하나가 평가 전체를 오래 붙잡을 수 있어 명시한다."""
+    from botocore.config import Config
+    return Config(connect_timeout=10, read_timeout=120, retries={"max_attempts": 3, "mode": "standard"})
+
+
 def get_llm():
     global _llm
     if _llm is None:
         from langchain_aws import ChatBedrockConverse
-        _llm = ChatBedrockConverse(model=MODEL, region_name=region(), temperature=0, max_tokens=2048)
+        _llm = ChatBedrockConverse(model=MODEL, region_name=region(), temperature=0, max_tokens=2048,
+                                   config=boto_config())
     return _llm
 
 
@@ -40,7 +47,7 @@ def get_embeddings():
     global _embeddings
     if _embeddings is None:
         from langchain_aws import BedrockEmbeddings
-        _embeddings = BedrockEmbeddings(model_id=EMBED_MODEL, region_name=region())
+        _embeddings = BedrockEmbeddings(model_id=EMBED_MODEL, region_name=region(), config=boto_config())
     return _embeddings
 
 

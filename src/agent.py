@@ -13,7 +13,8 @@ import re
 
 from src import config, guardrails, mcp_client, meeting, middleware, retriever, supervisor, tools
 
-PUBLISH_FOOTER = "※ 이 문서는 참석자 공용 자료로, 개인 이름·연락처·개인별 진척률을 싣지 않습니다."
+PUBLISH_FOOTER = ("※ 이 문서는 참석자 공용 자료로, 개인 이름·연락처·개인별 진척률을 싣지 않습니다. "
+                  "이메일·전화번호는 게시 전 마스킹됩니다.")
 NO_ANSWER = "문서에서 근거를 찾지 못해 알 수 없습니다. 확인 가능한 담당자(PM·PL)나 팀 채널에 문의해 주세요."
 
 _flow: meeting.MeetingFlow | None = None
@@ -39,7 +40,7 @@ def answer_docs_qa(question: str, role: str, user_id: str) -> dict:
     from langchain_core.prompts import ChatPromptTemplate
 
     lv = retriever.levers()
-    hits = retriever.search(question, k=3)
+    hits = retriever.search(question, k=retriever.top_k(question))  # 이력 요약 질문은 5건 (filter 레버)
     ctx, extra = guardrails.sanitize_contexts(role, user_id, hits)
     trace = [{"step": "tool_call", "input": {"tool": "retrieve_docs", "query": question, "levers": sorted(lv)},
               "output": [c["doc_id"] for c in ctx]}] + extra
@@ -84,8 +85,14 @@ def _progress_tools(role: str, user_id: str, called: list[str]):
         s = tools.find_screen(screen_id)
         return s is None or tools.in_scope(s, own)  # 없는 화면은 도구가 '찾을 수 없음'으로 답한다
 
+    def dev_id(x: str) -> str:
+        """LLM이 developer_id 자리에 이름('정카카', '정카카님')을 넣어도 ID로 바꾼다. 모르는 값은 그대로 둔다(도구가 '없음')."""
+        x = re.sub(r"\s|님$", "", x)
+        return next((d["developer_id"] for d in tools.load_developers() if x in (d["developer_id"], d["name"])), x)
+
     def target(screen_id: str, developer_id: str, part: str = "") -> dict | None:
         """조회 대상. 범위 밖이면 None (PM 누구나, PL 본인 파트·구성원, 개발자 본인만. 파트 단위는 개발자 불가)."""
+        developer_id = dev_id(developer_id) if developer_id else ""
         if screen_id:
             return {"screen_id": screen_id} if allowed(screen_id) else None
         if developer_id:
@@ -97,7 +104,7 @@ def _progress_tools(role: str, user_id: str, called: list[str]):
 
     @tool
     def calc_progress(screen_id: str = "", developer_id: str = "", part: str = "") -> str:
-        """진척률을 계산한다. screen_id(예: SCR-A01-03)를 주면 화면 단건, developer_id(예: dev01)를 주면 그 개발자 담당분,
+        """진척률을 계산한다. screen_id(예: SCR-A01-03)를 주면 화면 단건, developer_id(예: dev01 또는 이름 '김메시')를 주면 그 개발자 담당분,
         part(PL1|PL2)를 주면 그 파트 합계·대메뉴별, 모두 비우면 요청자 범위 전체(파트·대메뉴·중메뉴·단계별 집계와 계획 대비
         차이 포함). 수치 질문마다 새로 호출한다."""
         called.append("calc_progress")
@@ -212,7 +219,7 @@ def resume_meeting(saved: dict, approval: str) -> dict:
     elif st.get("error"):
         answer = f"게시 실패(게시하지 않음): {st['error']}"
     else:
-        answer = f"승인되어 Confluence에 게시했습니다: {st['page_id']}"
+        answer = f"승인되어 Confluence에 게시했습니다: {st['page_id']} (이메일·전화번호 마스킹 적용 후 게시)"
     return {"answer": answer, "contexts": [], "trace": trace, "pending_approval": False}
 
 

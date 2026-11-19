@@ -180,6 +180,9 @@ def test_ragas_metrics_wraps_llm_and_bedrock_embeddings(monkeypatch):
     assert set(m) == set(run_eval.RAGAS_METRICS)
     assert type(m["context_precision"]).__name__ == "LLMContextPrecisionWithReference"
     assert type(m["answer_relevancy"]).__name__ == "ResponseRelevancy" and m["answer_relevancy"].embeddings is not None
+    # 한국어 답변에서 영어 역질문이 나와 언어 간 유사도를 재지 않도록, 역질문을 응답과 같은 언어로 만들게 한다
+    assert m["answer_relevancy"].question_generation.instruction.endswith(run_eval.RELEVANCY_LANG_NOTE)
+    assert run_eval.ragas_metrics()["answer_relevancy"].question_generation.instruction.count("same language") == 1
 
 
 def test_mean_metrics_skips_missing_values():
@@ -202,7 +205,7 @@ def test_rescore_computes_new_metrics_from_stored_answers(tmp_path, monkeypatch)
     monkeypatch.setattr(run_eval, "ROOT", tmp_path)
     monkeypatch.setattr(config, "get_llm", lambda: FakeLLM(messages=iter([])))
     calls = []
-    monkeypatch.setattr(run_eval, "ragas_scores", lambda q, a, ctx, ref: calls.append(a) or {
+    monkeypatch.setattr(run_eval, "ragas_scores", lambda q, a, ctx, ref, names=run_eval.RAGAS_METRICS: calls.append(a) or {
         "faithfulness": 0.9, "context_recall": 1.0, "context_precision": 0.8, "answer_relevancy": 0.7})
     res = run_eval.rescore_ragas(1)
     assert len(calls) == 2  # 재구성 가능한 실행만 저장된 답변으로 재채점
@@ -212,6 +215,26 @@ def test_rescore_computes_new_metrics_from_stored_answers(tmp_path, monkeypatch)
     assert case["faithfulness"] == round((0.9 + 0.9 + 0.1) / 3, 4)
     assert all(k in res["summary"] for k in run_eval.RAGAS_METRICS)
     assert "faithfulness" not in res["cases"][1]  # 설명형이 아닌 케이스는 건드리지 않는다
+
+
+def test_rescore_selected_metric_keeps_other_metrics(tmp_path, monkeypatch):
+    """측정 결함을 고친 지표(answer_relevancy)만 다시 재고, 나머지 지표 값은 그대로 둔다."""
+    run = {"answer": "커밋 메시지는 '[화면ID] 작업 요약' 형식 [RULE-COMMIT]", "context_doc_ids": ["RULE-COMMIT"],
+           "faithfulness": 1.0, "context_recall": 1.0, "context_precision": 1.0, "answer_relevancy": 0.3}
+    stored = {"round": 1, "config": {}, "summary": {}, "cases": [{"id": 5, "runs": [dict(run) for _ in range(3)],
+                                                                   "faithfulness": 1.0}]}
+    (tmp_path / "evaluation").mkdir()
+    (tmp_path / "evaluation/round1_results.json").write_text(json.dumps(stored), encoding="utf-8")
+    monkeypatch.setattr(run_eval, "ROOT", tmp_path)
+    monkeypatch.setattr(config, "get_llm", lambda: FakeLLM(messages=iter([])))
+    asked = []
+    monkeypatch.setattr(run_eval, "ragas_scores", lambda q, a, ctx, ref, names=run_eval.RAGAS_METRICS:
+                        asked.append(names) or {k: 0.95 for k in names})
+    res = run_eval.rescore_ragas(1, ("answer_relevancy",))
+    assert asked == [("answer_relevancy",)] * 3
+    case = res["cases"][0]
+    assert case["answer_relevancy"] == 0.95 and case["faithfulness"] == 1.0 and case["context_precision"] == 1.0
+    assert "answer_relevancy만 재채점" in res["config"]["ragas_rescored"]
 
 
 def test_report_renders_four_metrics():

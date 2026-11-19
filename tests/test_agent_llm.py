@@ -320,3 +320,20 @@ def test_check_previous_meeting_reads_committed_page_through_real_mcp(monkeypatc
     st = flow._check_previous_meeting({"log": []})
     step = next(t for t in st["log"] if t["input"]["tool"] == "get_page")
     assert step["output"] == "mcp:weekly_meeting_2026-11-09" and st["previous_page"]
+
+
+def test_progress_tools_accept_developer_name_from_llm():
+    """ReAct LLM은 개발자 ID를 모르므로 developer_id 자리에 이름을 넣는다. 도구가 이름을 ID로 바꿔 범위를 검사한다."""
+    by_id = lambda role, uid, dev: {t.name: t for t in agent._progress_tools(role, uid, [])}["calc_progress"].invoke(  # noqa: E731
+        {"developer_id": dev})
+    pm = by_id("pm", "pm01", "정카카")
+    assert pm == by_id("pm", "pm01", "dev05") and "찾을 수 없" not in pm
+    assert by_id("pl", "pl01", "박지단님") == by_id("pl", "pl01", "dev02")      # PL1 구성원은 이름으로도 조회
+    assert by_id("pl", "pl01", "한피구") == agent.guardrails.DENY                  # 다른 파트 구성원은 이름이어도 거절
+    assert by_id("developer", "dev01", "박지단") == agent.guardrails.DENY
+
+
+def test_bedrock_clients_have_explicit_timeout_and_retries():
+    c = config.boto_config()
+    assert c.read_timeout == 120 and c.connect_timeout == 10
+    assert c.retries == {"max_attempts": 3, "mode": "standard"}

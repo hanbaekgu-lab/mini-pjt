@@ -142,19 +142,45 @@ def set_embedder(embeddings) -> None:
     _embedder = embeddings
 
 
+# Titan v2 입력 한도는 8,192토큰이다. 게시된 회의 자료(약 2만 자)는 한 번에 임베딩할 수 없어, 문단 경계로 나눈 조각을
+# 각각 임베딩하고 질의와 가장 가까운 조각의 유사도를 문서 점수로 쓴다. 한국어·표 기호를 감안해 문자 수로 여유 있게 자른다.
+EMBED_MAX_CHARS = 3000
+
+
+def embed_chunks(text: str, limit: int = EMBED_MAX_CHARS) -> list[str]:
+    """문단(빈 줄) 경계로 limit 이하 조각을 만든다. 한 문단이 limit보다 길면 줄 단위, 그래도 길면 글자 단위로 자른다."""
+    if len(text) <= limit:
+        return [text]
+    pieces = []
+    for para in re.split(r"\n\s*\n", text):
+        for line in (para.splitlines() if len(para) > limit else [para]):
+            pieces += [line[i:i + limit] for i in range(0, len(line), limit)] or [""]
+    chunks, cur = [], ""
+    for piece in pieces:
+        if cur and len(cur) + len(piece) + 2 > limit:
+            chunks.append(cur)
+            cur = ""
+        cur = f"{cur}\n\n{piece}" if cur else piece
+    return [c for c in chunks + [cur] if c.strip()]
+
+
 def _vec(text: str) -> list[float]:
     if text not in _VEC_CACHE:  # 같은 문서·질의는 한 번만 임베딩(비용 절감)
         _VEC_CACHE[text] = _embedder.embed_query(text)
     return _VEC_CACHE[text]
 
 
-def dense_sim(query: str, doc: dict) -> float:
-    if _embedder is None:
-        return _cos(_bigrams(query), _bigrams(doc["text"]))
-    a, b = _vec(query), _vec(doc["text"])
+def _cosine(a: list[float], b: list[float]) -> float:
     dot = sum(x * y for x, y in zip(a, b))
     na, nb = math.sqrt(sum(x * x for x in a)), math.sqrt(sum(y * y for y in b))
     return dot / (na * nb) if na and nb else 0.0
+
+
+def dense_sim(query: str, doc: dict) -> float:
+    if _embedder is None:
+        return _cos(_bigrams(query), _bigrams(doc["text"]))
+    q = _vec(query[:EMBED_MAX_CHARS])
+    return max(_cosine(q, _vec(c)) for c in embed_chunks(doc["text"]))
 
 
 def dense_search(query: str, docs: list[dict], k: int = 3) -> list[tuple[float, dict]]:
@@ -248,6 +274,19 @@ def week_note(query: str) -> str:
     return "[기준 정보]\n" + "\n".join(lines)
 
 
+HISTORY = re.compile(r"지금까지|그동안|여태|경과|히스토리|이력|흐름")
+
+
+def is_history_query(query: str) -> bool:
+    """여러 주차 회의록을 모아야 하는 질문('지금까지 회의에서 나온 내용 요약')인지."""
+    return bool(HISTORY.search(query)) and bool(re.search(r"회의|논의|결정", query))
+
+
+def top_k(query: str, default: int = 3) -> int:
+    """검색 건수 (filter 레버). 이력 요약 질문은 회의록이 주차마다 나뉘어 있어 3건으로는 일부 주차가 빠지므로 5건으로 넓힌다."""
+    return 5 if "filter" in levers() and is_history_query(query) else default
+
+
 def json_ref_start() -> str:
     from src import tools
     return tools.load_reference_week()["start"]
@@ -279,6 +318,8 @@ def search_scored(query: str, k: int = 3, docs: list[dict] | None = None) -> lis
                 sc *= 1.5 if _week_start(meta["date"]) == tw else 0.2  # 해당 주 회의록 우선, 다른 주차 혼입 방지
             if screen_ids and meta["kind"] != "팀규칙" and not (screen_ids & meta["screens"]):
                 sc *= 0.3
+            if is_history_query(query) and meta["kind"] == "회의록":
+                sc *= 1.5  # 이력 요약 질문은 회의록 우선
             if re.search(r"완료\s*조건|정의서", query) and meta["kind"] == "화면정의서":
                 sc *= 1.5
             if re.search(r"규칙|형식|양식|템플릿|가이드", query) and meta["kind"] == "팀규칙":

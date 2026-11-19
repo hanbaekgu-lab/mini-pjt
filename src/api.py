@@ -112,7 +112,7 @@ def _publish_draft(draft: dict, approval: str) -> dict:
         return {"answer": f"게시 실패(게시하지 않음): {e}", "contexts": [],
                 "trace": [{"step": "confluence_publish", "input": draft["title"], "output": f"error: {e}"}],
                 "pending_approval": True}
-    return {"answer": f"승인되어 Confluence에 게시했습니다: {page['page_id']}", "contexts": [],
+    return {"answer": f"승인되어 Confluence에 게시했습니다: {page['page_id']} (이메일·전화번호 마스킹 적용 후 게시)", "contexts": [],
             "trace": [{"step": "confluence_publish", "input": draft["title"], "output": page["page_id"]}],
             "pending_approval": False}
 

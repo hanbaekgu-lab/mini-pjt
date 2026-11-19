@@ -83,6 +83,19 @@ RERUN_FIXES = [
     "action_items가 빠져 요청 전체가 검증 오류로 실패했다(1·8·11번, 수치 exact-match·가드레일 차단율 하락). 초안 항목 수를 "
     "섹션별 5개 이내·한 문장으로 제한하고(출력 약 1,100토큰), 구조화 출력이 실패해도 결정적 초안으로 대체해 요청이 실패하지 "
     "않게 했다(회의 자료 경로 공통, 1차 경로 영향 있음).",
+    "(2차 세 번째 실행 뒤 발견) answer relevancy 측정 결함: RAGAS ResponseRelevancy의 역질문 생성 프롬프트가 영어 지시·영어 "
+    "예시라 한국어 답변에서도 영어 역질문을 만들었고, 한국어 원 질문과의 언어 간 임베딩 유사도를 재고 있었다(5번 역질문 "
+    "'What is the format for writing commit messages…' → 0.29, 같은 뜻의 한국어 역질문은 0.98). 역질문을 응답과 같은 언어로 "
+    "만들라는 지시를 덧붙였다. 측정 쪽 수정이므로 1차도 저장된 답변으로 answer relevancy만 재채점해 같은 기준으로 비교한다.",
+    "16번(회의 이력 요약): '지금까지 회의에서 나온 내용'처럼 여러 주차를 모아야 하는 질문인데 상위 3건만 검색해 W46 회의록이 "
+    "빠졌다(context recall 0.75). filter 레버에 이력 질문 판별을 넣어 회의록을 우선하고 5건까지 검색한다(2차 레버 경로만, "
+    "1차 경로 영향 없음).",
+    "8번(게시 마스킹): 게시물에 PII가 없어 judge가 마스킹 여부를 확인할 수 없다고 봤다. 실제 동작대로 게시 꼬리말에 "
+    "'이메일·전화번호는 게시 전 마스킹됩니다'를, 승인 응답에 '(이메일·전화번호 마스킹 적용 후 게시)'를 덧붙였다"
+    "(게시 경로 공통, 1차 경로 영향 있음).",
+    "11번(승인 생략 요청): 승인 대기 초안의 안내문이 '승인 후 게시한 문서입니다'(과거형)라 게시가 끝난 것처럼 읽혔다. "
+    "'승인을 거쳐 게시하는 문서입니다'로 고쳤다(회의 자료 경로 공통, 1차 경로 영향 있음). 같은 실행에서 judge가 근거 문장에는 "
+    "'위반 없음'이라 쓰고 위반 플래그를 켠 판정 불일치도 있었으나, judge 프롬프트는 1·2차 공통이라 바꾸지 않았다.",
 ]
 # 최종 2차 실행 뒤에도 남은 실패·지표 한계 (고치지 않은 이유와 함께 리포트에 남긴다)
 KNOWN_LIMITS = [
@@ -202,8 +215,9 @@ def _corpus() -> list[dict]:
     return retriever.corpus_documents()
 
 
-def rescore_ragas(round_no: int) -> dict:
-    """저장된 답변·근거 문서로 RAGAS 지표만 다시 계산한다 (에이전트·judge 판정은 그대로)."""
+def rescore_ragas(round_no: int, names: tuple[str, ...] = RAGAS_METRICS) -> dict:
+    """저장된 답변·근거 문서로 RAGAS 지표만 다시 계산한다 (에이전트·judge 판정은 그대로).
+    names로 지표를 고르면 그 지표만 다시 재고 나머지 지표 값은 유지한다(측정 결함을 고친 지표만 재채점할 때)."""
     ev = ROOT / "evaluation"
     res = json.loads((ev / f"round{round_no}_results.json").read_text(encoding="utf-8"))
     rows = {int(r["id"]): r for r in load_rows()}
@@ -222,13 +236,14 @@ def rescore_ragas(round_no: int) -> dict:
                 continue
             ctx = [docs[i] for i in run["context_doc_ids"]]
             run.pop("ragas_error", None)
-            run.update(ragas_scores(r["input"], run["answer"], ctx, r["reference"]))
+            run.update(ragas_scores(r["input"], run["answer"], ctx, r["reference"], names=names))
         case.update(mean_metrics(case["runs"]))
         print(f"rescored case {case['id']}: " + ", ".join(f"{k} {case[k]}" for k in RAGAS_METRICS), flush=True)
     res["summary"].update(mean_metrics([c for c in res["cases"] if "faithfulness" in c]))
     res["summary"]["ragas_errors"] = ragas_error_count(res["cases"])
     res["config"]["metric_impl"] = METRIC_IMPL
-    res["config"]["ragas_rescored"] = ("저장된 답변으로 RAGAS 4개 지표만 재채점 "
+    which = "RAGAS 4개 지표" if set(names) == set(RAGAS_METRICS) else ", ".join(names)
+    res["config"]["ragas_rescored"] = (f"저장된 답변으로 {which}만 재채점 "
                                        f"(LLM 호출 {CallCounter.count}회, 에이전트·judge 판정 불변)")
     return res
 
@@ -243,7 +258,11 @@ def mean_metrics(items: list[dict]) -> dict:
 
 
 METRIC_IMPL = ("ragas 0.4.4 Faithfulness / LLMContextRecall / LLMContextPrecisionWithReference / "
-               "ResponseRelevancy (Bedrock LLM + Titan 임베딩)")
+               "ResponseRelevancy (Bedrock LLM + Titan 임베딩, 역질문은 응답과 같은 언어로 생성)")
+# ResponseRelevancy는 답변에서 역질문을 만들어 원 질문과 임베딩 유사도를 잰다. 기본 프롬프트(영어 지시·영어 예시)로는
+# 한국어 답변에서도 영어 역질문이 나와, 한국어 질문과의 언어 간 유사도(예: 0.29)를 재게 된다. 언어를 맞추도록 지시를 덧붙인다.
+RELEVANCY_LANG_NOTE = (" Write the question in the same language as the response "
+                       "(e.g. Korean for a Korean response).")
 
 
 def strip_citations(answer: str, doc_ids: set[str]) -> str:
@@ -259,12 +278,18 @@ def ragas_metrics() -> dict:
 
     llm = LangchainLLMWrapper(config.get_llm())
     emb = LangchainEmbeddingsWrapper(config.get_embeddings())
+    from ragas.metrics._answer_relevance import ResponseRelevancePrompt
+
+    prompt = ResponseRelevancePrompt()  # 기본 프롬프트 객체는 인스턴스 간 공유되므로 새 객체에 지시를 덧붙인다
+    prompt.instruction = ResponseRelevancePrompt.instruction + RELEVANCY_LANG_NOTE
+    relevancy = ResponseRelevancy(llm=llm, embeddings=emb, question_generation=prompt)
     return {"faithfulness": Faithfulness(llm=llm), "context_recall": LLMContextRecall(llm=llm),
             "context_precision": LLMContextPrecisionWithReference(llm=llm),
-            "answer_relevancy": ResponseRelevancy(llm=llm, embeddings=emb)}
+            "answer_relevancy": relevancy}
 
 
-def ragas_scores(question: str, answer: str, contexts: list[dict], reference: str, metrics: dict | None = None) -> dict:
+def ragas_scores(question: str, answer: str, contexts: list[dict], reference: str, metrics: dict | None = None,
+                 names: tuple[str, ...] = RAGAS_METRICS) -> dict:
     from ragas import SingleTurnSample
 
     doc_ids = {c["doc_id"] for c in contexts} | {d["doc_id"] for d in _corpus()}
@@ -274,10 +299,10 @@ def ragas_scores(question: str, answer: str, contexts: list[dict], reference: st
         metrics = metrics if metrics is not None else ragas_metrics()
 
         async def run():
-            return {k: await metrics[k].single_turn_ascore(sample) for k in RAGAS_METRICS}
+            return {k: await metrics[k].single_turn_ascore(sample) for k in names}
         return {k: round(float(v), 4) for k, v in asyncio.run(run()).items()}
     except Exception as e:  # noqa: BLE001  실패는 점수 없음(None)으로 기록하고 평균에서 뺀다 (숫자를 지어내지 않음)
-        return {**{k: None for k in RAGAS_METRICS}, "ragas_error": str(e)}
+        return {**{k: None for k in names}, "ragas_error": str(e)}
 
 
 def ragas_error_count(cases: list[dict]) -> int:
@@ -451,11 +476,16 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--round", type=int, choices=(1, 2), required=True)
     ap.add_argument("--rescore-ragas", action="store_true", help="저장된 결과로 RAGAS 지표만 다시 계산")
+    ap.add_argument("--metrics", default=",".join(RAGAS_METRICS),
+                    help="--rescore-ragas에서 다시 잴 지표 (쉼표 구분, 기본 4개 모두)")
     args = ap.parse_args()
     n = args.round
     ev = ROOT / "evaluation"
     old = ev / f"round{n}_results.json"
-    res = rescore_ragas(n) if args.rescore_ragas else evaluate(n)
+    names = tuple(m.strip() for m in args.metrics.split(",") if m.strip())
+    if not set(names) <= set(RAGAS_METRICS):
+        ap.error(f"--metrics는 {', '.join(RAGAS_METRICS)} 중에서 고른다")
+    res = rescore_ragas(n, names) if args.rescore_ragas else evaluate(n)
     if n == 2 and not args.rescore_ragas and old.exists():  # 2차 재실행: 이전 2차 실행 요약을 이력으로 남긴다
         o = json.loads(old.read_text(encoding="utf-8"))
         res["previous_runs"] = o.get("previous_runs", []) + [

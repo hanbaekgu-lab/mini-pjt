@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 
 from src import tools
 
-NOTICE = ("> 주간 진척 보고 에이전트가 커밋·화면 데이터로 자동 작성하고, PM 또는 PL 승인 후 게시한 문서입니다. "
+NOTICE = ("> 주간 진척 보고 에이전트가 커밋·화면 데이터로 자동 작성하고, PM 또는 PL 승인을 거쳐 게시하는 문서입니다. "
           "참석자 전원에게 공유되므로 업무 단위 진척만 싣습니다(개인별 진척률·이름 없음).")
 DRAFT_MAX_ITEMS = 5    # LLM 초안 섹션별 항목 수 상한(출력 토큰 한도 안에서 구조화 출력이 잘리지 않게)
 LONG_ISSUE_WEEKS = 8  # 이 주수 이상 지속된 미해결 이슈는 기본 초안의 블로커로 올린다

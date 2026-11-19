@@ -5,7 +5,10 @@
 - 케이스당 3회 실행, 2회 이상 통과하면 pass.
 - 판정: LLM-as-Judge(judge_prompt.md, 에이전트와 같은 모델, temperature=0)가 traits·forbidden을 판정하고,
   expected_tools 호출·수치 exact-match·PII 원문 노출은 코드로 결정적으로 검사한다.
-- RAGAS 0.4.4: faithfulness, context_recall (설명형 케이스만, Bedrock LLM 사용)
+- RAGAS 0.4.4: faithfulness, context_recall, context_precision, answer_relevancy
+  (설명형 케이스만, Bedrock LLM·Titan 임베딩 사용)
+- 평가 시 생성 문서 제외: EVAL_EXCLUDE_GENERATED=1로 검색은 data/corpus만 쓴다(8번 승인 케이스가 게시한 회의 자료가
+  같은 회차의 뒤 케이스 근거로 섞이지 않게 함).
 - 결과: evaluation/round{N}_results.json + round{N}_report.md
 """
 from __future__ import annotations
@@ -53,6 +56,13 @@ EXPECTED = json.loads((ROOT / "data/fixtures/expected_progress.json").read_text(
 DEVS = {d["developer_id"]: d for d in json.loads((ROOT / "data/fixtures/developers.json").read_text(encoding="utf-8"))}
 PARTS = json.loads((ROOT / "data/fixtures/project.json").read_text(encoding="utf-8"))["parts"]
 JUDGE_PROMPT = (ROOT / "evaluation/judge_prompt.md").read_text(encoding="utf-8")
+QUERIES = ROOT / "evaluation/test_queries.csv"
+RAGAS_METRICS = ("faithfulness", "context_recall", "context_precision", "answer_relevancy")
+
+
+def load_rows() -> list[dict]:
+    with open(QUERIES, encoding="utf-8-sig") as f:
+        return list(csv.DictReader(f))
 
 
 def pct(x: float) -> str:
@@ -144,7 +154,7 @@ def rescore_ragas(round_no: int) -> dict:
     """저장된 답변·근거 문서로 RAGAS 지표만 다시 계산한다 (에이전트·judge 판정은 그대로)."""
     ev = ROOT / "evaluation"
     res = json.loads((ev / f"round{round_no}_results.json").read_text(encoding="utf-8"))
-    rows = {int(r["id"]): r for r in csv.DictReader(open(ROOT / "test_queries.csv", encoding="utf-8-sig"))}
+    rows = {int(r["id"]): r for r in load_rows()}
     docs = {d["doc_id"]: d for d in _corpus()}
     config.get_llm().callbacks = [CallCounter()]
     for case in res["cases"]:
@@ -153,51 +163,79 @@ def rescore_ragas(round_no: int) -> dict:
         r = rows[case["id"]]
         for run in case["runs"]:
             if any(i not in docs for i in run["context_doc_ids"]):
-                continue  # 평가 중 생성된 문서(임시 폴더, 삭제됨)를 근거로 쓴 실행은 재구성할 수 없어 원래 점수를 유지
+                # 생성 문서 제외 이전 실행이 생성 문서(임시 폴더, 삭제됨)를 근거로 쓴 경우: 재구성할 수 없어 기존 점수를 유지하고
+                # 없는 지표는 None으로 두어 평균에서 뺀다
+                for k in RAGAS_METRICS:
+                    run.setdefault(k, None)
+                continue
             ctx = [docs[i] for i in run["context_doc_ids"]]
             run.pop("ragas_error", None)
             run.update(ragas_scores(r["input"], run["answer"], ctx, r["reference"]))
-        case["faithfulness"] = round(sum(p["faithfulness"] for p in case["runs"]) / RUNS, 4)
-        case["context_recall"] = round(sum(p["context_recall"] for p in case["runs"]) / RUNS, 4)
-        print(f"rescored case {case['id']}: faithfulness {case['faithfulness']}", flush=True)
-    expl = [c for c in res["cases"] if "faithfulness" in c]
-    res["summary"]["faithfulness"] = round(sum(c["faithfulness"] for c in expl) / len(expl), 4)
-    res["summary"]["context_recall"] = round(sum(c["context_recall"] for c in expl) / len(expl), 4)
-    res["config"]["ragas_rescored"] = ("인용 제거 정규식 수정 후 저장된 답변으로 RAGAS만 재채점 "
+        case.update(mean_metrics(case["runs"]))
+        print(f"rescored case {case['id']}: " + ", ".join(f"{k} {case[k]}" for k in RAGAS_METRICS), flush=True)
+    res["summary"].update(mean_metrics([c for c in res["cases"] if "faithfulness" in c]))
+    res["config"]["metric_impl"] = METRIC_IMPL
+    res["config"]["ragas_rescored"] = ("저장된 답변으로 RAGAS 4개 지표만 재채점 "
                                        f"(LLM 호출 {CallCounter.count}회, 에이전트·judge 판정 불변)")
     return res
 
 
-def ragas_scores(question: str, answer: str, contexts: list[dict], reference: str) -> dict:
-    from ragas import SingleTurnSample
+def mean_metrics(items: list[dict]) -> dict:
+    """RAGAS 지표별 평균. 값이 없는(None) 항목은 빼고 평균한다(모두 없으면 None)."""
+    out = {}
+    for k in RAGAS_METRICS:
+        vals = [x[k] for x in items if x.get(k) is not None]
+        out[k] = round(sum(vals) / len(vals), 4) if vals else None
+    return out
+
+
+METRIC_IMPL = ("ragas 0.4.4 Faithfulness / LLMContextRecall / LLMContextPrecisionWithReference / "
+               "ResponseRelevancy (Bedrock LLM + Titan 임베딩)")
+
+
+def strip_citations(answer: str, doc_ids: set[str]) -> str:
+    """인용 표기([doc_id])는 주장이 아니므로 제거한다. 실제 문서 ID만 지워야 본문의 '[화면ID]' 같은 형식 예시가 남는다."""
+    return re.sub(r"\s*\[([^\]]+)\]", lambda m: "" if m.group(1) in doc_ids else m.group(0), answer)
+
+
+def ragas_metrics() -> dict:
+    """RAGAS 4개 지표 (reference 기반 context precision, 임베딩을 쓰는 answer relevancy)."""
+    from ragas.embeddings import LangchainEmbeddingsWrapper
     from ragas.llms import LangchainLLMWrapper
-    from ragas.metrics import Faithfulness, LLMContextRecall
+    from ragas.metrics import Faithfulness, LLMContextPrecisionWithReference, LLMContextRecall, ResponseRelevancy
 
     llm = LangchainLLMWrapper(config.get_llm())
-    # 인용 표기([doc_id])는 주장이 아니므로 제거한다. 실제 문서 ID만 지워야 본문의 '[화면ID]' 같은 형식 예시가 남는다.
-    doc_ids = {c["doc_id"] for c in contexts} | {d["doc_id"] for d in _corpus()}
-    response = re.sub(r"\s*\[([^\]]+)\]", lambda m: "" if m.group(1) in doc_ids else m.group(0), answer)
-    sample = SingleTurnSample(user_input=question, response=response,
-                              retrieved_contexts=[c["text"] for c in contexts] or [""], reference=reference)
+    emb = LangchainEmbeddingsWrapper(config.get_embeddings())
+    return {"faithfulness": Faithfulness(llm=llm), "context_recall": LLMContextRecall(llm=llm),
+            "context_precision": LLMContextPrecisionWithReference(llm=llm),
+            "answer_relevancy": ResponseRelevancy(llm=llm, embeddings=emb)}
 
-    async def run():
-        return (await Faithfulness(llm=llm).single_turn_ascore(sample),
-                await LLMContextRecall(llm=llm).single_turn_ascore(sample))
+
+def ragas_scores(question: str, answer: str, contexts: list[dict], reference: str, metrics: dict | None = None) -> dict:
+    from ragas import SingleTurnSample
+
+    doc_ids = {c["doc_id"] for c in contexts} | {d["doc_id"] for d in _corpus()}
+    sample = SingleTurnSample(user_input=question, response=strip_citations(answer, doc_ids),
+                              retrieved_contexts=[c["text"] for c in contexts] or [""], reference=reference)
     try:
-        f, r = asyncio.run(run())
-        return {"faithfulness": round(float(f), 4), "context_recall": round(float(r), 4)}
-    except Exception as e:  # noqa: BLE001
-        return {"faithfulness": 0.0, "context_recall": 0.0, "ragas_error": str(e)}
+        metrics = metrics if metrics is not None else ragas_metrics()
+
+        async def run():
+            return {k: await metrics[k].single_turn_ascore(sample) for k in RAGAS_METRICS}
+        return {k: round(float(v), 4) for k, v in asyncio.run(run()).items()}
+    except Exception as e:  # noqa: BLE001  실패는 0점으로 기록 (숫자를 지어내지 않음)
+        return {**{k: 0.0 for k in RAGAS_METRICS}, "ragas_error": str(e)}
 
 
 # ----------------------------------------------------------------------------- 실행
 def run_once(rows: list[dict], work: Path) -> dict:
     from fastapi.testclient import TestClient
-    from src import agent, api
+    from src import agent, api, retriever
 
     os.environ["CONFLUENCE_DIR"] = str(work / "confluence")
     os.environ["GENERATED_DIR"] = str(work / "generated")
     os.environ["TRACE_DIR"] = str(work / "trace")
+    os.environ["EVAL_EXCLUDE_GENERATED"] = "1"  # 평가 시 생성 문서 제외: 검색은 data/corpus만
     api.THREADS.clear()
     agent.reset()  # 대화 기억·장기 메모리·런타임 인덱스를 고정 상태로 초기화
     client = TestClient(api.app)
@@ -217,6 +255,7 @@ def run_once(rows: list[dict], work: Path) -> dict:
         if cid == APPROVAL_ID:
             for p in (work / "confluence").rglob("*.md"):
                 extra += p.read_text(encoding="utf-8")
+            retriever.RUNTIME_INDEX.clear()  # 게시물은 런타임 인덱스에서도 바로 비운다 (이중 안전장치)
         out[cid] = {**d, "status": resp.status_code, "extra": extra}
         print(f"  case {cid} done", flush=True)
     return out
@@ -227,7 +266,7 @@ def evaluate(round_no: int) -> dict:
     os.environ["RAG_LEVERS"] = ROUND_LEVERS[round_no]
     agent.setup()
     config.get_llm().callbacks = [CallCounter()]
-    rows = list(csv.DictReader(open(ROOT / "test_queries.csv", encoding="utf-8-sig")))
+    rows = load_rows()
     judge_sha = hashlib.sha256((ROOT / "evaluation/judge_prompt.md").read_bytes()).hexdigest()[:12]
     runs = []
     for i in range(RUNS):
@@ -253,14 +292,12 @@ def evaluate(round_no: int) -> dict:
         passes = sum(p["pass"] for p in per)
         case = {"id": cid, "category": r["category"], "passes": passes, "pass": passes >= 2, "runs": per}
         if r["explanatory"] == "true":
-            case["faithfulness"] = round(sum(p["faithfulness"] for p in per) / RUNS, 4)
-            case["context_recall"] = round(sum(p["context_recall"] for p in per) / RUNS, 4)
+            case.update(mean_metrics(per))
         cases.append(case)
         print(f"judged case {cid}: {passes}/3", flush=True)
     expl = [c for c in cases if "faithfulness" in c]
     num = [p["numeric_exact"] for c in cases if c["id"] in NUMERIC_IDS for p in c["runs"]]
     grd = [c["pass"] for c in cases if c["id"] in GUARDRAIL_IDS]
-    import ragas
     return {
         "round": round_no,
         "config": {"rag_levers": ROUND_LEVERS[round_no], "runs_per_case": RUNS, "pass_rule": "3회 중 2회 이상 통과",
@@ -268,18 +305,25 @@ def evaluate(round_no: int) -> dict:
                    "judge_prompt_sha256_12": judge_sha,
                    "model": f"{config.MODEL} (Bedrock, temperature=0, 에이전트·judge 공용)",
                    "embeddings": config.EMBED_MODEL,
-                   "metric_impl": f"ragas {ragas.__version__} Faithfulness / LLMContextRecall (Bedrock LLM)",
+                   "metric_impl": METRIC_IMPL, "exclude_generated": True,
                    "baseline": "dense-only" if round_no == 1 else None,
                    "llm_calls": CallCounter.count},
         "summary": {
             "pass_count": sum(c["pass"] for c in cases), "total": len(cases),
             "numeric_exact_match_rate": round(sum(num) / len(num), 4),
             "guardrail_block_rate": round(sum(grd) / len(grd), 4),
-            "faithfulness": round(sum(c["faithfulness"] for c in expl) / len(expl), 4),
-            "context_recall": round(sum(c["context_recall"] for c in expl) / len(expl), 4),
+            **mean_metrics(expl),
         },
         "cases": cases,
     }
+
+
+METRIC_LABEL = {"faithfulness": "faithfulness", "context_recall": "context recall",
+                "context_precision": "context precision", "answer_relevancy": "answer relevancy"}
+
+
+def fmt(v) -> str:
+    return "-" if v is None else f"{v:.4f}"
 
 
 def write_report(res: dict, prev: dict | None) -> str:
@@ -295,8 +339,7 @@ def write_report(res: dict, prev: dict | None) -> str:
          f"| 통과 | {s['pass_count']} / {s['total']} |",
          f"| 수치 exact-match | {s['numeric_exact_match_rate']*100:.1f}% |",
          f"| 가드레일 차단 | {s['guardrail_block_rate']*100:.1f}% |",
-         f"| faithfulness(설명형) | {s['faithfulness']:.4f} |",
-         f"| context recall(설명형) | {s['context_recall']:.4f} |", ""]
+         *(f"| {METRIC_LABEL[k]}(설명형) | {fmt(s.get(k))} |" for k in RAGAS_METRICS), ""]
     if prev:
         L += [f"1차 대비 통과 증가: {s['pass_count'] - prev['summary']['pass_count']:+d}건 "
               f"({prev['summary']['pass_count']} → {s['pass_count']})", ""]

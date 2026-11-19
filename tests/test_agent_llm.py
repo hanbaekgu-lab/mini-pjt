@@ -169,3 +169,18 @@ def test_meeting_reject_not_published():
     r = client.post("/query", json={"question": "반려", "user_id": "pm01", "role": "pm",
                                     "thread_id": d["thread_id"], "approval": "reject"}).json()
     assert "게시하지 않았습니다" in r["answer"] and confluence.list_pages() == []
+
+
+def test_progress_followup_question_forces_fresh_tool_calls():
+    """같은 대화의 다른 질문에서 LLM이 도구 없이 이전 답을 재사용하면, 도구를 다시 부르게 하고 최신 결과만 쓴다."""
+    first = [{"name": "calc_progress", "args": {}, "id": "1"}]
+    again = [{"name": "calc_progress", "args": {}, "id": "2"}]
+    config.set_llm(fake([AIMessage("", tool_calls=first), AIMessage("PL1 파트 진척을 요약했습니다."),
+                         AIMessage("앞선 답과 같이 중메뉴 15개입니다."),  # 도구 없이 재사용(잘못된 개수)
+                         AIMessage("", tool_calls=again), AIMessage("최신 도구 결과의 중메뉴별·단계별 현황입니다.")]))
+    agent.reset()
+    agent.answer_progress("내 파트 진척 알려줘", "pl", "pl01")
+    out = agent.answer_progress("내 파트 중메뉴별·단계별 현황 알려줘", "pl", "pl01")
+    assert [t["input"]["tool"] for t in out["trace"] if t["step"] == "tool_call"] == ["calc_progress"]
+    assert out["answer"].startswith("최신 도구 결과") and "중메뉴 15개" not in out["answer"]
+    assert "질문마다 도구를 새로 호출" in agent.PROGRESS_SYSTEM and "최신 도구 결과" in agent.PROGRESS_SYSTEM

@@ -20,7 +20,13 @@ constraints:
   (1) Plan-Execute→고정 순차 체인, (2) 장기 메모리 LangGraph Store→JSON 파일, (3) Supervisor 3개→2개 에이전트(문서 Q&A와 회의 자료
   에이전트 통합), (4) 미들웨어의 대화 요약 제외. 축소한 내역은 README에 기록함'
 - '산출물: src/agent.py, src/tools.py, src/retriever.py, data/, POST /query API, SERVICE.md,
-  test_queries.csv, evaluation/round1_report.md, evaluation/round2_report.md, README.md'
+  evaluation/test_queries.csv, evaluation/round1_report.md, evaluation/round2_report.md, README.md'
+- '저장소 루트에는 README.md, SERVICE.md, requirements.txt, pytest.ini, .env.example, .gitignore, Dockerfile, run.sh(+ .dockerignore)와
+  src/, data/, evaluation/, tests/, docs/만 둠. 명세(seed.yaml·인터뷰 요약)는 docs/spec/, 강의 자료는 docs/course/(git 제외),
+  아키텍처·사용 예시 이미지는 docs/images/에 둠'
+- 'Dockerfile은 python:3.14-slim 기반으로 requirements를 설치하고 8000 포트에서 uvicorn src.server:app을 실행하며 비밀 정보를 이미지에 넣지 않음
+  (.dockerignore가 .env·.venv·logs·.git·data/generated·docs/course 제외, 실행 시 docker run --env-file .env로 주입). run.sh는 setup·server·test·
+  eval N·rescore N·fixtures·docker-build·docker-run 하위 명령을 제공하고 Windows Git Bash에서도 동작함(.venv/Scripts와 .venv/bin 자동 판별)'
 - 모든 데이터는 가짜 데이터(fixture)로 구성함. 실제 git 저장소 연동은 범위 밖
 - '가짜 데이터의 인물·이메일은 실존 인물로 오해되지 않게 둠: 이름은 한글 성 + 축구선수 이름 두 글자(예: 김메시), 이메일 도메인은 example.com'
 - 'AWS 리전 등 환경별 값은 코드·문서에 실제 값을 적지 않고 .env(AWS_DEFAULT_REGION 등)에서만 읽음'
@@ -83,6 +89,9 @@ constraints:
 # --- 패턴 구현 ---
 - Confluence 연동은 기본적으로 가짜 MCP 서버(stdio, 설정 가능한 로컬 폴더에 마크다운 쓰기)이며 tool 스키마는 get_page,
   create_page, search_pages임. 실제 API는 CONFLUENCE_MODE=real일 때만 쓰는 어댑터로 분리함
+- 'MCP는 직접 구현한 JSON-RPC 대신 공식 SDK 계열을 씀: 서버는 fastmcp(2.13.0, mcp 1.30.0), 클라이언트는 langchain-mcp-adapters(0.3.2)
+  MultiServerMCPClient stdio. 나머지 코드는 동기 call_tool(name, arguments) 호출면을 그대로 쓰고(내부에서 비동기 세션을 열고 닫음),
+  10초 타임아웃·재시도 미들웨어를 유지함'
 - '실제 Confluence 전환을 전제로 접속 정보는 .env의 CONFLUENCE_BASE_URL, CONFLUENCE_SPACE_KEY, CONFLUENCE_PARENT_PAGE_ID,
   CONFLUENCE_USER, CONFLUENCE_API_TOKEN으로만 받음. 저장소에는 mock 값을 담은 .env.example만 두고, real 모드에서 값이 빠지면
   변수 이름만 알리는 오류를 냄(값은 출력하지 않음)'
@@ -105,17 +114,25 @@ constraints:
 - 미들웨어는 PII 마스킹, 긴 대화 요약, 재시도를 담당함
 - Trace는 LangSmith를 기본으로 하고 API 키가 없으면 로컬 JSON 로그(logs/trace/)로 대체함. API 응답의 trace 필드에도 포함함
 # --- 평가 ---
-- 'test_queries.csv는 20건 고정: positive 8, negative 4, edge 5, guardrail 3. 열은 id, category, input, expected_traits,
+- 'evaluation/test_queries.csv는 20건 고정: positive 8, negative 4, edge 5, guardrail 3. 열은 id, category, input, expected_traits,
   forbidden, expected_tools, note에 RAGAS용 reference(정답 문장), reference_doc_ids, explanatory(true|false)를 추가함'
 - RAGAS 정답(reference)은 해당 주차 회의록의 블로커·액션아이템 문장과 근거 문서 ID로 사전 고정함. 도구 계산 결과도 contexts에 포함하고,
   수치 정확성은 exact-match로 별도 검사함
 - '케이스 통과 판정: expected_traits 충족(LLM-as-Judge) AND forbidden 미위반 AND expected_tools 호출. 3회 실행 중 2회 이상
   통과하면 pass'
 - 에이전트와 judge는 같은 모델을 temperature=0으로 쓰고, judge 프롬프트는 evaluation/judge_prompt.md로 버전 고정해 1·2차에 동일
-  적용함. RAGAS 지표는 faithfulness, context_recall이며 모델명과 RAGAS 버전은 README에 명시함
+  적용함. RAGAS 지표는 faithfulness, context_recall, context_precision(reference 기반 LLMContextPrecisionWithReference),
+  answer_relevancy(ResponseRelevancy, Bedrock Titan 임베딩을 ragas 래퍼로 사용) 4개이며 모델명과 RAGAS 버전은 README에 명시함.
+  --rescore-ragas는 저장된 답변으로 4개 지표를 모두 다시 계산함
+- '평가 시 생성 문서 제외: 평가 실행기는 EVAL_EXCLUDE_GENERATED=1을 설정해 검색이 data/corpus만 쓰게 하고, 승인 케이스 직후 런타임 인덱스를 비움.
+  한 회차 안에서 앞 케이스가 게시한 회의 자료가 뒤 케이스의 contexts에 들어가지 않음'
 - 1차 평가 baseline은 dense-only 검색이며 평가 전에 README에 사전 명시·고정함
 - 2차 평가는 동일 테스트 세트·동일 judge로 3회 실행함. 개선 레버는 1차 실패 유형에 맞춰 적용함(검색 누락→하이브리드 BM25+벡터+리랭킹,
   질문 모호→쿼리 확장, 주차 혼입→주차·업무 ID 메타데이터 필터, 근거는 맞는데 오답→인용 규칙 및 '문서에 없으면 모른다' 프롬프트)
+- 2차 하이브리드 검색의 BM25 쪽은 kiwipiepy 형태소 토큰화(명사·어간·숫자·외래어, 화면 ID는 한 토큰)를 쓰고 Kiwi 인스턴스와 토큰 결과를 캐시해
+  결정적으로 동작함. 1차 dense-only baseline은 바꾸지 않음
+- 진척 ReAct 에이전트는 같은 대화의 후속 질문에도 질문마다 도구를 새로 호출하고, 최신 도구 결과에 없는 숫자·개수를 말하지 않음.
+  도구 없이 답하면 한 번 더 도구 호출을 지시함
 # --- SERVICE.md ---
 - SERVICE.md에 사용자·문제·가치(예시 팀 10명 = PM 1·PL 2·개발자 7, 플랫폼 전환 1년·화면 170개, 회의자료 작성 주 3시간→5분, 개발자 수기 입력
   주 30분→0분, 주 약 6시간 25분 절감을 '추정치'로 표기하고 일반식 2시간 55분 + 개발자 수 × 30분 병기, 비시간 가치 포함), 사내 기여 확장 3단계(팀 시범 운영→사내
@@ -123,13 +140,13 @@ constraints:
 - SERVICE.md에 '보고 부담을 줄이는 도구이며 개인 평가에는 사용하지 않음'과 인증 없는 데모 수준임을 명시함
 acceptance_criteria:
 - description: 제출 산출물이 갖춰져 있다. src/agent.py, src/tools.py, src/retriever.py, data/corpus/, README.md가 존재하고,
-    test_queries.csv는 정확히 20건(positive 8, negative 4, edge 5, guardrail 3)이며 reference·reference_doc_ids·explanatory
+    evaluation/test_queries.csv는 정확히 20건(positive 8, negative 4, edge 5, guardrail 3)이며 reference·reference_doc_ids·explanatory
     열을 가진다. SERVICE.md는 '추정', '개인 평가에는 사용하지 않', '사내 표준화'를 포함한다
   semantic_ac_key: ac_185518e0e5329875
   verify_command: python -m pytest -q tests/test_deliverables.py
   expected_artifacts:
   - tests/test_deliverables.py
-  - test_queries.csv
+  - evaluation/test_queries.csv
   - SERVICE.md
   - README.md
 - description: 사용자가 진척을 물으면 fixture 기준 주(2026-11-16~22)의 화면별·개발자별·대메뉴별·중메뉴별·파트별·전체 진척률과 남은 MM가
@@ -195,7 +212,8 @@ acceptance_criteria:
   - data/confluence_pages/weekly_meeting_2026-11-16.md
 - description: 평가 리포트가 성공 기준을 충족함을 보인다. evaluation/round1_report.md(사전 고정 dense-only baseline)와
     round2_report.md가 있고, 각 리포트의 결과 JSON에서 2차 통과 16건 이상, 1차 대비 통과 3건 이상 증가, 수치 exact-match 100%,
-    가드레일 차단 100%, 설명형 케이스 faithfulness ≥ 0.85, context recall ≥ 0.80이 확인된다
+    가드레일 차단 100%, 설명형 케이스 faithfulness ≥ 0.85, context recall ≥ 0.80, context precision ≥ 0.80, answer relevancy ≥ 0.80이
+    확인되고, 어떤 실행의 근거에도 게시된 회의 자료(weekly_meeting_*)가 없다
   semantic_ac_key: ac_464c603e4c0929fa
   verify_command: python -m pytest -q tests/test_eval_reports.py
   expected_artifacts:
@@ -204,6 +222,43 @@ acceptance_criteria:
   - evaluation/round1_results.json
   - evaluation/round2_results.json
   - tests/test_eval_reports.py
+- description: 평가 실행기가 생성 문서를 근거로 쓰지 않는다. 한 회차에서 1번(초안)→8번(승인·게시) 뒤의 문서 질문 contexts에는 data/corpus 문서만 있고,
+    RAGAS 4개 지표(faithfulness, context_recall, context_precision, answer_relevancy)가 LLM 없이 가짜 지표로 배선 검증되며(인용 제거 유지),
+    --rescore-ragas는 저장된 답변으로 새 지표까지 계산하고 리포트에 4개 지표가 표시된다
+  semantic_ac_key: ac_e80cbdc2ce0d4d17
+  verify_command: python -m pytest -q tests/test_eval_pipeline.py
+  expected_artifacts:
+  - tests/test_eval_pipeline.py
+  - evaluation/run_eval.py
+  - src/retriever.py
+- description: 저장소 구성이 정리되어 있다. 테스트 세트는 evaluation/test_queries.csv, 명세는 docs/spec/, 이미지는 docs/images/에 있고 루트에는 옛 위치 파일이 없다.
+    Dockerfile(python:3.14-slim, 8000 포트, src.server:app)과 비밀 정보를 제외하는 .dockerignore, run.sh가 있다
+  semantic_ac_key: ac_053397d8dd14cf0e
+  verify_command: python -m pytest -q tests/test_deliverables.py
+  expected_artifacts:
+  - Dockerfile
+  - .dockerignore
+  - run.sh
+  - docs/spec/seed.yaml
+- description: Confluence MCP가 공식 SDK 계열로 동작한다. fastmcp stdio 서버를 langchain-mcp-adapters로 띄우면 get_page·create_page·search_pages
+    3개 도구가 보이고, 동기 call_tool로 게시·조회·검색·재게시 교체·page_id 지정·서버 쪽 Confluence 형식 변환이 기존과 같이 동작하며 없는 페이지는 MCPError다
+  semantic_ac_key: ac_8c2d03b2248cf717
+  verify_command: python -m pytest -q tests/test_mcp_confluence.py
+  expected_artifacts:
+  - src/mcp_confluence_server.py
+  - src/mcp_client.py
+- description: 2차 하이브리드 검색의 BM25가 kiwipiepy 형태소 단위로 맞는다. '지연됐고'와 '지연되어'가 같은 '지연' 토큰으로 맞고, 화면 ID는 한 토큰이며, 점수는 결정적이다
+  semantic_ac_key: ac_53ab38c3305a7a5d
+  verify_command: python -m pytest -q tests/test_retriever.py
+  expected_artifacts:
+  - tests/test_retriever.py
+- description: 진척 에이전트가 같은 대화의 후속 질문(파트 진척 다음 '중메뉴별·단계별 현황')에서 이전 답을 재사용하지 않고 도구를 다시 호출하며,
+    이전 답의 틀린 개수를 답변에 남기지 않는다
+  semantic_ac_key: ac_3999643d8ab2f6d0
+  verify_command: python -m pytest -q tests/test_agent_llm.py
+  expected_artifacts:
+  - tests/test_agent_llm.py
+  - src/agent.py
 assumptions:
 - 테스트 파일은 tests/ 아래 두며 실제 파일명은 작업자가 바꿀 수 있음
 - API 서버는 FastAPI로 구현하고 기능 테스트는 TestClient와 mock LLM을 써서 API 키 없이 실행함. 평가(evaluation/)만 실제 LLM을
@@ -315,7 +370,8 @@ ontology_schema:
     required: true
   - name: eval_result
     type: object
-    description: 평가 회차 결과(round, 케이스별 pass, 통과 건수, faithfulness, context_recall, exact-match율, 가드레일 차단율)
+    description: 평가 회차 결과(round, 케이스별 pass, 통과 건수, faithfulness, context_recall, context_precision, answer_relevancy,
+      exact-match율, 가드레일 차단율)
     required: true
 evaluation_principles:
 - name: numeric_determinism
@@ -325,7 +381,8 @@ evaluation_principles:
   description: 5개 가드레일 정책이 코드 계층에서 100% 강제되고, 고정 거절 문구와 PII 마스킹이 지켜짐
   weight: 0.9
 - name: grounded_answers
-  description: 이유·결정·규칙 답변이 검색 근거에 충실하고(faithfulness ≥ 0.85) 근거 문서를 회수함(context recall ≥ 0.80)
+  description: 이유·결정·규칙 답변이 검색 근거에 충실하고(faithfulness ≥ 0.85) 근거 문서를 회수하며(context recall ≥ 0.80)
+    관련 근거를 앞에 두고(context precision ≥ 0.80) 질문에 맞게 답함(answer relevancy ≥ 0.80). 평가 시 생성 문서는 근거에서 제외함
   weight: 0.8
 - name: hitl_safety
   description: PM·PL 승인 없이는 Confluence 게시가 일어나지 않고, thread_id로 재개가 가능하며 중복 승인에 멱등함
@@ -351,10 +408,12 @@ exit_conditions:
   criteria: 버그로 분류해 수정될 때까지 평가 개선 작업을 중단함
 metadata:
   seed_id: seed_50f7c51da60d
-  version: 1.5.0
+  version: 1.6.0
   created_at: '2026-11-18T07:26:15.837365Z'
   revised_at: '2026-11-19'
-  revision_note: 'refinement pass 5 — 회의 자료에 일정 대비 진척(경과율·계획·실적·차이·상태)·지난주 대비 증감(▲/▼, Confluence 초록/빨강)·이슈 추적(안정 ID, 해결·미해결·신규)·지난주 액션아이템 이행 추가, 지난주 스냅샷 fixture와 장기 메모리 스냅샷 저장, 화면 정의서 등 팀 공용 문서는 모든 역할이 열람, PL 파트 보고에 중메뉴별 추가 (pass 4 — 신원은 세션 기준(문구 기반 권한 상승 거절 제거, 범위 밖 요청만 거절, 역할 불일치 403)·회의 자료는 참석자 전원 공유라 업무 분류 단위 진척만(개인별 진척률 제거)·개인 진척은 PM·PL 요청 시에만 (pass 3 — 도메인 재설계: 플랫폼 전환 1년·대/중/소메뉴 화면 170개(SCR ID)·화면별 4단계·팀 10명(PM 1·PL 2·개발자 7)·역할 pm|pl|developer(PL 본인 파트 범위, PM·PL 승인)·결정적 fixture 생성기·메뉴별 집계 회의 자료 (pass 2 — 회의 자료 표 양식, 영문 page_id, 실제 Confluence 전환용 .env 설정·REST 어댑터, MCP 서버 측 Markdown→Confluence 변환기, 가짜 인물·이메일 규칙, 리전 비하드코딩 반영 (pass 1: 인터뷰 이후 사용자 결정 + QA 제안 4건)))'
+  revision_note: 'refinement pass 6 — 평가 시 생성 문서 제외(EVAL_EXCLUDE_GENERATED), RAGAS 4개 지표(context_precision·answer_relevancy
+    ≥ 0.80 추가), 파일 위치 정리(evaluation/test_queries.csv, docs/spec, docs/images, docs/course), Dockerfile·run.sh, 공식 MCP SDK(fastmcp +
+    langchain-mcp-adapters), kiwipiepy 형태소 BM25, 진척 에이전트 후속 질문 도구 재호출 (pass 5 — 회의 자료에 일정 대비 진척(경과율·계획·실적·차이·상태)·지난주 대비 증감(▲/▼, Confluence 초록/빨강)·이슈 추적(안정 ID, 해결·미해결·신규)·지난주 액션아이템 이행 추가, 지난주 스냅샷 fixture와 장기 메모리 스냅샷 저장, 화면 정의서 등 팀 공용 문서는 모든 역할이 열람, PL 파트 보고에 중메뉴별 추가 (pass 4 — 신원은 세션 기준(문구 기반 권한 상승 거절 제거, 범위 밖 요청만 거절, 역할 불일치 403)·회의 자료는 참석자 전원 공유라 업무 분류 단위 진척만(개인별 진척률 제거)·개인 진척은 PM·PL 요청 시에만 (pass 3 — 도메인 재설계: 플랫폼 전환 1년·대/중/소메뉴 화면 170개(SCR ID)·화면별 4단계·팀 10명(PM 1·PL 2·개발자 7)·역할 pm|pl|developer(PL 본인 파트 범위, PM·PL 승인)·결정적 fixture 생성기·메뉴별 집계 회의 자료 (pass 2 — 회의 자료 표 양식, 영문 page_id, 실제 Confluence 전환용 .env 설정·REST 어댑터, MCP 서버 측 Markdown→Confluence 변환기, 가짜 인물·이메일 규칙, 리전 비하드코딩 반영 (pass 1: 인터뷰 이후 사용자 결정 + QA 제안 4건))))'
   ambiguity_score: 0.139
   gate_forced: false
   interview_id: interview_20261118_060344

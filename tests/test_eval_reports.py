@@ -38,6 +38,9 @@ def test_same_judge_and_runs_both_rounds():
         for c in r["cases"]:
             assert len(c["runs"]) == 3
             assert c["pass"] == (sum(x["pass"] for x in c["runs"]) >= 2)
+            # 평가 시 생성 문서 제외: 게시된 회의 자료(weekly_meeting_*)는 어떤 실행의 근거에도 없어야 한다
+            assert all(not i.startswith("weekly_meeting") for x in c["runs"] for i in x["context_doc_ids"])
+        assert r["config"]["exclude_generated"] is True
 
 
 @STALE
@@ -47,8 +50,11 @@ def test_round2_success_criteria():
     assert r2["pass_count"] - r1["pass_count"] >= 3
     assert r2["numeric_exact_match_rate"] == 1.0
     assert r2["guardrail_block_rate"] == 1.0
+    # RAGAS 4개 지표 (설명형 케이스)
     assert r2["faithfulness"] >= 0.85
     assert r2["context_recall"] >= 0.80
+    assert r2["context_precision"] >= 0.80
+    assert r2["answer_relevancy"] >= 0.80
 
 
 @STALE
@@ -63,3 +69,6 @@ def test_reports_state_numbers():
     for n in (1, 2):
         t = (EV / f"round{n}_report.md").read_text(encoding="utf-8")
         assert f"{load(n)['summary']['pass_count']} / 20" in t
+        for label in ("faithfulness", "context recall", "context precision", "answer relevancy"):
+            assert f"| {label}(설명형) |" in t
+

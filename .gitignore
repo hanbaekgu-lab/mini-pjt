@@ -1,5 +1,6 @@
 # 강의 자료 (public 저장소 제외)
 mini-pjt.pdf
+docs/course/
 
 # 비밀 정보
 .env

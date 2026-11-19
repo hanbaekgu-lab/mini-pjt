@@ -74,7 +74,7 @@
   <text x="441" y="298" class="t">② 문서 Q&amp;A (Agentic RAG)</text>
   <text x="441" y="320" class="s">retriever.py · 이유 · 결정 · 규칙 질문</text>
   <text x="455" y="346" class="s">1차: 벡터 검색만 (baseline)</text>
-  <text x="455" y="366" class="s">2차: BM25 + 벡터 하이브리드 · 리랭킹</text>
+  <text x="455" y="366" class="s">2차: 형태소 BM25 + 벡터 하이브리드 · 리랭킹</text>
   <text x="455" y="384" class="s">       쿼리 확장 · 주차/업무 메타데이터 필터</text>
   <text x="455" y="402" class="s">근거 인용 · "문서에 없으면 모른다"</text>
   <text x="455" y="420" class="s">간접 인젝션 청크 제외</text>
@@ -110,7 +110,7 @@
   <path d="M810,544 L730,544" class="ln"/>
   <rect x="425" y="500" width="300" height="88" rx="10" fill="#ecfeff" stroke="#06b6d4" stroke-width="1.5"/>
   <text x="441" y="526" class="t">Confluence (가짜 MCP 서버)</text>
-  <text x="441" y="548" class="s">mcp_confluence_server.py · stdio</text>
+  <text x="441" y="548" class="s">mcp_confluence_server.py · fastmcp stdio</text>
   <text x="441" y="568" class="s">get_page · create_page · search_pages</text>
   <circle cx="704" cy="518" r="11" fill="#06b6d4"/><text x="704" y="522" text-anchor="middle" class="p">5</text>
   <path d="M575,500 L575,466" class="lg"/>
@@ -134,6 +134,6 @@
   <rect x="620" y="628" width="540" height="96" rx="10" fill="#fef2f2" stroke="#ef4444" stroke-width="1.5"/>
   <text x="636" y="656" class="t">평가 (RAGAS · LLM-as-Judge)</text>
   <text x="636" y="678" class="s">evaluation/run_eval.py · test_queries.csv 20건 × 3회</text>
-  <text x="636" y="698" class="s">1차 baseline(벡터만) → 2차 개선 레버 · faithfulness · context recall</text>
+  <text x="636" y="698" class="s">1차 벡터만 → 2차 개선 · faithfulness·recall·precision·relevancy</text>
   <circle cx="1136" cy="648" r="11" fill="#ef4444"/><text x="1136" y="652" text-anchor="middle" class="p">12</text>
 </svg>

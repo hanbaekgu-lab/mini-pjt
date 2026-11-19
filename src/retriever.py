@@ -2,6 +2,7 @@
 
 - corpus_documents(): data/corpus 고정 스냅샷만 (평가용, generated 제외)
 - 게시된 회의 자료는 data/generated/ 에 저장하고 런타임 인덱스에만 추가. 같은 page_id는 교체.
+- EVAL_EXCLUDE_GENERATED=1(평가 실행기가 설정)이면 검색은 data/corpus만 쓴다 (평가 시 생성 문서 제외).
 """
 from __future__ import annotations
 
@@ -48,7 +49,14 @@ def index_generated(page_id: str, title: str, body: str) -> dict:
     return doc
 
 
+def exclude_generated() -> bool:
+    return os.environ.get("EVAL_EXCLUDE_GENERATED") == "1"
+
+
 def runtime_documents() -> list[dict]:
+    """검색 대상. 평가 중에는 게시된 회의 자료를 넣지 않는다 (한 회차 안에서 앞 케이스가 만든 문서가 근거로 섞이지 않게)."""
+    if exclude_generated():
+        return corpus_documents()
     return corpus_documents() + list(RUNTIME_INDEX.values())
 
 
@@ -156,21 +164,42 @@ def dense_search(query: str, docs: list[dict], k: int = 3) -> list[tuple[float, 
     return scored[:k]
 
 
+# 한국어 형태소 토큰화 (kiwipiepy). 명사·어간·숫자·외래어만 남겨 '지연됐고'와 '지연되어'가 같은 '지연'으로 맞는다.
+KEEP_TAGS = {"NNG", "NNP", "NNB", "NR", "NP", "VV", "VA", "SL", "SN"}
+_kiwi = None
+_TOK_CACHE: dict[str, Counter] = {}
+
+
+def ko_tokens(text: str) -> Counter:
+    """형태소 토큰 빈도. 화면 ID(SCR-A01-03)는 쪼개지지 않게 먼저 떼어 한 토큰으로 둔다. 같은 텍스트는 한 번만 분석한다."""
+    global _kiwi
+    if text not in _TOK_CACHE:
+        if _kiwi is None:
+            from kiwipiepy import Kiwi
+            _kiwi = Kiwi()
+        ids = _screen_ids(text)
+        rest = re.sub(r"SCR-[A-Z]\d{2}-\d{2}(?:-\d)?", " ", text)
+        toks = [t.form.lower() for t in _kiwi.tokenize(rest) if t.tag in KEEP_TAGS] + [i.lower() for i in ids]
+        _TOK_CACHE[text] = Counter(toks)
+    return _TOK_CACHE[text]
+
+
 def bm25_scores(terms: list[str], docs: list[dict], k1: float = 1.5, b: float = 0.75) -> list[float]:
-    texts = [d["text"].lower() for d in docs]
-    avg = sum(len(t) for t in texts) / max(len(texts), 1)
+    """BM25 (Okapi). 질의 용어(불용어 제거·쿼리 확장 후)와 문서를 같은 형태소 토크나이저로 맞춘다."""
+    toks = [ko_tokens(d["text"]) for d in docs]
+    lens = [sum(c.values()) for c in toks]
+    avg = sum(lens) / max(len(lens), 1)
     n = len(docs)
     scores = [0.0] * n
-    for term in terms:
-        tl = term.lower()
-        df = sum(1 for t in texts if tl in t)
+    for term in ko_tokens(" ".join(terms)):
+        df = sum(1 for c in toks if term in c)
         if not df:
             continue
         idf = math.log(1 + (n - df + 0.5) / (df + 0.5))
-        for i, t in enumerate(texts):
-            tf = t.count(tl)
+        for i, c in enumerate(toks):
+            tf = c[term]
             if tf:
-                scores[i] += idf * tf * (k1 + 1) / (tf + k1 * (1 - b + b * len(t) / avg))
+                scores[i] += idf * tf * (k1 + 1) / (tf + k1 * (1 - b + b * lens[i] / avg))
     return scores
 
 

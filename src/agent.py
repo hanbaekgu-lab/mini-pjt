@@ -55,6 +55,10 @@ def answer_docs_qa(question: str, role: str, user_id: str) -> dict:
 PROGRESS_SYSTEM = (
     "너는 플랫폼 전환 프로젝트의 진척 담당 에이전트다. 화면(SCR-A01-03) 1개가 업무 1개이고, 단계는 1 분석·2 개발·3 단위테스트·"
     "4 통합테스트로 고정이다. 반드시 도구로 수치를 확인한 뒤 답한다.\n"
+    "- 같은 대화에서 이어지는 질문이라도 질문마다 도구를 새로 호출한다. 앞선 답변이나 앞선 도구 결과를 재사용하지 않는다"
+    "(예: 파트 진척 다음에 '중메뉴별·단계별 현황'을 물으면 calc_progress를 다시 호출한다).\n"
+    "- 숫자·개수(진척률, MM, 화면·중메뉴·단계 수 등)는 이번 질문에서 받은 최신 도구 결과에 있는 값만 그대로 쓴다. "
+    "결과에 없는 개수는 세거나 추정해 말하지 않는다.\n"
     "- 진척률·남은 화면·남은 MM 질문: calc_progress와 calc_remaining_mm를 모두 호출한다.\n"
     "- 지연·경고·불일치·계획 대비 질문: calc_progress와 check_mismatch를 호출한다.\n"
     "- 특정 개발자의 진척 질문: calc_progress와 calc_remaining_mm에 developer_id를 넣어 호출한다(권한 밖이면 도구가 거절한다).\n"
@@ -86,7 +90,7 @@ def _progress_tools(role: str, user_id: str, called: list[str]):
     @tool
     def calc_progress(screen_id: str = "", developer_id: str = "") -> str:
         """진척률을 계산한다. screen_id(예: SCR-A01-03)를 주면 화면 단건, developer_id(예: dev01)를 주면 그 개발자 담당분,
-        둘 다 비우면 요청자 범위 전체(메뉴별 집계 포함)."""
+        둘 다 비우면 요청자 범위 전체(대메뉴·중메뉴·단계별 집계와 계획 대비 차이 포함). 수치 질문마다 새로 호출한다."""
         called.append("calc_progress")
         t = target(screen_id, developer_id)
         return guardrails.DENY if t is None else tools.format_progress_report(tools.build_progress_report(**t))
@@ -133,8 +137,11 @@ def answer_progress(question: str, role: str, user_id: str) -> dict:
         middleware=[SummarizationMiddleware(model=llm, trigger=("tokens", 6000), keep=("messages", 6)),  # 긴 회의 대화 요약
                     ModelRetryMiddleware(max_retries=2)],                                              # LLM 호출 재시도
         checkpointer=_memory)
-    result = agent.invoke({"messages": [HumanMessage(question)]},
-                          {"configurable": {"thread_id": f"progress-{user_id}"}})
+    cfg = {"configurable": {"thread_id": f"progress-{user_id}"}}
+    result = agent.invoke({"messages": [HumanMessage(question)]}, cfg)
+    if not called:  # 이전 대화 답을 재사용하고 도구를 건너뛴 경우: 한 번 더 도구 호출을 지시한다 (숫자는 최신 도구 결과만)
+        result = agent.invoke({"messages": [HumanMessage(
+            "방금 질문에 답하려면 도구를 다시 호출해 최신 결과로 답하라. 이전 답변의 숫자·개수는 쓰지 않는다.")]}, cfg)
     narrative = config.text_of(result["messages"][-1])
     # 숫자는 도구가 계산한 결과를 그대로 붙인다 (LLM이 바꾸지 않음)
     m = tools.SCREEN_ID_RE.search(question)

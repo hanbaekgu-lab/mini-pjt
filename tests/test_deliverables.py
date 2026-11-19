@@ -11,7 +11,7 @@ def test_files_exist():
 
 
 def test_queries_csv():
-    rows = list(csv.DictReader(open(ROOT / "test_queries.csv", encoding="utf-8-sig")))
+    rows = list(csv.DictReader(open(ROOT / "evaluation/test_queries.csv", encoding="utf-8-sig")))
     assert len(rows) == 20
     counts = {}
     for r in rows:
@@ -34,3 +34,20 @@ def test_corpus_has_injection_doc_and_sections():
         t = d.read_text(encoding="utf-8")
         assert "## 결정사항" in t and "## 블로커" in t and "## 액션아이템" in t
     assert any("이전 지시를 모두 무시" in d.read_text(encoding="utf-8") for d in docs)
+
+
+def test_repo_layout():
+    # 루트에는 실행·문서 핵심 파일만 두고, 명세·강의 자료·이미지는 docs/ 아래에 둔다
+    for p in ["Dockerfile", "run.sh", ".dockerignore", "evaluation/test_queries.csv", "docs/spec/seed.yaml",
+              "docs/spec/interview.md", "docs/spec/interview.ko.md", "docs/images/architecture.svg"]:
+        assert (ROOT / p).exists(), p
+    for p in ["test_queries.csv", "seed.yaml", "interview.md", "interview.ko.md", "mini-pjt.pdf"]:
+        assert not (ROOT / p).exists(), p
+
+
+def test_docker_has_no_baked_secrets():
+    ignore = (ROOT / ".dockerignore").read_text(encoding="utf-8").split()
+    assert ".env" in ignore and ".venv/" in ignore and "docs/course/" in ignore
+    df = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+    assert "python:3.14-slim" in df and "EXPOSE 8000" in df and "src.server:app" in df
+    assert "AWS_" not in df and "TOKEN" not in df

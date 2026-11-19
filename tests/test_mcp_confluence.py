@@ -1,8 +1,5 @@
-"""가짜 Confluence MCP 서버(stdio): tool 스키마, 게시/조회/검색, 재게시 시 교체."""
-import json
-import os
-import subprocess
-import sys
+"""가짜 Confluence MCP 서버(fastmcp, stdio): tool 스키마, 게시/조회/검색, 재게시 시 교체, page_id 지정."""
+import asyncio
 from pathlib import Path
 
 import pytest
@@ -18,13 +15,11 @@ def _dir(tmp_path, monkeypatch):
 
 
 def test_stdio_server_lists_three_tools():
-    reqs = [{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}},
-            {"jsonrpc": "2.0", "id": 2, "method": "tools/list"}]
-    out = subprocess.run([sys.executable, "-m", "src.mcp_confluence_server"], cwd=ROOT, env=os.environ.copy(),
-                         input="\n".join(json.dumps(r) for r in reqs) + "\n", capture_output=True, text=True,
-                         encoding="utf-8", timeout=20).stdout.strip().splitlines()
-    tools = json.loads(out[1])["result"]["tools"]
-    assert {t["name"] for t in tools} == {"get_page", "create_page", "search_pages"}
+    # 실제 stdio 서버(fastmcp)를 띄우고 langchain-mcp-adapters로 도구 목록을 받는다
+    tools = asyncio.run(mcp_client.list_tools())
+    assert {t.name for t in tools} == {"get_page", "create_page", "search_pages"}
+    create = next(t for t in tools if t.name == "create_page")
+    assert {"title", "body", "page_id"} <= set(create.args)
 
 
 def test_create_get_search_roundtrip():
@@ -47,3 +42,11 @@ def test_republish_replaces_not_duplicates():
 def test_get_missing_page_errors():
     with pytest.raises(mcp_client.MCPError):
         mcp_client.call_tool("get_page", {"page_id": "nope"})
+
+
+def test_page_id_arg_and_storage_conversion(tmp_path):
+    page = mcp_client.call_tool("create_page", {"title": "주간회의 자료", "body": "| a | b |\n|---|---|\n| 1 | 2 |",
+                                                "page_id": "weekly_meeting_test"})
+    assert page["page_id"] == "weekly_meeting_test"
+    xml = (tmp_path / "pages" / "weekly_meeting_test.storage.xml").read_text(encoding="utf-8")
+    assert "<table" in xml  # 서버 쪽 Markdown → Confluence 저장 형식 변환

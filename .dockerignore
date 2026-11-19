@@ -1,0 +1,16 @@
+# 비밀 정보·로컬 환경·실행 산출물은 이미지에 넣지 않는다
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+logs/
+.git/
+.gitignore
+data/generated/
+docs/course/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ouroboros/
+.vscode/

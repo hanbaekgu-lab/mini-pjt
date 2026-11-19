@@ -1,12 +1,17 @@
 """평가 실행기 (실제 Bedrock LLM). 사용: .venv\\Scripts\\python.exe evaluation/run_eval.py --round 1|2
 
-- 1차: RAG_LEVERS=dense (dense-only baseline, README에 사전 고정)
-- 2차: RAG_LEVERS=hybrid,expand,filter,grounded (동일 테스트 세트·동일 judge)
+- 1차: RAG_LEVERS=dense (사전 고정 baseline: Titan 벡터 dense-only top-3 + 기본 프롬프트(인용·근거 규칙 없음),
+  쿼리 확장·메타데이터 필터 없음. README '평가 설정')
+- 2차: RAG_LEVERS=hybrid,expand,filter,grounded (동일 테스트 세트·동일 judge·동일 judge 입력)
 - 케이스당 3회 실행, 2회 이상 통과하면 pass.
 - 판정: LLM-as-Judge(judge_prompt.md, 에이전트와 같은 모델, temperature=0)가 traits·forbidden을 판정하고,
   expected_tools 호출·수치 exact-match·PII 원문 노출은 코드로 결정적으로 검사한다.
+  judge 입력: 질문·traits·forbidden·메모·reference, answer 전문(자르지 않음), contexts doc_id, 호출 도구, 압축 trace
+  (단계·짧은 입력·짧은 출력, PII 마스킹), 응답 상태, 승인 케이스는 게시된 페이지 전문.
+- 케이스마다 진척 에이전트 대화 기억을 비우고(순서 의존 제거), Confluence는 항상 fake 모드로 실행한다.
 - RAGAS 0.4.4: faithfulness, context_recall, context_precision, answer_relevancy
-  (설명형 케이스만, Bedrock LLM·Titan 임베딩 사용)
+  (설명형 케이스만, Bedrock LLM·Titan 임베딩 사용). 지표 계산 실패는 0점이 아니라 None(평균에서 제외)으로 기록하고
+  오류 수를 리포트에 표시한다.
 - 평가 시 생성 문서 제외: EVAL_EXCLUDE_GENERATED=1로 검색은 data/corpus만 쓴다(8번 승인 케이스가 게시한 회의 자료가
   같은 회차의 뒤 케이스 근거로 섞이지 않게 함).
 - 결과: evaluation/round{N}_results.json + round{N}_report.md
@@ -48,6 +53,7 @@ RAW_EMAIL = re.compile(r"[A-Za-z0-9._%+-]{2,}@")  # 마스킹된 'k***@'는 loca
 PHONE = re.compile(r"(?<![\d*-])0\d{1,2}[-. ]?\d{3,4}[-. ]?\d{4}(?![\d-])")
 TOOL_ALIAS = {"build_progress_report": ["calc_progress", "calc_remaining_mm", "check_mismatch"],
               "confluence_publish": ["create_page"]}
+# 가드레일 차단율 = GUARDRAIL_IDS 케이스 중 pass(3회 중 2회 이상) 비율
 GUARDRAIL_IDS = {11, 13, 18, 19, 20}   # 가드레일 차단 대상 케이스 (11 승인 없는 게시, 13 세션 범위 밖 요청, 18 PL 타 파트, 19 인젝션, 20 순위)
 NUMERIC_IDS = {1, 2, 4, 14}            # 수치 exact-match 대상 케이스 (1 회의 자료, 2 개발자 본인, 4 PL2 파트, 14 화면 단건)
 APPROVAL_ID, DRAFT_ID = 8, 1           # 8번은 1번 응답의 thread_id로 승인(approve) 재개
@@ -114,16 +120,31 @@ class JudgeVerdict(BaseModel):
     reasons: list[str] = Field(description="항목별 판단 근거 (짧게)")
 
 
+def compact_trace(trace: list[dict], width: int = 120) -> str:
+    """judge용 압축 trace: 단계 / 짧은 입력 / 짧은 출력 (PII 마스킹)."""
+    from src import middleware
+
+    def short(x) -> str:
+        t = x if isinstance(x, str) else json.dumps(x, ensure_ascii=False)
+        return middleware.mask_pii(t.replace("\n", " "))[:width]
+    return "\n".join(f"- {t.get('step')} | {short(t.get('input'))} | {short(t.get('output'))}" for t in trace)
+
+
+def judge_message(case: dict, res: dict, tools: set[str]) -> str:
+    """1·2차 공통 judge 입력. answer와 게시 페이지는 자르지 않는다(회의 자료 초안의 뒷부분 섹션도 판정 대상)."""
+    return (f"{JUDGE_PROMPT}\n\n---\n[케이스 {case['id']} / {case['category']}]\n질문: {case['input']}\n"
+            f"expected_traits: {case['expected_traits']}\nforbidden: {case['forbidden']}\n메모: {case['note']}\n"
+            f"정답 참고(reference): {case['reference'] or '없음'}\n\n"
+            f"[에이전트 answer]\n{res['answer']}\n\n[contexts doc_id] {[c['doc_id'] for c in res['contexts']]}\n"
+            f"[호출된 도구] {sorted(tools)}\n[trace]\n{compact_trace(res.get('trace', []))}\n"
+            f"[응답 상태] pending_approval={res.get('pending_approval')}, "
+            f"thread_id={'있음' if res.get('thread_id') else '없음'}\n"
+            + (f"\n[게시된 Confluence 페이지]\n{res['extra']}\n" if res.get("extra") else ""))
+
+
 def llm_judge(case: dict, res: dict, tools: set[str]) -> JudgeVerdict:
     judge = config.get_llm().with_structured_output(JudgeVerdict)
-    msg = (f"{JUDGE_PROMPT}\n\n---\n[케이스 {case['id']} / {case['category']}]\n질문: {case['input']}\n"
-           f"expected_traits: {case['expected_traits']}\nforbidden: {case['forbidden']}\n메모: {case['note']}\n"
-           f"정답 참고(reference): {case['reference'] or '없음'}\n\n"
-           f"[에이전트 answer]\n{res['answer'][:4000]}\n\n[contexts doc_id] {[c['doc_id'] for c in res['contexts']]}\n"
-           f"[호출된 도구] {sorted(tools)}\n[응답 상태] pending_approval={res.get('pending_approval')}, "
-           f"thread_id={'있음' if res.get('thread_id') else '없음'}\n"
-           + (f"\n[게시된 Confluence 페이지]\n{res['extra'][:3000]}\n" if res.get("extra") else ""))
-    return judge.invoke(msg)
+    return judge.invoke(judge_message(case, res, tools))
 
 
 def judge(case: dict, res: dict) -> dict:
@@ -174,6 +195,7 @@ def rescore_ragas(round_no: int) -> dict:
         case.update(mean_metrics(case["runs"]))
         print(f"rescored case {case['id']}: " + ", ".join(f"{k} {case[k]}" for k in RAGAS_METRICS), flush=True)
     res["summary"].update(mean_metrics([c for c in res["cases"] if "faithfulness" in c]))
+    res["summary"]["ragas_errors"] = ragas_error_count(res["cases"])
     res["config"]["metric_impl"] = METRIC_IMPL
     res["config"]["ragas_rescored"] = ("저장된 답변으로 RAGAS 4개 지표만 재채점 "
                                        f"(LLM 호출 {CallCounter.count}회, 에이전트·judge 판정 불변)")
@@ -223,8 +245,12 @@ def ragas_scores(question: str, answer: str, contexts: list[dict], reference: st
         async def run():
             return {k: await metrics[k].single_turn_ascore(sample) for k in RAGAS_METRICS}
         return {k: round(float(v), 4) for k, v in asyncio.run(run()).items()}
-    except Exception as e:  # noqa: BLE001  실패는 0점으로 기록 (숫자를 지어내지 않음)
-        return {**{k: 0.0 for k in RAGAS_METRICS}, "ragas_error": str(e)}
+    except Exception as e:  # noqa: BLE001  실패는 점수 없음(None)으로 기록하고 평균에서 뺀다 (숫자를 지어내지 않음)
+        return {**{k: None for k in RAGAS_METRICS}, "ragas_error": str(e)}
+
+
+def ragas_error_count(cases: list[dict]) -> int:
+    return sum(1 for c in cases for r in c.get("runs", []) if r.get("ragas_error"))
 
 
 # ----------------------------------------------------------------------------- 실행
@@ -236,18 +262,23 @@ def run_once(rows: list[dict], work: Path) -> dict:
     os.environ["GENERATED_DIR"] = str(work / "generated")
     os.environ["TRACE_DIR"] = str(work / "trace")
     os.environ["EVAL_EXCLUDE_GENERATED"] = "1"  # 평가 시 생성 문서 제외: 검색은 data/corpus만
+    os.environ["CONFLUENCE_MODE"] = "fake"      # 평가는 항상 가짜 Confluence(임시 폴더)에 게시
     api.THREADS.clear()
     agent.reset()  # 대화 기억·장기 메모리·런타임 인덱스를 고정 상태로 초기화
     client = TestClient(api.app)
     out, tid1 = {}, None
     for r in rows:
         cid = int(r["id"])
+        agent.reset_memory()  # 케이스마다 진척 에이전트 대화 기억을 비워 실행 순서에 따라 답이 달라지지 않게 한다
         role = re.search(r"role=(pm|pl|developer)\b", r["note"]).group(1)
         user_id = re.search(r"user_id=(\w+)", r["note"]).group(1)
-        body = {"question": r["input"], "user_id": user_id, "role": role}
+        # note의 user_id = 로그인 사용자. 세션 토큰으로 표준 본문 {question}을 보낸다. role은 등록 역할 검증용
+        login = client.post("/login", json={"user_id": user_id}).json()
+        assert login["role"] == role, (cid, user_id, role)
+        body = {"question": r["input"]}
         if cid == APPROVAL_ID:
             body.update(thread_id=tid1, approval="approve")
-        resp = client.post("/query", json=body)
+        resp = client.post("/query", json=body, headers={"Authorization": f"Bearer {login['session_token']}"})
         d = resp.json()
         if cid == DRAFT_ID:
             tid1 = d["thread_id"]
@@ -306,13 +337,15 @@ def evaluate(round_no: int) -> dict:
                    "model": f"{config.MODEL} (Bedrock, temperature=0, 에이전트·judge 공용)",
                    "embeddings": config.EMBED_MODEL,
                    "metric_impl": METRIC_IMPL, "exclude_generated": True,
-                   "baseline": "dense-only" if round_no == 1 else None,
+                   "baseline": ("dense-only top-3 + 기본 프롬프트(인용·근거 규칙 없음), 쿼리 확장·메타데이터 필터 없음"
+                                if round_no == 1 else None),
                    "llm_calls": CallCounter.count},
         "summary": {
             "pass_count": sum(c["pass"] for c in cases), "total": len(cases),
             "numeric_exact_match_rate": round(sum(num) / len(num), 4),
             "guardrail_block_rate": round(sum(grd) / len(grd), 4),
             **mean_metrics(expl),
+            "ragas_errors": ragas_error_count(expl),
         },
         "cases": cases,
     }
@@ -339,7 +372,8 @@ def write_report(res: dict, prev: dict | None) -> str:
          f"| 통과 | {s['pass_count']} / {s['total']} |",
          f"| 수치 exact-match | {s['numeric_exact_match_rate']*100:.1f}% |",
          f"| 가드레일 차단 | {s['guardrail_block_rate']*100:.1f}% |",
-         *(f"| {METRIC_LABEL[k]}(설명형) | {fmt(s.get(k))} |" for k in RAGAS_METRICS), ""]
+         *(f"| {METRIC_LABEL[k]}(설명형) | {fmt(s.get(k))} |" for k in RAGAS_METRICS),
+         f"| RAGAS 계산 오류(실행 수, 평균에서 제외) | {s.get('ragas_errors', 0)} |", ""]
     if prev:
         L += [f"1차 대비 통과 증가: {s['pass_count'] - prev['summary']['pass_count']:+d}건 "
               f"({prev['summary']['pass_count']} → {s['pass_count']})", ""]

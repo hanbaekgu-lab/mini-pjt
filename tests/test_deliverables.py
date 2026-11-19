@@ -51,3 +51,18 @@ def test_docker_has_no_baked_secrets():
     df = (ROOT / "Dockerfile").read_text(encoding="utf-8")
     assert "python:3.14-slim" in df and "EXPOSE 8000" in df and "src.server:app" in df
     assert "AWS_" not in df and "TOKEN" not in df
+
+
+def test_requirements_only_imported_packages():
+    req = (ROOT / "requirements.txt").read_text(encoding="utf-8")
+    for pkg in ("rank-bm25", "langgraph-supervisor", "langchain-text-splitters", "langchain-community"):
+        assert f"\n{pkg}==" not in req, pkg  # 코드에서 import하지 않는 패키지는 고정하지 않는다
+    for pkg in ("kiwipiepy", "fastmcp", "langchain-mcp-adapters", "ragas"):
+        assert f"\n{pkg}==" in req, pkg
+
+
+def test_dockerignore_and_gitattributes():
+    ignore = (ROOT / ".dockerignore").read_text(encoding="utf-8").split()
+    assert "mini-pjt.pdf" in ignore and "docs/course/" in ignore
+    attrs = (ROOT / ".gitattributes").read_text(encoding="utf-8")
+    assert "*.sh text eol=lf" in attrs and "Dockerfile text eol=lf" in attrs

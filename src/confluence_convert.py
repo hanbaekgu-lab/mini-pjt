@@ -2,6 +2,7 @@
 
 MCP 서버의 create_page가 게시 직전에 호출한다(에이전트는 Markdown만 넘긴다).
 회의 자료에 쓰는 문법만 지원: 제목, 문단, 인용(→ info 패널), 목록, 체크리스트(→ 작업 목록), 표, **굵게**, `코드`,
+펜스 코드 블록(```  → code 매크로, 고정폭 타임라인 도식용),
 지난주 대비 증감 표시(``▲ +1.86%p`` → 초록 글자, ``▼ -0.50%p`` → 빨강 글자).
 """
 from __future__ import annotations
@@ -48,6 +49,16 @@ def md_to_storage(md: str) -> str:
         line = lines[i].rstrip()
         if not line.strip():
             i += 1
+        elif line.startswith("```"):  # 펜스 코드 블록 → code 매크로 (본문은 CDATA로 그대로)
+            i += 1
+            code = []
+            while i < len(lines) and not lines[i].startswith("```"):
+                code.append(lines[i].rstrip())
+                i += 1
+            i += 1  # 닫는 ```
+            body = "\n".join(code).replace("]]>", "]]]]><![CDATA[>")
+            out.append('<ac:structured-macro ac:name="code"><ac:plain-text-body>'
+                       f"<![CDATA[{body}]]></ac:plain-text-body></ac:structured-macro>")
         elif line.startswith("|") and i + 1 < len(lines) and _TABLE_SEP.match(lines[i + 1].strip()):
             rows = []
             while i < len(lines) and lines[i].strip().startswith("|"):

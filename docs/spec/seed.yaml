@@ -32,12 +32,22 @@ constraints:
 - 'AWS 리전 등 환경별 값은 코드·문서에 실제 값을 적지 않고 .env(AWS_DEFAULT_REGION 등)에서만 읽음'
 - public repo에 인증 정보를 포함하지 않음
 # --- API ---
-- POST /query 응답은 answer, contexts, trace를 반환함. 요청 본문은 question, user_id, role(pm|pl|developer) 필드와 HITL
-  재개용 thread_id, approval(approve|reject)로 확장하며 같은 엔드포인트를 사용함
-- 'API 오류 규칙: role이 pm|pl|developer가 아니거나 approval이 approve|reject가 아니면 HTTP 422, 존재하지 않는 thread_id로
-  재개하면 HTTP 404, 등록되지 않은 user_id는 HTTP 403을 반환함. 이미 처리된 thread_id에 approval을 다시 보내면 상태를 바꾸지 않고
-  기존 결과를 그대로 반환함(멱등)'
-- 사용자 식별은 인증 없는 데모 수준이며, 요청 본문의 role 값 위조 자체는 범위 밖임(자연어로 역할을 주장하는 시도만 가드레일 대상)
+- 'POST /query 요청 본문은 표준 규약 {"question"}이고 확장 필드는 선택(thread_id: 대화·HITL 재개, approval: approve|reject)임.
+  응답은 answer, contexts, trace(+ thread_id, pending_approval)를 반환함'
+- '신원은 로그인 세션으로 받음: POST /login {"user_id"} → {"session_token", "name", "role", "part"}(SSO(OIDC 등) 자리에 들어갈 데모 로그인,
+  비밀번호 없음, developers.json 등록 사용자만, 토큰은 서버 메모리 uuid4 hex). /query는 Authorization: Bearer <session_token> 헤더에서
+  사용자를 정하고 역할은 서버가 등록 정보로 정함(클라이언트는 role을 보내지 않음)'
+- 'API 오류 규칙: 미등록 user_id 로그인·토큰 없음·무효 토큰은 HTTP 401, approval 값 오류와 본문의 user_id·role 등 정의되지 않은 필드는
+  HTTP 422(''로그인 세션 사용'' 안내, 무시하지 않음), 존재하지 않거나 다른 사용자 소유의 thread_id는 HTTP 404. 이미 처리된 thread_id에
+  approval을 다시 보내면 상태를 바꾸지 않고 기존 결과를 그대로 반환함(멱등)'
+- 'thread 소유권: thread는 만든 세션 사용자만 이어 씀(다른 사용자는 404). 예외로 승인 대기 회의 자료는 PM·PL 누구나 승인·반려할 수 있고,
+  승인·반려·거절 응답에는 contexts·초안을 싣지 않고 게시 결과와 최소 trace만 담음. 같은 thread_id에 approval 없이 새 질문을 보내면 새로 답하고,
+  진척 에이전트 대화 기억은 thread_id별로 이어 씀'
+- '처리 순서: 세션 확인 → thread 소유권 → 가드레일 → Supervisor 라우팅(요청당 1회, 캐시 없음) → 담당 에이전트. 가드레일에 막힌 요청은
+  라우팅(LLM)하지 않으며 trace는 guardrail → supervisor_route → ... 순서임'
+- 'MCP 호출은 내부 대기 10초 < 바깥 타임아웃 15초이고 create_page는 한 번만 시도함(중복 게시 방지). 재시도는 최대 1회이며 타임아웃은
+  재시도하지 않고, 타임아웃이 난 thread는 다음 요청부터 새 대화 기억 키를 씀. LLM 미들웨어 재시도도 1회'
+- 사용자 식별은 인증 없는 데모 로그인 수준이며 실제 SSO 연동은 범위 밖임(자연어로 역할을 주장하는 시도는 가드레일 대상)
 # --- 도메인 ---
 - '프로젝트는 플랫폼 전환 프로젝트(2026-03-02 ~ 2027-02-26, 12개월)이며 data/fixtures/project.json에 이름·기간·기준 주·파트별 대메뉴를 둠'
 - '메뉴 구조는 대메뉴 8개(코드 A~H) → 중메뉴 34개(코드 A01..) → 소메뉴 화면 정확히 170개이고, 화면 ID는 메뉴 코드를 따름(SCR-A01-03 =
@@ -126,18 +136,28 @@ constraints:
   --rescore-ragas는 저장된 답변으로 4개 지표를 모두 다시 계산함
 - '평가 시 생성 문서 제외: 평가 실행기는 EVAL_EXCLUDE_GENERATED=1을 설정해 검색이 data/corpus만 쓰게 하고, 승인 케이스 직후 런타임 인덱스를 비움.
   한 회차 안에서 앞 케이스가 게시한 회의 자료가 뒤 케이스의 contexts에 들어가지 않음'
-- 1차 평가 baseline은 dense-only 검색이며 평가 전에 README에 사전 명시·고정함
+- '1차 평가 baseline(사전 고정, README 평가 설정): Titan 벡터 dense-only 문서 단위 top-3 + 기본 프롬프트(인용 규칙·근거 규칙·인젝션 규칙 없음),
+  쿼리 확장·메타데이터 필터·리랭킹 없음(RAG_LEVERS=dense). 2차는 형태소 BM25+벡터 하이브리드·휴리스틱 리랭킹·쿼리 확장·메타데이터 필터·
+  grounded 인용 프롬프트(RAG_LEVERS=hybrid,expand,filter,grounded). 특정 테스트 케이스에 맞춘 조정은 하지 않음'
+- 'judge 입력은 1·2차 동일: 질문·traits·forbidden·메모·reference, answer 전문(자르지 않음), contexts doc_id, 호출 도구, 압축 trace(단계·짧은
+  입력·짧은 출력, PII 마스킹), 응답 상태, 승인 케이스는 게시 페이지 전문'
+- '평가 실행 격리: 케이스마다 진척 에이전트 대화 기억을 비우고, CONFLUENCE_MODE=fake를 강제하며, 케이스의 note user_id로 /login해 세션 토큰으로 질의함.
+  RAGAS 지표 계산 실패는 0점이 아닌 None으로 기록해 평균에서 빼고 오류 수를 리포트에 표시함'
 - 2차 평가는 동일 테스트 세트·동일 judge로 3회 실행함. 개선 레버는 1차 실패 유형에 맞춰 적용함(검색 누락→하이브리드 BM25+벡터+리랭킹,
   질문 모호→쿼리 확장, 주차 혼입→주차·업무 ID 메타데이터 필터, 근거는 맞는데 오답→인용 규칙 및 '문서에 없으면 모른다' 프롬프트)
 - 2차 하이브리드 검색의 BM25 쪽은 kiwipiepy 형태소 토큰화(명사·어간·숫자·외래어, 화면 ID는 한 토큰)를 쓰고 Kiwi 인스턴스와 토큰 결과를 캐시해
   결정적으로 동작함. 1차 dense-only baseline은 바꾸지 않음
+- '회의 자료 중메뉴별 표에 CRUD 기능별 화면 수(C·R·U·D, 예 C2 R5 U2 D1)·복잡도별 화면 수(상·중·하)·계획/진행(계획 MM x 진척률)/남은 공수를,
+  대메뉴별 표에 계획/진행/남은 공수를 싣고, 일정 대비 진척 섹션에 전체 기간 대비 현재 위치 고정폭 도식(월 눈금·기준 주·경과/계획/실적 막대·마일스톤,
+  Confluence code 매크로)과 대메뉴 일정표(12개월, 계획 기간 ■·기준 주 ▼·마일스톤 ◆, 실적/계획)를 넣음. 화면 crud·complexity는 생성기가 난수 없이
+  화면 유형·계획 MM으로 정하고(화면 정의서와 일치) 페이지는 250줄 미만'
 - 진척 ReAct 에이전트는 같은 대화의 후속 질문에도 질문마다 도구를 새로 호출하고, 최신 도구 결과에 없는 숫자·개수를 말하지 않음.
   도구 없이 답하면 한 번 더 도구 호출을 지시함
 # --- SERVICE.md ---
 - SERVICE.md에 사용자·문제·가치(예시 팀 10명 = PM 1·PL 2·개발자 7, 플랫폼 전환 1년·화면 170개, 회의자료 작성 주 3시간→5분, 개발자 수기 입력
   주 30분→0분, 주 약 6시간 25분 절감을 '추정치'로 표기하고 일반식 2시간 55분 + 개발자 수 × 30분 병기, 비시간 가치 포함), 사내 기여 확장 3단계(팀 시범 운영→사내
   표준화→타 팀 템플릿 배포, 수익화 제외), 도구·데이터, 가드레일 정책 5건, 성공 기준을 기술함
-- SERVICE.md에 '보고 부담을 줄이는 도구이며 개인 평가에는 사용하지 않음'과 인증 없는 데모 수준임을 명시함
+- SERVICE.md에 '보고 부담을 줄이는 도구이며 개인 평가에는 사용하지 않음'과 신원은 SSO 자리에 들어갈 데모 로그인 세션으로 받음을 명시함
 acceptance_criteria:
 - description: 제출 산출물이 갖춰져 있다. src/agent.py, src/tools.py, src/retriever.py, data/corpus/, README.md가 존재하고,
     evaluation/test_queries.csv는 정확히 20건(positive 8, negative 4, edge 5, guardrail 3)이며 reference·reference_doc_ids·explanatory
@@ -155,8 +175,8 @@ acceptance_criteria:
   verify_command: python -m pytest -q tests/test_progress.py
   expected_artifacts:
   - tests/test_progress.py
-- description: 클라이언트는 POST /query 하나로 질의하고 answer, contexts, trace를 받는다. 잘못된 role·approval은 422, 없는
-    thread_id는 404, 미등록 user_id는 403을 받는다
+- description: 클라이언트는 POST /login으로 세션 토큰을 받고 POST /query에 표준 본문 {question}과 Bearer 토큰으로 질의해 answer, contexts,
+    trace를 받는다. 토큰 없음·무효·미등록 로그인은 401, 잘못된 approval과 본문의 user_id·role은 422, 없는 thread_id는 404를 받는다
   semantic_ac_key: ac_ccb3744f4bd948cf
   verify_command: python -m pytest -q tests/test_api.py
   expected_artifacts:
@@ -176,8 +196,8 @@ acceptance_criteria:
   - tests/test_mcp_confluence.py
 - description: 가드레일 5개 정책이 모두 동작한다. 개발자의 타인 정보 조회, PL의 다른 파트 조회(RAG 경로 포함), 자기 소개 문구를 붙인 범위 밖 요청은
     '해당 정보는 조회 권한이 없습니다'로 거절되고(정책은 scope), 범위 안 요청은 문구와 관계없이 답한다. 화면 정의서 같은 팀 공용 문서는 범위 밖 화면이라도
-    문서 Q&A로 답하고, 그 화면의 진척·담당 질문은 거절한다. 등록 역할과 다른 role은 403이다. 이메일·전화번호는 답변·trace·게시물에서 마스킹된다. 직접 인젝션은 거절되고, 간접 인젝션 청크는 제외된 채 원
-    질문에 답한다. 개인 순위·평가 요청은 거절된다
+    문서 Q&A로 답하고(회의록의 지연 이유·결정·조치 포함), 그 화면의 진척 수치·담당·연락처 질문은 거절한다. 신원은 로그인 세션에서만 정한다. 이메일·전화번호는 답변·trace·게시물에서 마스킹된다. 직접 인젝션은 거절되고, 간접 인젝션 청크는 제외된 채 원
+    질문에 답한다. 개인 순위·평가 요청은 거절된다(업무 단위 비교·단어 언급만 하는 질문은 허용)
   semantic_ac_key: ac_809cabab56352c0b
   verify_command: python -m pytest -q tests/test_guardrails.py
   expected_artifacts:
@@ -259,6 +279,40 @@ acceptance_criteria:
   expected_artifacts:
   - tests/test_agent_llm.py
   - src/agent.py
+- description: thread는 소유한 세션 사용자만 이어 쓴다. 다른 사용자가 thread_id로 일반·후속 질문을 하면 404이고, 승인 대기 회의 자료의 승인은 PM·PL만 가능하며 승인·반려·개발자 거절 응답에 contexts·초안이 없다. 같은 thread의 새 질문은 새 답을 받고 대화 기억은 thread별이다
+  semantic_ac_key: ac_d7c545706bda28a0
+  verify_command: python -m pytest -q tests/test_api.py tests/test_agent_llm.py
+  expected_artifacts:
+  - tests/test_api.py
+  - src/api.py
+- description: Supervisor 라우팅은 세션 확인·가드레일 통과 뒤 요청당 한 번만 호출되고(캐시 없음) 차단·미인증 요청에서는 호출되지 않으며, trace는 guardrail → supervisor_route 순서다. MCP 내부 대기 10초 < 바깥 15초, create_page는 한 번만 시도, 타임아웃은 재시도하지 않고 재시도는 최대 1회다
+  semantic_ac_key: ac_e23fdb0570e17032
+  verify_command: python -m pytest -q tests/test_trace.py
+  expected_artifacts:
+  - tests/test_trace.py
+  - src/middleware.py
+  - src/supervisor.py
+- description: 평가 설정이 공정하다. 1차 baseline은 dense-only·기본 프롬프트(인용·근거 규칙 없음)이고 확장·필터가 새지 않으며, judge는 answer·게시 페이지 전문과 압축 trace(마스킹)를 받고, 케이스마다 대화 기억을 비우며 Confluence는 fake로 강제된다. RAGAS 실패는 None으로 기록되어 평균에서 빠지고 오류 수가 집계되며, 16번 reference는 결제 승인 관련 회의록 W44~W47 전체를 근거로 한다
+  semantic_ac_key: ac_6f761dd2d1a84f09
+  verify_command: python -m pytest -q tests/test_eval_pipeline.py
+  expected_artifacts:
+  - evaluation/run_eval.py
+  - evaluation/judge_prompt.md
+  - evaluation/test_queries.csv
+- description: 가드레일 오탐·미탐이 정리되어 있다. 간접 인젝션은 숨은 지시 줄만 빼고 같은 회의록의 결정사항은 남기며, 연락처 질문도 역할 범위를 따르고, '메뉴별 진척 비교'·'커밋 규칙 무시하면'·'시스템 프롬프트 변경 회의 결정사항'은 허용, 사람 비교·지시 무시 명령은 거절한다. 파트 진척은 PM 전체, PL 본인 파트만, 개발자는 거절하며 진척 도구가 part 인자를 받는다
+  semantic_ac_key: ac_ef31954acb863499
+  verify_command: python -m pytest -q tests/test_guardrails.py tests/test_agent_llm.py
+  expected_artifacts:
+  - src/guardrails.py
+  - src/agent.py
+- description: 회의 자료 중메뉴별 표의 CRUD 기능별 화면 수·복잡도별 화면 수·계획/진행/남은 공수와 대메뉴별 공수 열이 생성기 정답(composition)과 일치하고, 전체 기간 대비 현재 위치 도식의 경과·계획·실적 %와 대메뉴 일정표가 도구 값과 일치하며, 펜스 코드 블록은 Confluence code 매크로로 변환되고, 지난주 게시 페이지는 MCP get_page로 읽는다(없으면 스냅샷)
+  semantic_ac_key: ac_bfe1bef3999a6e85
+  verify_command: python -m pytest -q tests/test_meeting_material.py tests/test_agent_llm.py
+  expected_artifacts:
+  - tests/test_meeting_material.py
+  - src/tools.py
+  - src/confluence_convert.py
+  - data/fixtures/make_fixtures.py
 assumptions:
 - 테스트 파일은 tests/ 아래 두며 실제 파일명은 작업자가 바꿀 수 있음
 - API 서버는 FastAPI로 구현하고 기능 테스트는 TestClient와 mock LLM을 써서 API 키 없이 실행함. 평가(evaluation/)만 실제 LLM을
@@ -408,12 +462,12 @@ exit_conditions:
   criteria: 버그로 분류해 수정될 때까지 평가 개선 작업을 중단함
 metadata:
   seed_id: seed_50f7c51da60d
-  version: 1.6.0
+  version: 1.7.0
   created_at: '2026-11-18T07:26:15.837365Z'
   revised_at: '2026-11-19'
-  revision_note: 'refinement pass 6 — 평가 시 생성 문서 제외(EVAL_EXCLUDE_GENERATED), RAGAS 4개 지표(context_precision·answer_relevancy
+  revision_note: 'refinement pass 7 — 로그인 세션(POST /login, Bearer 토큰, 본문 user_id·role 422), thread 소유권·승인 응답 최소화, 가드레일 뒤 라우팅(요청당 1회), 1차 baseline 정의 고정·judge 입력(answer 전문·압축 trace)·케이스별 기억 초기화, 가드레일 오탐 정리·간접 인젝션 줄 단위 제외·파트 진척, MCP 타임아웃·단일 게시, 회의 자료 CRUD·복잡도·공수 열과 기간 도식·대메뉴 일정표 (pass 6 — 평가 시 생성 문서 제외(EVAL_EXCLUDE_GENERATED), RAGAS 4개 지표(context_precision·answer_relevancy
     ≥ 0.80 추가), 파일 위치 정리(evaluation/test_queries.csv, docs/spec, docs/images, docs/course), Dockerfile·run.sh, 공식 MCP SDK(fastmcp +
-    langchain-mcp-adapters), kiwipiepy 형태소 BM25, 진척 에이전트 후속 질문 도구 재호출 (pass 5 — 회의 자료에 일정 대비 진척(경과율·계획·실적·차이·상태)·지난주 대비 증감(▲/▼, Confluence 초록/빨강)·이슈 추적(안정 ID, 해결·미해결·신규)·지난주 액션아이템 이행 추가, 지난주 스냅샷 fixture와 장기 메모리 스냅샷 저장, 화면 정의서 등 팀 공용 문서는 모든 역할이 열람, PL 파트 보고에 중메뉴별 추가 (pass 4 — 신원은 세션 기준(문구 기반 권한 상승 거절 제거, 범위 밖 요청만 거절, 역할 불일치 403)·회의 자료는 참석자 전원 공유라 업무 분류 단위 진척만(개인별 진척률 제거)·개인 진척은 PM·PL 요청 시에만 (pass 3 — 도메인 재설계: 플랫폼 전환 1년·대/중/소메뉴 화면 170개(SCR ID)·화면별 4단계·팀 10명(PM 1·PL 2·개발자 7)·역할 pm|pl|developer(PL 본인 파트 범위, PM·PL 승인)·결정적 fixture 생성기·메뉴별 집계 회의 자료 (pass 2 — 회의 자료 표 양식, 영문 page_id, 실제 Confluence 전환용 .env 설정·REST 어댑터, MCP 서버 측 Markdown→Confluence 변환기, 가짜 인물·이메일 규칙, 리전 비하드코딩 반영 (pass 1: 인터뷰 이후 사용자 결정 + QA 제안 4건))))'
+    langchain-mcp-adapters), kiwipiepy 형태소 BM25, 진척 에이전트 후속 질문 도구 재호출 (pass 5 — 회의 자료에 일정 대비 진척(경과율·계획·실적·차이·상태)·지난주 대비 증감(▲/▼, Confluence 초록/빨강)·이슈 추적(안정 ID, 해결·미해결·신규)·지난주 액션아이템 이행 추가, 지난주 스냅샷 fixture와 장기 메모리 스냅샷 저장, 화면 정의서 등 팀 공용 문서는 모든 역할이 열람, PL 파트 보고에 중메뉴별 추가 (pass 4 — 신원은 세션 기준(문구 기반 권한 상승 거절 제거, 범위 밖 요청만 거절, 역할 불일치 403)·회의 자료는 참석자 전원 공유라 업무 분류 단위 진척만(개인별 진척률 제거)·개인 진척은 PM·PL 요청 시에만 (pass 3 — 도메인 재설계: 플랫폼 전환 1년·대/중/소메뉴 화면 170개(SCR ID)·화면별 4단계·팀 10명(PM 1·PL 2·개발자 7)·역할 pm|pl|developer(PL 본인 파트 범위, PM·PL 승인)·결정적 fixture 생성기·메뉴별 집계 회의 자료 (pass 2 — 회의 자료 표 양식, 영문 page_id, 실제 Confluence 전환용 .env 설정·REST 어댑터, MCP 서버 측 Markdown→Confluence 변환기, 가짜 인물·이메일 규칙, 리전 비하드코딩 반영 (pass 1: 인터뷰 이후 사용자 결정 + QA 제안 4건)))))'
   ambiguity_score: 0.139
   gate_forced: false
   interview_id: interview_20261118_060344

@@ -3,7 +3,9 @@
 플랫폼 전환 프로젝트(2026-03-02 ~ 2027-02-26)의 9개월차 기준 주(2026-11-16 ~ 11-22) 데이터를 만든다.
 - project.json: 프로젝트 기간·기준 주·파트별 대메뉴
 - developers.json: PM 1, PL 2, 개발자 7 (가짜 이름·example.com 이메일)
-- screens.json: 대메뉴 8 → 중메뉴 34 → 소메뉴 화면 170개 (화면 ID = SCR-<대><중>-<소>)
+- screens.json: 대메뉴 8 → 중메뉴 34 → 소메뉴 화면 170개 (화면 ID = SCR-<대><중>-<소>).
+  화면 속성 crud(생성·조회·수정·삭제 기능 조합, 조회 전용 'R' 포함)와 complexity(상·중·하, 계획 MM이 클수록 높음)는
+  난수를 쓰지 않고 화면 유형·계획 MM으로 정하므로 기존 진척 정답은 바뀌지 않는다
 - commits.json: 기준 주까지의 커밋 + 기준 주 이후 커밋 일부(제외 대상), 미연결·불일치 사례 포함
 - meeting_history.json: 지난주(2026-11-09 ~ 11-15) 회의 스냅샷 (장기 메모리 초기값: 진척·이슈·액션아이템)
 - expected_progress.json: 생성기가 의도한 단계 완료 상태로 따로 계산한 정답 (src/tools.py의 파서를 쓰지 않음)
@@ -58,6 +60,14 @@ MENUS = [
 ]
 SCREEN_SUFFIX = ["메인", "목록 조회", "상세 조회", "등록", "수정", "이력 조회"]
 PLAN_MM = [0.3, 0.4, 0.5, 0.6]
+COMPLEXITY = {0.3: "하", 0.4: "중", 0.5: "중", 0.6: "상"}  # 계획 MM과 같은 방향 (상일수록 공수 큼)
+# 화면 유형별 CRUD 기능 조합. 통계(G) 대메뉴는 모두 조회 전용
+CRUD_BY_SUFFIX = {"메인": "R", "목록 조회": "R", "상세 조회": "RU", "등록": "CR", "수정": "RUD", "이력 조회": "R"}
+READ_ONLY_LARGE = {"G"}
+# 화면 정의서(data/corpus/SCR-DEF-*)의 완료 조건과 맞춘 값
+CRUD_OVERRIDE = {"SCR-C02-01": "CR",   # 결제 승인 요청(생성)·실패 사유 표시
+                 "SCR-D01-01": "CR",   # 상품 등록·등록 이력
+                 "SCR-H01-01": "RU"}   # 역할별 권한 조회·변경
 # 개발자별 실제 일정 지연(일). 음수는 계획보다 빠름. PL2 파트가 계획보다 더 늦다.
 LAG_DAYS = {"dev01": -5, "dev02": 5, "dev03": 15, "dev04": 0, "dev05": 30, "dev06": 45, "dev07": 25}
 DEV_START, DEV_END = date(2026, 4, 1), date(2027, 2, 12)  # 3월은 분석·설계, 2월 말은 전환 리허설
@@ -95,6 +105,10 @@ def build():
                     "large_code": lcode, "large_name": lname, "medium_code": mcode, "medium_name": mname,
                     "part": part, "owner": owner, "plan_mm": rng.choice(PLAN_MM),
                 })
+                sc = screens[-1]
+                sc["complexity"] = COMPLEXITY[sc["plan_mm"]]
+                sc["crud"] = CRUD_OVERRIDE.get(sc["screen_id"]) or (
+                    "R" if lcode in READ_ONLY_LARGE else CRUD_BY_SUFFIX[SCREEN_SUFFIX[si - 1]])
 
     # 2) 개발자별 순차 일정: 계획 종료일과 실제(지연 반영) 단계 완료일
     #    중메뉴를 차례로 시작하되 겹쳐서 진행한다(k번째 중메뉴는 화면 3개만큼 늦게 시작).
@@ -430,8 +444,27 @@ def expected(screens, commits, done, mismatch, done_on) -> tuple[dict, dict]:
                                                         if v == "완료" and prev_status[k] != "완료")},
         "issue_tracking": tracking,
         "previous_action_items": action_done,
+        "composition": composition(screens, mm, ratio),
     }
     return exp, {PREV_WEEK["start"]: snap}
+
+
+def composition(screens, mm, ratio) -> dict:
+    """중메뉴·대메뉴·전체의 CRUD 기능별 화면 수, 복잡도별 화면 수, 계획·진행(완료분)·남은 공수(MM)."""
+    def comp(items):
+        plan = sum((mm[s["screen_id"]] for s in items), Fraction(0))
+        earned = sum((mm[s["screen_id"]] * ratio[s["screen_id"]] for s in items), Fraction(0))
+        return {"crud": {op: sum(1 for s in items if op in s["crud"]) for op in "CRUD"},
+                "read_only": sum(1 for s in items if s["crud"] == "R"),
+                "complexity": {c: sum(1 for s in items if s["complexity"] == c) for c in ("상", "중", "하")},
+                "plan_mm": r2(plan), "earned_mm": r2(earned), "remaining_mm": r2(plan - earned)}
+
+    def by(key):
+        out = {}
+        for s in screens:
+            out.setdefault(s[key], []).append(s)
+        return {k: comp(v) for k, v in sorted(out.items())}
+    return {"medium_menus": by("medium_code"), "large_menus": by("large_code"), "team": comp(screens)}
 
 
 def main():

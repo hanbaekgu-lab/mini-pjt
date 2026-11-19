@@ -2,10 +2,10 @@
 
 운영·평가: LLM 라우터 (LCEL: 프롬프트 | LLM.with_structured_output(Pydantic)).
 테스트·LLM 실패 시: 규칙 기반 라우팅으로 대체한다.
+api.py가 세션 신원 확인·가드레일 검사를 통과한 요청에 한해 요청당 한 번 호출한다(차단된 요청은 라우팅하지 않음).
 """
 from __future__ import annotations
 
-from functools import lru_cache
 from typing import Callable, Literal, Optional
 
 from pydantic import BaseModel, Field
@@ -38,8 +38,7 @@ def make_llm_router(llm) -> Callable[[str], str]:
     chain = ChatPromptTemplate.from_messages([("system", ROUTER_SYSTEM), ("human", "{question}")]) \
         | llm.with_structured_output(RouteDecision)
 
-    @lru_cache(maxsize=256)  # 같은 질문은 한 번만 라우팅 (API·에이전트 중복 호출 방지)
-    def route_llm(question: str) -> str:
+    def route_llm(question: str) -> str:  # 캐시 없음: api가 요청당 한 번만 호출하고 결과를 핸들러에 넘긴다
         return chain.invoke({"question": question}).route
     return route_llm
 

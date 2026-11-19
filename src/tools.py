@@ -12,6 +12,8 @@
   계획 진척률 = 화면별 계획 시작~종료일 선형 비율(0~1)의 계획 MM 가중, 차이(%p) = 실적 - 계획,
   상태 = 차이 -3%p 이상 정상, -10%p 이상 주의, 그 미만 지연
 - 이슈(회의 간 추적, 안정 ID): DLY-<화면> 계획 대비 지연, MIS-<화면> 상태-커밋 불일치, UNL-<커밋> 미연결 커밋
+- 묶음 구성: CRUD 기능별 화면 수(C·R·U·D 기능을 가진 화면 수, 조회 전용 화면은 R만), 복잡도별 화면 수(상·중·하),
+  계획 공수 = Σ 계획 MM, 진행 공수 = Σ 계획 MM x 진척률(완료된 만큼), 남은 공수 = 계획 - 진행
 - 내부 처리는 실제 이메일을 쓰며, 이 모듈의 출력에는 이메일을 싣지 않는다 (마스킹은 미들웨어 담당)
 """
 from __future__ import annotations
@@ -41,6 +43,7 @@ WARN_NOT_STARTED = "NOT_STARTED_BUT_HAS_COMMITS"
 WARN_BAD_SUBTASK = "DONE_MARK_UNKNOWN_SUBTASK"
 
 TOP_N = 10  # 회의 자료·답변에 보여줄 지연 화면 수
+COMPLEXITY_LEVELS = ("상", "중", "하")
 STATUS_OK_PP, STATUS_WARN_PP = -3.0, -10.0  # 일정 상태 기준: 실적-계획 차이(%p)
 
 
@@ -115,6 +118,15 @@ def user_scope(role: str, user_id: str) -> dict:
         dev = next((d for d in load_developers() if d["developer_id"] == user_id), None)
         return {"part": dev["part"] if dev else None}
     return {}
+
+
+def screen_contact(screen_id: str) -> str | None:
+    """화면 담당자 연락처 (이름 + 이메일). 이메일은 출력 단계 미들웨어가 마스킹한다. 범위 검사는 가드레일 담당."""
+    s = find_screen(screen_id)
+    dev = next((d for d in load_developers() if s and d["developer_id"] == s["owner"]), None)
+    if dev is None:
+        return None
+    return f"{screen_id} 담당자: {dev['name']} / 이메일: {dev['email']} / 전화번호: 등록되어 있지 않습니다"
 
 
 def in_scope(screen: dict, scope: dict) -> bool:
@@ -239,7 +251,9 @@ def _aggregate(items: list[dict]) -> dict:
     ratio = done / plan if plan else Fraction(0)
     planned = _r4(sum((i["plan_mm"] * i["planned"] for i in items), Fraction(0)) / plan) if plan else 0.0
     gap = round((_r4(ratio) - planned) * 100, 2)
-    return {"plan_mm": float(plan), "progress": _r4(ratio), "remaining_mm": _r2(plan - done),
+    return {"plan_mm": float(plan), "progress": _r4(ratio), "remaining_mm": _r2(plan - done), "earned_mm": _r2(done),
+            "crud": {op: sum(1 for i in items if op in i.get("crud", "")) for op in "CRUD"},
+            "complexity": {c: sum(1 for i in items if i.get("complexity") == c) for c in COMPLEXITY_LEVELS},
             "planned_progress": planned, "gap_pp": gap, "schedule_status": schedule_status(gap),
             "screens_done": sum(1 for i in items if i["status"] == STATUS_DONE), "screens_total": len(items),
             "delayed_count": sum(1 for i in items if i["delayed"])}
@@ -380,6 +394,12 @@ def format_progress_report(report: dict) -> str:
         sch = report["schedule"]
         lines.append(f"- 일정 대비: 일정 경과율 {_pct(sch['elapsed'])}, 계획 진척률 {_pct(p['planned_progress'])}, "
                      f"실적 진척률 {_pct(p['progress'])}, 차이 {p['gap_pp']:+.2f}%p ({p['schedule_status']})")
+    if report.get("parts"):  # 전체 보고서: 파트(PL1·PL2)별 합계
+        lines.append("## 파트별")
+        lines += [f"- {m['code']} 파트: 진척률 {_pct(m['progress'])}, 남은 {m['remaining_mm']:.2f}MM, "
+                  f"화면 완료 {m['screens_done']}/{m['screens_total']}, 지연 {m['delayed_count']}개, "
+                  f"계획 {_pct(m['planned_progress'])}(차이 {m['gap_pp']:+.2f}%p, {m['schedule_status']})"
+                  for m in report["parts"]]
     if "large_menus" in report:
         lines.append("## 대메뉴별")
         lines += [f"- {m['code']} {m['name']}({m['part']}): 진척률 {_pct(m['progress'])}, 남은 {m['remaining_mm']:.2f}MM, "
@@ -495,7 +515,9 @@ def format_progress_markdown(report: dict, prev: dict | None = None) -> str:
          plan_row("**전체**", p, bold=True), *[plan_row(part_label(r["code"]), r) for r in report.get("parts", [])], "",
          f"일정 경과율 **{_pct(sch['elapsed'])}** (프로젝트 기간 중 {sch['as_of']}까지) · 계획 진척률 = 화면별 계획 시작~종료일 "
          f"선형 배분의 계획 MM 가중 · 상태: 차이 {STATUS_OK_PP:+.0f}%p 이상 정상, {STATUS_WARN_PP:+.0f}%p 이상 주의, 그 미만 지연"
-         + (f" · 다음 마일스톤: {ms}" if ms else ""), ""]
+         + (f" · 다음 마일스톤: {ms}" if ms else ""), "",
+         "#### 전체 기간 대비 현재 위치", "", "```", *timeline_lines(sch["elapsed"], p["planned_progress"], p["progress"]),
+         "```", "", *large_menu_schedule(report), ""]
     if pt:
         pgap = round((pt["progress"] - pt["planned_progress"]) * 100, 2)
         parts = [r for r in report.get("parts", []) if r["code"] in prev.get("parts", {})]
@@ -516,19 +538,24 @@ def format_progress_markdown(report: dict, prev: dict | None = None) -> str:
               ""]
     pl, pm = prev.get("large_menus", {}), prev.get("medium_menus", {})
     L += ["### 대메뉴별 (계획 대비·지난주 대비)", "",
-          "| 대메뉴 | 파트 | 계획 | 실적 | 차이 | 상태 | 진행 | 지난주 | 증감 | 화면(완료/전체) | 남은 공수 | 지연 화면 |",
-          "|---|---|---:|---:|---:|---|---|---:|---|---:|---:|---:|"]
+          "| 대메뉴 | 파트 | 계획 | 실적 | 차이 | 상태 | 진행 | 지난주 | 증감 | 화면(완료/전체) | 계획 공수 | 진행 공수 | "
+          "남은 공수 | 지연 화면 |",
+          "|---|---|---:|---:|---:|---|---|---:|---|---:|---:|---:|---:|---:|"]
     L += [f"| {m['code']} {m['name']} | {m['part']} | {_pct(m['planned_progress'])} | {_pct(m['progress'])} | "
           f"{m['gap_pp']:+.2f}%p | {SCHEDULE_ICON[m['schedule_status']]} | `{progress_bar(m['progress'])}` | "
           f"{_opt_pct(_old(pl, m['code']))} | {delta_pp(m['progress'], _old(pl, m['code']))} | "
-          f"{m['screens_done']}/{m['screens_total']} | {m['remaining_mm']:.2f}MM | {m['delayed_count']} |"
+          f"{m['screens_done']}/{m['screens_total']} | {m['plan_mm']:.2f}MM | {m['earned_mm']:.2f}MM | "
+          f"{m['remaining_mm']:.2f}MM | {m['delayed_count']} |"
           for m in report["large_menus"]]
     L += ["", "### 중메뉴별", "",
-          "| 중메뉴 | 계획 | 실적 | 차이 | 지난주 | 증감 | 화면(완료/전체) | 남은 공수 | 지연 화면 |",
-          "|---|---:|---:|---:|---:|---|---:|---:|---:|"]
+          "CRUD = 생성(C)·조회(R)·수정(U)·삭제(D) 기능이 있는 화면 수(조회 전용 화면은 R만), 복잡도 = 상·중·하 화면 수, "
+          "공수(MM) = 계획 / 진행(계획 x 진척률, 완료분) / 남은", "",
+          "| 중메뉴 | 계획 | 실적 | 차이 | 지난주 | 증감 | 화면 | CRUD | 복잡도 | 계획MM | 진행MM | 남은MM | 지연 |",
+          "|---|---:|---:|---:|---:|---|---:|---|---|---:|---:|---:|---:|"]
     L += [f"| {m['code']} {m['name']} | {_pct(m['planned_progress'])} | {_pct(m['progress'])} | {m['gap_pp']:+.2f}%p | "
           f"{_opt_pct(_old(pm, m['code']))} | {delta_pp(m['progress'], _old(pm, m['code']))} | "
-          f"{m['screens_done']}/{m['screens_total']} | {m['remaining_mm']:.2f}MM | {m['delayed_count']} |"
+          f"{m['screens_done']}/{m['screens_total']} | {crud_label(m['crud'])} | {complexity_label(m['complexity'])} | "
+          f"{m['plan_mm']:.2f} | {m['earned_mm']:.2f} | {m['remaining_mm']:.2f} | {m['delayed_count']} |"
           for m in report["medium_menus"]]
     pp = prev.get("phases", {})
     L += ["", "### 단계별 완료 현황", "", "| 단계 | 완료 화면 | 완료율 | 진행 | 지난주 | 증감 |", "|---|---:|---:|---|---:|---|"]
@@ -539,6 +566,75 @@ def format_progress_markdown(report: dict, prev: dict | None = None) -> str:
         L.append(f"| {ph['no']} {ph['name']} | {ph['done']}/{ph['total']} | {_pct(r)} | `{progress_bar(r)}` | "
                  f"{was} | {delta_count(ph['done'], before)} |")
     return "\n".join(L)
+
+
+def crud_label(c: dict) -> str:
+    """CRUD 기능별 화면 수: 'C2 R5 U2 D1'."""
+    return " ".join(f"{op}{c[op]}" for op in "CRUD")
+
+
+def complexity_label(c: dict) -> str:
+    """복잡도별 화면 수: '상1 중1 하3'."""
+    return " ".join(f"{k}{c[k]}" for k in COMPLEXITY_LEVELS)
+
+
+TIMELINE_WIDTH = 48  # 12개월 x 4칸 (고정폭)
+
+
+def _months() -> list[date]:
+    p = load_project()
+    d, end, out = date.fromisoformat(p["start"]).replace(day=1), date.fromisoformat(p["end"]), []
+    while d <= end:
+        out.append(d)
+        d = (d + timedelta(days=32)).replace(day=1)
+    return out
+
+
+def _pos(day: str) -> int:
+    """프로젝트 기간(양 끝 포함) 안에서 날짜의 막대 위치(0~TIMELINE_WIDTH-1)."""
+    p = load_project()
+    st, en = date.fromisoformat(p["start"]), date.fromisoformat(p["end"])
+    frac = Fraction((date.fromisoformat(day) - st).days + 1, (en - st).days + 1)
+    return min(TIMELINE_WIDTH - 1, max(0, round(frac * TIMELINE_WIDTH) - 1))
+
+
+def timeline_lines(elapsed: float, planned: float, actual: float, as_of: str | None = None) -> list[str]:
+    """전체 기간 대비 현재 위치 텍스트 도식(고정폭): 월 눈금, 오늘(▼), 경과·계획·실적 막대, 마일스톤(◆). 값은 도구 계산값."""
+    p, w = load_project(), TIMELINE_WIDTH
+    bar = lambda x: "█" * round(x * w) + "░" * (w - round(x * w))  # noqa: E731
+    today = " " * _pos(as_of or p["reference_week"]["end"]) + "▼ 기준 주"
+    ms = ["·"] * w
+    for m in p["milestones"]:
+        ms[_pos(m["date"])] = "◆"
+    gap = round((actual - planned) * 100, 2)
+    return [f"기간  {p['start']} ~ {p['end']} (1칸 = 약 1주)",
+            ("월    " + "".join(f"{m.month:<4}" for m in _months())).rstrip(),
+            "      " + today,
+            f"경과  {bar(elapsed)} {_pct(elapsed)}",
+            f"계획  {bar(planned)} {_pct(planned)}",
+            f"실적  {bar(actual)} {_pct(actual)} (계획 대비 {gap:+.2f}%p)",
+            "      " + "".join(ms) + " ◆ " + " · ".join(f"{m['date'][5:]} {m['name']}" for m in p["milestones"])]
+
+
+def large_menu_schedule(report: dict) -> list[str]:
+    """대메뉴 일정표: 계획 기간(화면 계획 시작~종료)이 걸친 달은 ■, 기준 주가 속한 달은 ▼ 열, 마일스톤 달은 ◆ 행."""
+    months, p = _months(), load_project()
+    now = date.fromisoformat(p["reference_week"]["end"]).replace(day=1)
+    span: dict[str, tuple[str, str]] = {}
+    for s in load_screens():
+        a, b = span.get(s["large_code"], (s["planned_start"], s["planned_end"]))
+        span[s["large_code"]] = (min(a, s["planned_start"]), max(b, s["planned_end"]))
+    head = [f"**{m.month}▼**" if m == now else str(m.month) for m in months]
+    L = ["#### 대메뉴 일정표 (■ 계획 기간, ▼ 기준 주, ◆ 마일스톤)", "",
+         "| 대메뉴 | " + " | ".join(head) + " | 실적 / 계획 |", "|---|" + ":---:|" * len(months) + "---:|"]
+    for m in report["large_menus"]:
+        a, b = (date.fromisoformat(x).replace(day=1) for x in span[m["code"]])
+        cells = ["■" if a <= mo <= b else "" for mo in months]
+        L.append(f"| {m['name']}({m['code']}) | " + " | ".join(cells)
+                 + f" | {_pct(m['progress'])} / {_pct(m['planned_progress'])} |")
+    mss = {date.fromisoformat(x["date"]).replace(day=1) for x in p["milestones"]}
+    L.append("| ◆ 마일스톤 | " + " | ".join("◆" if mo in mss else "" for mo in months) + " | |")
+    return L
 
 
 def format_findings_markdown(report: dict) -> str:

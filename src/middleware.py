@@ -32,16 +32,24 @@ def mask_obj(obj):
     return obj
 
 
-# --- 재시도/타임아웃 미들웨어: MCP 호출은 10초, 에이전트(LLM) 처리 전체는 180초 타임아웃, 최대 2회 재시도 ---
+# --- 재시도/타임아웃 미들웨어 ---
+# MCP: 내부 호출 대기 10초(mcp_client.TIMEOUT) < 바깥 타임아웃 15초(TIMEOUT). 에이전트(LLM) 처리 전체는 180초.
+# 재시도는 최대 1회이며 예외로 끝난 호출만 다시 한다. 타임아웃이 난 호출은 아직 실행 중일 수 있어 재시도하지 않는다
+# (같은 게시를 두 번 하거나 LLM 호출이 겹치지 않게). 파이썬 스레드는 강제로 멈출 수 없으므로, 타임아웃 뒤 남은 작업은
+# 결과를 버리고 api가 그 스레드의 대화 기억 키를 바꿔 다음 요청과 섞이지 않게 한다.
 import threading
 
-TIMEOUT = 10.0
+TIMEOUT = 15.0
 LLM_TIMEOUT = 180.0
-MAX_RETRIES = 2
+MAX_RETRIES = 1
 
 
 class CallFailed(Exception):
     """재시도 후에도 실패한 호출."""
+
+    def __init__(self, msg: str, timed_out: bool = False):
+        super().__init__(msg)
+        self.timed_out = timed_out
 
 
 def call_with_retry(fn, *args, timeout: float | None = None, retries: int | None = None, **kwargs):
@@ -60,10 +68,9 @@ def call_with_retry(fn, *args, timeout: float | None = None, retries: int | None
         t = threading.Thread(target=run, daemon=True)
         t.start()
         t.join(timeout)
-        if t.is_alive():
-            last = TimeoutError(f"{timeout}초 타임아웃")
-        elif "e" in box:
-            last = box["e"]
-        else:
+        if t.is_alive():  # 아직 실행 중: 재시도하지 않고 실패로 끝낸다
+            raise CallFailed(f"{getattr(fn, '__name__', 'call')} 실패: {timeout}초 타임아웃", timed_out=True)
+        if "e" not in box:
             return box["v"]
+        last = box["e"]
     raise CallFailed(f"{getattr(fn, '__name__', 'call')} 실패(재시도 {retries}회 후): {last}")

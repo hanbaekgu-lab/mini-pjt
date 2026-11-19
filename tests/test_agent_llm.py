@@ -8,6 +8,7 @@ from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
 from langchain_core.messages import AIMessage
 from langchain_core.runnables import RunnableLambda
 
+from helpers import post_query
 from src import agent, api, config, confluence, meeting, supervisor, tools
 
 
@@ -118,7 +119,7 @@ def test_meeting_plan_execute_interrupt_and_approve():
     wire(llm)
     supervisor.set_llm_router(supervisor.make_llm_router(llm))
     client = TestClient(api.app)
-    d = client.post("/query", json={"question": "이번 주 회의 자료 만들어서 Confluence에 올려줘",
+    d = post_query(client, {"question": "이번 주 회의 자료 만들어서 Confluence에 올려줘",
                                     "user_id": "pm01", "role": "pm"}).json()
     assert d["pending_approval"] is True
     assert all(h in d["answer"] for h in ("## 결정사항", "## 블로커", "## 액션아이템", "## 진척 현황"))
@@ -126,12 +127,13 @@ def test_meeting_plan_execute_interrupt_and_approve():
     assert plan["output"] == list(meeting.STEPS)
     assert confluence.list_pages() == []  # 승인 전 게시 없음
     # 개발자는 승인할 수 없다
-    dev = client.post("/query", json={"question": "승인", "user_id": "dev01", "role": "developer",
+    dev = post_query(client, {"question": "승인", "user_id": "dev01", "role": "developer",
                                       "thread_id": d["thread_id"], "approval": "approve"}).json()
     assert dev["answer"] == "해당 정보는 조회 권한이 없습니다" and confluence.list_pages() == []
-    ok = client.post("/query", json={"question": "승인", "user_id": "pm01", "role": "pm",
+    ok = post_query(client, {"question": "승인", "user_id": "pm01", "role": "pm",
                                      "thread_id": d["thread_id"], "approval": "approve"}).json()
     assert "게시했습니다" in ok["answer"] and len(confluence.list_pages()) == 1
+    assert ok["contexts"] == [] and dev["contexts"] == []  # R3: 승인·거절 응답에 초안 contexts 없음
     assert any(t["step"] == "confluence_publish" for t in ok["trace"])
     # 장기 메모리: 지난주 스냅샷으로 초기화 → 게시 후 이번 주 스냅샷 저장 (다음 주 회의의 '지난주')
     snaps = {it.key: it.value for it in agent._flow.snapshots()}
@@ -165,8 +167,8 @@ def test_meeting_reject_not_published():
     wire(llm)
     supervisor.set_llm_router(supervisor.make_llm_router(llm))
     client = TestClient(api.app)
-    d = client.post("/query", json={"question": "이번 주 회의 자료 만들어줘", "user_id": "pm01", "role": "pm"}).json()
-    r = client.post("/query", json={"question": "반려", "user_id": "pm01", "role": "pm",
+    d = post_query(client, {"question": "이번 주 회의 자료 만들어줘", "user_id": "pm01", "role": "pm"}).json()
+    r = post_query(client, {"question": "반려", "user_id": "pm01", "role": "pm",
                                     "thread_id": d["thread_id"], "approval": "reject"}).json()
     assert "게시하지 않았습니다" in r["answer"] and confluence.list_pages() == []
 
@@ -184,3 +186,62 @@ def test_progress_followup_question_forces_fresh_tool_calls():
     assert [t["input"]["tool"] for t in out["trace"] if t["step"] == "tool_call"] == ["calc_progress"]
     assert out["answer"].startswith("최신 도구 결과") and "중메뉴 15개" not in out["answer"]
     assert "질문마다 도구를 새로 호출" in agent.PROGRESS_SYSTEM and "최신 도구 결과" in agent.PROGRESS_SYSTEM
+
+
+def test_progress_memory_is_per_thread():
+    # Y15: 대화 기억은 사용자별이 아니라 thread별 (같은 사용자의 다른 thread와 섞이지 않음)
+    config.set_llm(fake([AIMessage("첫 답"), AIMessage("", tool_calls=[{"name": "calc_progress", "args": {}, "id": "1"}]),
+                         AIMessage("둘째 답")]))
+    agent.reset()
+    agent.answer_progress("내 진척 알려줘", "developer", "dev01", thread_id="t1")
+    cfg = lambda t: {"configurable": {"thread_id": f"progress-{t}"}}  # noqa: E731
+    assert agent._memory.get(cfg("t1")) is not None and agent._memory.get(cfg("t2")) is None
+
+
+@pytest.mark.parametrize("role,user,part,ok", [
+    ("pm", "pm01", "PL2", True), ("pl", "pl02", "PL2", True), ("pl", "pl01", "PL2", False),
+    ("developer", "dev01", "PL1", False),
+])
+def test_part_argument_scope(role, user, part, ok):
+    # Y16: 진척 도구 part 인자 (PM 전체, PL 본인 파트, 개발자 불가)
+    calc, remain = agent._progress_tools(role, user, [])[:2]
+    out = calc.invoke({"part": part})
+    assert (f"{part} 파트 합계" in out) is ok and (out == api.DENY) is (not ok)
+    assert (remain.invoke({"part": part}) == api.DENY) is (not ok)
+
+
+def test_team_report_prints_part_rows():
+    exp = tools.build_progress_report(part="PL2")["progress"]
+    text = tools.format_progress_report(tools.build_progress_report())
+    assert "## 파트별" in text
+    assert f"- PL2 파트: 진척률 {exp['progress'] * 100:.2f}%, 남은 {exp['remaining_mm']:.2f}MM" in text
+
+
+def test_check_previous_meeting_reads_last_week_page_via_mcp():
+    pages = []
+    body = "# 주간회의 자료 2026-11-09\n\n## 액션아이템\n- [ ] SCR-C02-01-3 완료(강앙리)"
+    flow = meeting.MeetingFlow(_meeting_llm(), lambda t, b: "p", lambda pid: pages.append(pid) or {"body": body})
+    st = flow._check_previous_meeting({"log": []})
+    assert pages == ["weekly_meeting_2026-11-09"]
+    step = next(t for t in st["log"] if t["input"]["tool"] == "get_page")
+    assert step["output"] == "mcp:weekly_meeting_2026-11-09"
+    assert "SCR-C02-01-3 완료" in st["previous_page"] and "강앙리" not in st["previous_page"]
+
+
+def test_check_previous_meeting_falls_back_to_snapshot():
+    def missing(pid):
+        raise RuntimeError("page not found")
+    flow = meeting.MeetingFlow(_meeting_llm(), lambda t, b: "p", missing)
+    st = flow._check_previous_meeting({"log": []})
+    step = next(t for t in st["log"] if t["input"]["tool"] == "get_page")
+    assert step["output"].startswith("snapshot:2026-11-09") and st["previous_page"]
+
+
+def test_check_previous_meeting_reads_committed_page_through_real_mcp(monkeypatch):
+    # 실제 stdio MCP 서버로 커밋된 지난주 페이지(data/confluence_pages)를 읽는다
+    from pathlib import Path
+    monkeypatch.setenv("CONFLUENCE_DIR", str(Path(agent.__file__).resolve().parent.parent / "data/confluence_pages"))
+    flow = meeting.MeetingFlow(_meeting_llm(), lambda t, b: "p", agent._read_page)
+    st = flow._check_previous_meeting({"log": []})
+    step = next(t for t in st["log"] if t["input"]["tool"] == "get_page")
+    assert step["output"] == "mcp:weekly_meeting_2026-11-09" and st["previous_page"]

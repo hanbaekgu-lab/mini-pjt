@@ -2,6 +2,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
+from helpers import post_query
 from src import api, confluence
 
 client = TestClient(api.app)
@@ -18,7 +19,7 @@ def _reset(tmp_path, monkeypatch):
 def post(**kw):
     b = {"question": Q, "user_id": "pm01", "role": "pm"}
     b.update(kw)
-    return client.post("/query", json=b)
+    return post_query(client, b)
 
 
 def pending():

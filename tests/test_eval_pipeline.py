@@ -107,13 +107,70 @@ def test_ragas_scores_four_metrics_and_citation_stripping():
     assert sample.reference == "정답" and sample.retrieved_contexts == ["PG사 테스트 계정 발급 지연"]
 
 
-def test_ragas_error_scores_zero_for_all_metrics():
+def test_ragas_error_recorded_as_none_excluded_and_counted():
+    # 지표 계산 실패는 0점이 아니라 None: 평균에서 빠지고 오류 수가 리포트에 남는다
     class Boom(FakeMetric):
         async def single_turn_ascore(self, sample):
             raise RuntimeError("judge down")
     m = {**fake_metrics(), "context_precision": Boom(0)}
     out = run_eval.ragas_scores("q", "a", [], "r", m)
-    assert all(out[k] == 0.0 for k in run_eval.RAGAS_METRICS) and "judge down" in out["ragas_error"]
+    assert all(out[k] is None for k in run_eval.RAGAS_METRICS) and "judge down" in out["ragas_error"]
+    ok = {"faithfulness": 0.9, "context_recall": 0.8, "context_precision": 0.7, "answer_relevancy": 0.6}
+    assert run_eval.mean_metrics([out, ok]) == ok
+    cases = [{"runs": [out, ok, ok]}, {"runs": [ok]}]
+    assert run_eval.ragas_error_count(cases) == 1
+
+
+# ----------------------------------------------------------------------------- judge 입력 (R1·R2)
+def test_judge_message_has_full_answer_page_and_compact_trace():
+    rows = {int(r["id"]): r for r in run_eval.load_rows()}
+    long_answer = "가" * 13000 + "\n## 액션아이템\n- 끝부분 섹션"
+    res = {"answer": long_answer, "contexts": [], "pending_approval": True, "thread_id": "t",
+           "extra": "나" * 9000 + "페이지 끝",
+           "trace": [{"step": "guardrail", "input": "scope", "output": "refused"},
+                     {"step": "tool_call", "input": {"tool": "get_commits"}, "output": "작성자 messi.kim@example.com " + "x" * 500}]}
+    msg = run_eval.judge_message(rows[13], res, set())
+    assert "## 액션아이템\n- 끝부분 섹션" in msg and "페이지 끝" in msg  # 자르지 않는다
+    assert "- guardrail | scope | refused" in msg  # 13번 traits(trace guardrail=scope)를 judge가 볼 수 있다
+    assert "messi.kim@" not in msg and "m***@example.com" in msg and "x" * 200 not in msg  # 마스킹·압축
+
+
+# ----------------------------------------------------------------------------- 실행 격리 (Y5·Y6)
+def test_run_once_resets_memory_per_case_and_forces_fake_confluence(tmp_path, monkeypatch):
+    monkeypatch.setenv("CONFLUENCE_MODE", "real")
+    monkeypatch.setattr(agent, "_flow", None)
+    calls = []
+    monkeypatch.setattr(agent, "reset_memory", lambda: calls.append(1))
+    rows = {int(r["id"]): r for r in run_eval.load_rows()}
+    out = run_eval.run_once([rows[2], rows[14], rows[5]], tmp_path)  # 기본(결정적) 핸들러
+    assert len(calls) == 1 + 3  # 회차 시작 1회 + 케이스마다 1회
+    import os
+    assert os.environ["CONFLUENCE_MODE"] == "fake"
+    assert all(o["status"] == 200 for o in out.values())
+
+
+# ----------------------------------------------------------------------------- 1차 baseline 정의 (Y8)
+def test_round1_baseline_is_dense_only_without_levers(monkeypatch):
+    assert run_eval.ROUND_LEVERS[1] == "dense"
+    assert set(run_eval.ROUND_LEVERS[2].split(",")) == {"hybrid", "expand", "filter", "grounded"}
+    monkeypatch.setenv("RAG_LEVERS", run_eval.ROUND_LEVERS[1])
+    q = "SCR-C02-01이 왜 지연됐고, 지난 회의에서 어떤 조치를 하기로 했어?"
+    docs = retriever.runtime_documents()
+    assert retriever.search(q, k=3) == [d for _, d in retriever.dense_search(q, docs, 3)]  # 확장·필터·리랭킹 없음
+    for rule in ("[doc_id]", "근거가 없으면", "지시문"):  # 기본 프롬프트에는 인용·근거·인젝션 규칙이 없다
+        assert rule not in agent.BASELINE_PROMPT and rule in agent.GROUNDED_PROMPT
+
+
+def test_case16_reference_covers_all_c02_minutes():
+    from src import retriever as r
+    row = next(x for x in run_eval.load_rows() if x["id"] == "16")
+    ids = row["reference_doc_ids"].split(";")
+    corpus = {d["doc_id"]: d["text"] for d in r.corpus_documents()}
+    assert ids == ["MIN-2026-W44", "MIN-2026-W45", "MIN-2026-W46", "MIN-2026-W47"]
+    assert all("C02" in corpus[i] for i in ids)
+    others = [i for i, t in corpus.items() if i.startswith("MIN-") and i not in ids]
+    assert all("결제 승인" not in corpus[i] and "C02" not in corpus[i] for i in others)
+    assert row["category"] == "edge" and "간접 인젝션" in row["note"]
 
 
 def test_ragas_metrics_wraps_llm_and_bedrock_embeddings(monkeypatch):

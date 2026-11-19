@@ -2,6 +2,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
+from helpers import post_query
 from src import api, mcp_client, meeting, retriever, tools
 
 client = TestClient(api.app)
@@ -22,7 +23,7 @@ def _reset(tmp_path, monkeypatch):
 def post(**kw):
     b = {"question": Q, "user_id": "pm01", "role": "pm"}
     b.update(kw)
-    return client.post("/query", json=b).json()
+    return post_query(client, b).json()
 
 
 def publish():
@@ -43,7 +44,8 @@ def test_material_has_sections_and_matching_numbers():
     assert f"{team['remaining_mm']:.2f}MM" in body
     for m in rep["large_menus"] + rep["medium_menus"]:  # 메뉴별 표의 행마다 도구 수치가 그대로 들어간다
         row = next(ln for ln in body.splitlines() if ln.startswith(f"| {m['code']} {m['name']} |"))
-        assert f"| {m['progress']*100:.2f}% |" in row and f"| {m['remaining_mm']:.2f}MM |" in row
+        unit = "MM" if m in rep["large_menus"] else ""  # 중메뉴 표는 공수 열 머리에 MM 단위를 둔다
+        assert f"| {m['progress']*100:.2f}% |" in row and f"| {m['remaining_mm']:.2f}{unit} |" in row
         assert f"| {m['screens_done']}/{m['screens_total']} |" in row
     for ph in rep["phases"]:
         assert f"| {ph['no']} {ph['name']} | {ph['done']}/{ph['total']} |" in body
@@ -232,3 +234,67 @@ def test_committed_meeting_pages_are_current():
         assert md == f"# {meeting.meeting_title(week)}\n\n{body}\n"
         assert (root / f"{meeting.meeting_page_id(week)}.storage.xml").read_text(encoding="utf-8") == md_to_storage(body)
 
+
+
+# ----------------------------------------------------------------------------- 중메뉴 구성·공수, 타임라인 (요구 2)
+def _row(text: str, prefix: str) -> str:
+    return next(r for r in text.splitlines() if r.startswith(prefix))
+
+
+def test_screen_attributes_match_screen_definitions():
+    sc = {s["screen_id"]: s for s in tools.load_screens()}
+    assert {s["complexity"] for s in sc.values()} == {"상", "중", "하"}
+    assert all({"상": 0.6, "하": 0.3}.get(s["complexity"], s["plan_mm"]) == s["plan_mm"] for s in sc.values())  # 상=0.6MM, 하=0.3MM
+    assert sum(1 for s in sc.values() if s["crud"] == "R") > 0  # 조회 전용 화면 존재
+    # 화면 정의서와 모순 없음: 결제 승인 요청·상품 등록은 생성(C), 회원 통계는 조회 전용, 권한 화면은 수정(U)
+    assert sc["SCR-C02-01"]["crud"] == "CR" and sc["SCR-D01-01"]["crud"] == "CR"
+    assert sc["SCR-G02-01"]["crud"] == "R" and sc["SCR-C02-02"]["crud"] == "R" and "U" in sc["SCR-H01-01"]["crud"]
+
+
+def test_medium_composition_and_effort_exact():
+    comp = EXPECTED["composition"]
+    text = meeting.build_meeting_material()
+    report = tools.build_progress_report()
+    for m in report["medium_menus"]:
+        e = comp["medium_menus"][m["code"]]
+        assert m["crud"] == e["crud"] and m["complexity"] == e["complexity"]
+        assert (m["plan_mm"], m["earned_mm"], m["remaining_mm"]) == (e["plan_mm"], e["earned_mm"], e["remaining_mm"])
+        row = _row(text, f"| {m['code']} {m['name']} | ")
+        assert (f"| {tools.crud_label(e['crud'])} | {tools.complexity_label(e['complexity'])} | "
+                f"{e['plan_mm']:.2f} | {e['earned_mm']:.2f} | {e['remaining_mm']:.2f} |") in row
+    assert tools.crud_label(comp["medium_menus"]["C02"]["crud"]) == "C2 R5 U2 D1"
+    for m in report["large_menus"]:
+        e = comp["large_menus"][m["code"]]
+        row = _row(text, f"| {m['code']} {m['name']} | {m['part']} |")
+        assert f"| {e['plan_mm']:.2f}MM | {e['earned_mm']:.2f}MM | {e['remaining_mm']:.2f}MM |" in row
+    t = comp["team"]
+    assert round(t["earned_mm"] + t["remaining_mm"], 2) in (round(t["plan_mm"] - 0.01, 2), t["plan_mm"])  # 반올림 오차 이내
+    assert report["progress"]["earned_mm"] == t["earned_mm"] and report["progress"]["plan_mm"] == t["plan_mm"]
+
+
+def test_timeline_percentages_match_tools():
+    text = meeting.build_meeting_material()
+    sch, team = EXPECTED["schedule"], EXPECTED["schedule"]["team"]
+    block = text.split("#### 전체 기간 대비 현재 위치", 1)[1].split("```")[1]
+    lines = block.strip("\n").splitlines()
+    bar = lambda x: "█" * round(x * 48) + "░" * (48 - round(x * 48))  # noqa: E731
+    assert f"경과  {bar(sch['elapsed'])} {sch['elapsed'] * 100:.2f}%" in lines
+    assert f"계획  {bar(team['planned_progress'])} {team['planned_progress'] * 100:.2f}%" in lines
+    assert f"실적  {bar(team['progress'])} {team['progress'] * 100:.2f}% (계획 대비 {team['gap_pp']:+.2f}%p)" in lines
+    assert lines[1].split()[1:] == ["3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "1", "2"]
+    assert "▼ 기준 주" in block and block.count("◆") == 3  # 마일스톤 2개 + 범례
+    # 대메뉴 일정표: 계획 기간 월 ■, 기준 주 달 ▼, 실적/계획
+    lm = {m["code"]: m for m in tools.build_progress_report()["large_menus"]}
+    row = _row(text, "| 시스템관리(H) |")
+    assert row.count("■") == 4 and f"{lm['H']['progress']*100:.2f}% / {lm['H']['planned_progress']*100:.2f}%" in row
+    assert "**11▼**" in text and _row(text, "| ◆ 마일스톤 |").count("◆") == 2  # 2월 칸 1개 + 행 이름
+    assert len(text.splitlines()) < 250 and not [d["name"] for d in tools.load_developers() if d["name"] in text]
+
+
+def test_converter_fenced_code_to_code_macro():
+    from src.confluence_convert import md_to_storage
+    xml = md_to_storage("```\n경과  ███░ 73.48%\n<tag> x]]>y\n```\n문단")
+    assert xml.startswith('<ac:structured-macro ac:name="code"><ac:plain-text-body><![CDATA[경과  ███░ 73.48%\n<tag> x]]]]>')
+    assert xml.endswith("</ac:plain-text-body></ac:structured-macro><p>문단</p>")
+    page = md_to_storage(meeting.build_meeting_material())
+    assert page.count('ac:name="code"') == 1 and "<p>```</p>" not in page

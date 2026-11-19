@@ -4,6 +4,7 @@ Supervisor(LLM 라우팅) → 진척 에이전트(ReAct) / 문서 Q&A(RAG, LCEL)
 가드레일은 api.py에서 이 핸들러 실행 전에 코드로 강제되고, PII 마스킹은 middleware.py 한 곳에서만 처리한다.
 숫자(진척률·MM)는 tools.py가 결정적으로 계산하고 LLM은 설명만 한다.
 setup()을 호출해야 api의 핸들러로 연결된다 (테스트는 setup 없이 결정적 기본 핸들러를 쓴다).
+라우팅은 api가 가드레일 통과 후 요청당 한 번 하고 결과를 handle(req, route)로 넘긴다. 진척 에이전트 대화 기억은 thread_id별이다.
 """
 from __future__ import annotations
 
@@ -15,7 +16,7 @@ from src import config, guardrails, mcp_client, meeting, middleware, retriever, 
 NO_ANSWER = "문서에서 근거를 찾지 못해 알 수 없습니다. 확인 가능한 담당자(PM·PL)나 팀 채널에 문의해 주세요."
 
 _flow: meeting.MeetingFlow | None = None
-_memory = None  # 진척 에이전트 대화 기억 (회의 중 멀티턴, 사용자별 스레드)
+_memory = None  # 진척 에이전트 대화 기억 (회의 중 멀티턴, thread_id별. thread 소유자 확인은 api가 한다)
 
 
 # ----------------------------------------------------------------------------- 문서 Q&A (RAG)
@@ -31,7 +32,7 @@ GROUNDED_PROMPT = (
 
 
 def answer_docs_qa(question: str, role: str, user_id: str) -> dict:
-    """검색 → 간접 인젝션 청크 제외·역할 범위 적용(코드) → LLM이 근거 인용 답변 (LCEL)."""
+    """검색 → 간접 인젝션 줄 제외·역할 범위 적용(코드) → LLM 답변 (LCEL). 인용 규칙 프롬프트는 2차(grounded)만."""
     from langchain_core.output_parsers import StrOutputParser
     from langchain_core.prompts import ChatPromptTemplate
 
@@ -62,6 +63,7 @@ PROGRESS_SYSTEM = (
     "- 진척률·남은 화면·남은 MM 질문: calc_progress와 calc_remaining_mm를 모두 호출한다.\n"
     "- 지연·경고·불일치·계획 대비 질문: calc_progress와 check_mismatch를 호출한다.\n"
     "- 특정 개발자의 진척 질문: calc_progress와 calc_remaining_mm에 developer_id를 넣어 호출한다(권한 밖이면 도구가 거절한다).\n"
+    "- 파트(PL1·PL2) 진척 질문: calc_progress와 calc_remaining_mm에 part를 넣어 호출한다(권한 밖이면 도구가 거절한다).\n"
     "- 특정 화면(SCR-xxx-xx)의 진척 질문: calc_progress, calc_remaining_mm, check_mismatch를 모두 호출해 경고 여부를 함께 알린다.\n"
     "- 커밋 질문: get_commits를 호출하고, 미연결 커밋은 작성자 이름과 이메일을 함께 적는다(이메일은 출력 단계에서 마스킹된다).\n"
     "숫자를 바꾸거나 추정하지 말고, 도구 결과를 2~4문장으로 설명한다. 사람을 평가하거나 순위를 매기지 않는다.")
@@ -79,27 +81,31 @@ def _progress_tools(role: str, user_id: str, called: list[str]):
         s = tools.find_screen(screen_id)
         return s is None or tools.in_scope(s, own)  # 없는 화면은 도구가 '찾을 수 없음'으로 답한다
 
-    def target(screen_id: str, developer_id: str) -> dict | None:
-        """조회 대상. 범위 밖이면 None (PM 누구나, PL 본인 파트 구성원, 개발자 본인만)."""
+    def target(screen_id: str, developer_id: str, part: str = "") -> dict | None:
+        """조회 대상. 범위 밖이면 None (PM 누구나, PL 본인 파트·구성원, 개발자 본인만. 파트 단위는 개발자 불가)."""
         if screen_id:
             return {"screen_id": screen_id} if allowed(screen_id) else None
         if developer_id:
             return {"developer_id": developer_id} if people is None or developer_id in people else None
+        if part:
+            part = part.replace(" ", "").upper()
+            return {"part": part} if role == "pm" or (role == "pl" and own.get("part") == part) else None
         return own
 
     @tool
-    def calc_progress(screen_id: str = "", developer_id: str = "") -> str:
+    def calc_progress(screen_id: str = "", developer_id: str = "", part: str = "") -> str:
         """진척률을 계산한다. screen_id(예: SCR-A01-03)를 주면 화면 단건, developer_id(예: dev01)를 주면 그 개발자 담당분,
-        둘 다 비우면 요청자 범위 전체(대메뉴·중메뉴·단계별 집계와 계획 대비 차이 포함). 수치 질문마다 새로 호출한다."""
+        part(PL1|PL2)를 주면 그 파트 합계·대메뉴별, 모두 비우면 요청자 범위 전체(파트·대메뉴·중메뉴·단계별 집계와 계획 대비
+        차이 포함). 수치 질문마다 새로 호출한다."""
         called.append("calc_progress")
-        t = target(screen_id, developer_id)
+        t = target(screen_id, developer_id, part)
         return guardrails.DENY if t is None else tools.format_progress_report(tools.build_progress_report(**t))
 
     @tool
-    def calc_remaining_mm(screen_id: str = "", developer_id: str = "") -> str:
-        """남은 MM(계획 MM x (1-진척률))을 계산한다. screen_id·developer_id를 비우면 요청자 범위 전체."""
+    def calc_remaining_mm(screen_id: str = "", developer_id: str = "", part: str = "") -> str:
+        """남은 MM(계획 MM x (1-진척률))을 계산한다. screen_id·developer_id·part를 비우면 요청자 범위 전체."""
         called.append("calc_remaining_mm")
-        t = target(screen_id, developer_id)
+        t = target(screen_id, developer_id, part)
         return guardrails.DENY if t is None else json.dumps(tools.calc_remaining_mm(**t), ensure_ascii=False)
 
     @tool
@@ -126,7 +132,7 @@ def _progress_tools(role: str, user_id: str, called: list[str]):
     return [calc_progress, calc_remaining_mm, check_mismatch, get_commits]
 
 
-def answer_progress(question: str, role: str, user_id: str) -> dict:
+def answer_progress(question: str, role: str, user_id: str, thread_id: str | None = None) -> dict:
     from langchain.agents import create_agent
     from langchain.agents.middleware import ModelRetryMiddleware, SummarizationMiddleware
     from langchain_core.messages import HumanMessage
@@ -135,9 +141,9 @@ def answer_progress(question: str, role: str, user_id: str) -> dict:
     agent = create_agent(
         llm, _progress_tools(role, user_id, called), system_prompt=PROGRESS_SYSTEM,
         middleware=[SummarizationMiddleware(model=llm, trigger=("tokens", 6000), keep=("messages", 6)),  # 긴 회의 대화 요약
-                    ModelRetryMiddleware(max_retries=2)],                                              # LLM 호출 재시도
+                    ModelRetryMiddleware(max_retries=1)],                                              # LLM 호출 재시도 1회
         checkpointer=_memory)
-    cfg = {"configurable": {"thread_id": f"progress-{user_id}"}}
+    cfg = {"configurable": {"thread_id": f"progress-{thread_id or user_id}"}}  # 대화 기억은 thread별
     result = agent.invoke({"messages": [HumanMessage(question)]}, cfg)
     if not called:  # 이전 대화 답을 재사용하고 도구를 건너뛴 경우: 한 번 더 도구 호출을 지시한다 (숫자는 최신 도구 결과만)
         result = agent.invoke({"messages": [HumanMessage(
@@ -146,9 +152,11 @@ def answer_progress(question: str, role: str, user_id: str) -> dict:
     # 숫자는 도구가 계산한 결과를 그대로 붙인다 (LLM이 바꾸지 않음)
     m = tools.SCREEN_ID_RE.search(question)
     devs = {d["developer_id"] for d in tools.load_developers() if d["role"] == "developer"}
-    named = [p for p in guardrails.mentioned_people(question) if p in devs]  # 범위 밖 사람은 가드레일이 이미 거절
+    named = [p for p in guardrails.mentioned_people(question) if p in devs]  # 범위 밖 사람·파트는 가드레일이 이미 거절
+    parts = guardrails.mentioned_parts(question) if role != "developer" else []
     report = (tools.build_progress_report(screen_id=m.group(0)) if m
               else tools.build_progress_report(developer_id=named[0]) if len(named) == 1
+              else tools.build_progress_report(part=parts[0]) if len(parts) == 1
               else tools.build_progress_report(**tools.user_scope(role, user_id)))
     text = tools.format_progress_report(report)
     trace = [{"step": "tool_call", "input": {"tool": n, "agent": "progress(ReAct)"}, "output": "ok"} for n in called]
@@ -160,11 +168,11 @@ def answer_progress(question: str, role: str, user_id: str) -> dict:
 
 # ----------------------------------------------------------------------------- 회의 자료 (Plan-Execute + HITL)
 def _publish(title: str, body: str) -> str:
-    """Confluence(가짜 MCP 서버) 게시. PII 마스킹 후 10초 타임아웃·2회 재시도."""
+    """Confluence MCP 게시. PII 마스킹 후 한 번만 시도(타임아웃 15초, 중복 게시 방지를 위해 재시도 없음)."""
     body += "\n\n---\n※ 이메일·전화번호 등 개인정보는 마스킹 처리되며, 업무 담당 확인을 위해 이름만 표기합니다."
     title, body = middleware.mask_pii(title), middleware.mask_pii(body)
     page = middleware.call_with_retry(mcp_client.call_tool, "create_page",
-                                      {"title": title, "body": body, "page_id": meeting.meeting_page_id()})
+                                      {"title": title, "body": body, "page_id": meeting.meeting_page_id()}, retries=0)
     retriever.index_generated(page["page_id"], title, body)  # 게시물은 런타임 검색 대상 (평가 제외)
     return page["page_id"]
 
@@ -185,43 +193,56 @@ def answer_meeting(role: str) -> dict:
     }
 
 
+def _read_page(page_id: str) -> dict:
+    """지난주 게시 페이지 조회 (MCP get_page, 한 번만 시도)."""
+    return middleware.call_with_retry(mcp_client.call_tool, "get_page", {"page_id": page_id}, retries=0)
+
+
 def resume_meeting(saved: dict, approval: str) -> dict:
-    """api가 PM·PL 권한을 확인한 뒤 호출한다. LangGraph interrupt()를 Command(resume=...)로 재개."""
-    resp = saved["response"]
+    """api가 PM·PL 권한을 확인한 뒤 호출한다. LangGraph interrupt()를 Command(resume=...)로 재개.
+    응답에는 게시 결과와 재개 이후 trace만 담는다(초안·contexts 없음)."""
     before = len(_flow.graph.get_state({"configurable": {"thread_id": saved["graph_thread"]}}).values.get("log", []))
     st = _flow.resume(saved["graph_thread"], approval)
-    trace = resp["trace"] + st["log"][before:]
+    trace = st["log"][before:]
     if approval == "reject":
         answer = "반려되어 게시하지 않았습니다."
     elif st.get("error"):
         answer = f"게시 실패(게시하지 않음): {st['error']}"
     else:
         answer = f"승인되어 Confluence에 게시했습니다: {st['page_id']}"
-    return {"answer": answer, "contexts": resp["contexts"], "trace": trace, "pending_approval": False}
+    return {"answer": answer, "contexts": [], "trace": trace, "pending_approval": False}
 
 
 # ----------------------------------------------------------------------------- 진입점
-def handle(req) -> dict:
-    """POST /query 핸들러: Supervisor 라우팅 결과에 따라 담당 에이전트로 위임한다."""
-    if re.search(r"이메일|전화", req.question) and tools.SCREEN_ID_RE.search(req.question):
-        from src import api
-        return api._default_handler(req)  # 담당자 연락처는 도구 조회 (PII는 출력 단계에서 마스킹)
+def handle(req, route: str) -> dict:
+    """POST /query 핸들러: api가 가드레일 통과 후 정한 Supervisor 라우팅 결과에 따라 담당 에이전트로 위임한다.
+    req.thread_id는 api가 넘긴 대화 기억 키다."""
+    m = tools.SCREEN_ID_RE.search(req.question)
+    if re.search(r"이메일|전화|연락처", req.question) and m and (text := tools.screen_contact(m.group(0))):
+        # 담당자 연락처는 도구 조회 (범위 밖 화면은 가드레일이 이미 거절, PII는 출력 단계에서 마스킹)
+        return {"answer": text, "contexts": [{"doc_id": "tool:get_developer", "text": text}],
+                "trace": [{"step": "tool_call", "input": {"tool": "get_developer", "screen_id": m.group(0)},
+                           "output": "ok"}], "pending_approval": False}
     if guardrails.out_of_scope_screens(req.question, req.user_id, req.role):
-        # 범위 밖 화면은 가드레일이 정의서(팀 공용 문서) 질문만 통과시킨다 → 진척 도구 없이 문서 Q&A로만 답한다
+        # 범위 밖 화면은 가드레일이 팀 공용 문서(정의서·회의록) 질문만 통과시킨다 → 진척 도구 없이 문서 Q&A로만 답한다
         return answer_docs_qa(req.question, req.role, req.user_id)
-    route = supervisor.route(req.question)
     if route == "meeting_material":
         return answer_meeting(req.role)
     if route == "progress":
-        return answer_progress(req.question, req.role, req.user_id)
+        return answer_progress(req.question, req.role, req.user_id, req.thread_id)
     return answer_docs_qa(req.question, req.role, req.user_id)
+
+
+def reset_memory() -> None:
+    """진척 에이전트 대화 기억만 비운다 (평가에서 케이스마다 호출해 실행 순서 의존을 없앤다)."""
+    global _memory
+    from langgraph.checkpoint.memory import InMemorySaver
+    _memory = InMemorySaver()
 
 
 def reset() -> None:
     """평가 실행 전 고정 상태로 초기화 (대화 기억·장기 메모리·런타임 인덱스)."""
-    global _memory
-    from langgraph.checkpoint.memory import InMemorySaver
-    _memory = InMemorySaver()
+    reset_memory()
     if _flow is not None:
         _flow.reset_store()
     retriever.RUNTIME_INDEX.clear()
@@ -234,7 +255,7 @@ def setup() -> None:
     llm = config.get_llm()
     supervisor.set_llm_router(supervisor.make_llm_router(llm))
     retriever.set_embedder(config.get_embeddings())
-    _flow = meeting.MeetingFlow(llm, _publish)
+    _flow = meeting.MeetingFlow(llm, _publish, _read_page)
     reset()
     api.set_handler(handle)
     api.set_graph_resume(resume_meeting)

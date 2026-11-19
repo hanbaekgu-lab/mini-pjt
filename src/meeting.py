@@ -226,6 +226,9 @@ def render_snapshot_page(snap: dict) -> str:
          *[f"| {tools.part_label(k)} | {pct(v['planned_progress'])} | {pct(v['progress'])} | {gap(v):+.2f}%p | "
            f"{tools.SCHEDULE_ICON[tools.schedule_status(gap(v))]} | - | - | - |" for k, v in snap["parts"].items()], "",
          f"일정 경과율 **{pct(snap['schedule_elapsed'])}** (프로젝트 기간 중 {snap['week']['end']}까지)", "",
+         "#### 전체 기간 대비 현재 위치", "", "```",
+         *tools.timeline_lines(snap["schedule_elapsed"], t["planned_progress"], t["progress"], snap["week"]["end"]),
+         "```", "",
          "### 대메뉴별", "", "| 대메뉴 | 계획 | 실적 | 차이 | 화면(완료/전체) |", "|---|---:|---:|---:|---:|",
          *[f"| {k} {names[k]} | {pct(v['planned_progress'])} | {pct(v['progress'])} | {gap(v):+.2f}%p | "
            f"{v['screens_done']}/{v['screens_total']} |" for k, v in snap["large_menus"].items()], "",
@@ -263,6 +266,7 @@ class MeetingState(TypedDict, total=False):
     previous: Optional[dict]
     previous_source: str
     previous_minutes: str
+    previous_page: str
     body: str
     approval: str
     page_id: str
@@ -281,13 +285,21 @@ def _previous_minutes(week_start: str) -> tuple[str, str]:
     return doc_id, ""
 
 
+def page_actions(body: str) -> str:
+    """게시된 회의 자료 페이지 본문에서 액션아이템 섹션만 꺼낸다 (없으면 빈 문자열)."""
+    return body.split("## 액션아이템", 1)[1].strip() if "## 액션아이템" in body else ""
+
+
 class MeetingFlow:
-    def __init__(self, llm, publish):
+    """Plan-Execute 그래프. Plan 단계는 LLM이 계획을 내고, 코드가 허용된 고정 단계(STEPS)만 남겨 누락 보완·순서 정렬한다.
+    read_page가 있으면 지난주 게시 페이지를 MCP get_page로 읽고, 없거나 실패하면 장기 메모리 스냅샷으로 대신한다."""
+
+    def __init__(self, llm, publish, read_page=None):
         from langgraph.checkpoint.memory import InMemorySaver
         from langgraph.graph import END, START, StateGraph
         from langgraph.store.memory import InMemoryStore
 
-        self.llm, self.publish_fn = llm, publish
+        self.llm, self.publish_fn, self.read_page = llm, publish, read_page
         self.store = InMemoryStore()  # 장기 메모리: SNAPSHOT_NS / 주차 시작일 → 회의 스냅샷
         g = StateGraph(MeetingState)
         g.add_node("plan", self._plan)
@@ -323,15 +335,17 @@ class MeetingFlow:
         team_only = {k: v for k, v in report.items() if k != "developers"}  # 개인별 진척률은 초안 입력에서 제외
         warns = [f"[{w['screen_id']}] {w['message']}" for w in report["mismatch_warnings"]]
         warns += [f"미연결 커밋 {c['hash']}: {c['reason']}" for c in report["unlinked_commits"]]
+        # 지연 화면 담당자·커밋 작성자 이름도 초안 입력에서 뺀다 (공유 문서라 사람 이름을 쓰지 않음)
         log = state["log"] + [{"step": "tool_call", "input": {"tool": n, "plan_step": "collect_progress"}, "output": "ok"}
                               for n in ("calc_progress", "calc_remaining_mm", "check_mismatch")]
-        return {"report_text": tools.format_progress_report(team_only), "warnings": warns, "log": log}
+        return {"report_text": strip_names(tools.format_progress_report(team_only)), "warnings": warns, "log": log}
 
     def snapshots(self) -> list:
         return sorted(self.store.search(SNAPSHOT_NS, limit=1000), key=lambda it: it.key)
 
     def _check_previous_meeting(self, state):
-        """장기 메모리에서 지난주 회의 스냅샷(진척·이슈·액션아이템)을 읽고, 지난주 회의록을 검색한다."""
+        """장기 메모리에서 지난주 회의 스냅샷(진척·이슈·액션아이템)을 읽고, 지난주 게시 페이지(MCP get_page)와
+        지난주 회의록을 확인한다. 게시 페이지를 읽지 못하면 스냅샷으로 재구성한 페이지를 쓴다."""
         week = tools.load_reference_week()["start"]
         seeded = ""
         if not [it for it in self.snapshots() if it.key < week]:  # Store가 비면 지난 회의 기록으로 초기화
@@ -341,11 +355,23 @@ class MeetingFlow:
         prev = [it for it in self.snapshots() if it.key < week]
         previous, src = (prev[-1].value, f"store:{prev[-1].key}{seeded}") if prev else (None, "store:없음")
         doc_id, minutes = _previous_minutes(week)
+        page, page_src = "", "없음"
+        if previous is not None:
+            pid = previous.get("page_id") or meeting_page_id(previous["week"]["start"])
+            try:
+                if self.read_page is None:
+                    raise RuntimeError("MCP 미연결")
+                page, page_src = self.read_page(pid)["body"], f"mcp:{pid}"
+            except Exception as e:  # noqa: BLE001  게시 페이지가 없거나 MCP 실패: 스냅샷으로 대신
+                page, page_src = render_snapshot_page(previous), f"snapshot:{previous['week']['start']} ({type(e).__name__})"
         log = state["log"] + [
             {"step": "tool_call", "input": {"tool": "memory_store", "plan_step": "check_previous_meeting"}, "output": src},
+            {"step": "tool_call", "input": {"tool": "get_page", "plan_step": "check_previous_meeting"},
+             "output": page_src},
             {"step": "tool_call", "input": {"tool": "retrieve_docs", "plan_step": "check_previous_meeting"},
              "output": doc_id if minutes else "없음"}]
-        return {"previous": previous, "previous_source": src, "previous_minutes": minutes, "log": log}
+        return {"previous": previous, "previous_source": src, "previous_minutes": minutes,
+                "previous_page": strip_names(page_actions(page)), "log": log}
 
     def _draft_material(self, state):
         ctx = meeting_context(state.get("previous"), load_history=False)
@@ -357,7 +383,8 @@ class MeetingFlow:
             "계획 대비 차이가 큰 대메뉴, 오래 지속된 미해결 이슈, 지난주 미완료 액션아이템을 결정사항·블로커·액션아이템에 반영하라.\n\n"
             f"[도구 계산 결과]\n{state['report_text']}\n\n[일정 대비·지난주 대비·이슈 추적]\n{context_summary(ctx)}\n\n"
             "[불일치 경고·미연결 커밋]\n" + "\n".join(state["warnings"])
-            + "\n\n[지난주 회의록 결정사항·블로커]\n" + state.get("previous_minutes", ""))
+            + "\n\n[지난주 회의록 결정사항·블로커]\n" + state.get("previous_minutes", "")
+            + "\n\n[지난주 게시 회의 자료의 액션아이템]\n" + state.get("previous_page", ""))
         body = render(draft.decisions, draft.blockers, draft.action_items, ctx)
         log = state["log"] + [{"step": "llm_draft", "input": "meeting_material", "output": "drafted"}]
         return {"body": body, "log": log}

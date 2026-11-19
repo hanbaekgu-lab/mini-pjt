@@ -9,6 +9,8 @@
   "part": "PL1",
   "owner": "dev01",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-04-01",
   "planned_end": "2026-04-10",
   "status": "완료"
@@ -23,6 +25,8 @@
   "part": "PL1",
   "owner": "dev01",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-04-10",
   "planned_end": "2026-04-22",
   "status": "완료"
@@ -37,6 +41,8 @@
   "part": "PL1",
   "owner": "dev01",
   "plan_mm": 0.6,
+  "complexity": "상",
+  "crud": "RU",
   "planned_start": "2026-04-22",
   "planned_end": "2026-05-08",
   "status": "완료"
@@ -51,6 +57,8 @@
   "part": "PL1",
   "owner": "dev01",
   "plan_mm": 0.5,
+  "complexity": "중",
+  "crud": "CR",
   "planned_start": "2026-05-08",
   "planned_end": "2026-05-22",
   "status": "완료"
@@ -65,6 +73,8 @@
   "part": "PL1",
   "owner": "dev01",
   "plan_mm": 0.5,
+  "complexity": "중",
+  "crud": "RUD",
   "planned_start": "2026-06-02",
   "planned_end": "2026-06-16",
   "status": "완료"
@@ -79,6 +89,8 @@
   "part": "PL1",
   "owner": "dev01",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "R",
   "planned_start": "2026-06-26",
   "planned_end": "2026-07-03",
   "status": "완료"
@@ -93,6 +105,8 @@
   "part": "PL1",
   "owner": "dev02",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-04-01",
   "planned_end": "2026-04-13",
   "status": "완료"
@@ -107,6 +121,8 @@
   "part": "PL1",
   "owner": "dev02",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "R",
   "planned_start": "2026-04-13",
   "planned_end": "2026-04-23",
   "status": "완료"
@@ -121,6 +137,8 @@
   "part": "PL1",
   "owner": "dev02",
   "plan_mm": 0.5,
+  "complexity": "중",
+  "crud": "RU",
   "planned_start": "2026-04-23",
   "planned_end": "2026-05-08",
   "status": "완료"
@@ -135,6 +153,8 @@
   "part": "PL1",
   "owner": "dev02",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "CR",
   "planned_start": "2026-05-08",
   "planned_end": "2026-05-22",
   "status": "완료"
@@ -149,6 +169,8 @@
   "part": "PL1",
   "owner": "dev02",
   "plan_mm": 0.6,
+  "complexity": "상",
+  "crud": "RUD",
   "planned_start": "2026-06-04",
   "planned_end": "2026-06-24",
   "status": "완료"
@@ -163,6 +185,8 @@
   "part": "PL1",
   "owner": "dev03",
   "plan_mm": 0.5,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-04-01",
   "planned_end": "2026-04-15",
   "status": "완료"
@@ -177,6 +201,8 @@
   "part": "PL1",
   "owner": "dev03",
   "plan_mm": 0.5,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-04-15",
   "planned_end": "2026-04-30",
   "status": "완료"
@@ -191,6 +217,8 @@
   "part": "PL1",
   "owner": "dev03",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "RU",
   "planned_start": "2026-04-30",
   "planned_end": "2026-05-08",
   "status": "완료"
@@ -205,6 +233,8 @@
   "part": "PL1",
   "owner": "dev03",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "CR",
   "planned_start": "2026-05-08",
   "planned_end": "2026-05-21",
   "status": "완료"
@@ -219,6 +249,8 @@
   "part": "PL1",
   "owner": "dev03",
   "plan_mm": 0.6,
+  "complexity": "상",
+  "crud": "RUD",
   "planned_start": "2026-06-02",
   "planned_end": "2026-06-19",
   "status": "완료"
@@ -233,6 +265,8 @@
   "part": "PL1",
   "owner": "dev03",
   "plan_mm": 0.6,
+  "complexity": "상",
+  "crud": "R",
   "planned_start": "2026-07-08",
   "planned_end": "2026-07-24",
   "status": "완료"
@@ -247,6 +281,8 @@
   "part": "PL1",
   "owner": "dev04",
   "plan_mm": 0.6,
+  "complexity": "상",
+  "crud": "R",
   "planned_start": "2026-04-01",
   "planned_end": "2026-04-17",
   "status": "완료"
@@ -261,6 +297,8 @@
   "part": "PL1",
   "owner": "dev04",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "R",
   "planned_start": "2026-04-17",
   "planned_end": "2026-04-24",
   "status": "완료"
@@ -275,6 +313,8 @@
   "part": "PL1",
   "owner": "dev04",
   "plan_mm": 0.6,
+  "complexity": "상",
+  "crud": "RU",
   "planned_start": "2026-04-24",
   "planned_end": "2026-05-11",
   "status": "완료"
@@ -289,6 +329,8 @@
   "part": "PL1",
   "owner": "dev04",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "CR",
   "planned_start": "2026-05-11",
   "planned_end": "2026-05-22",
   "status": "완료"
@@ -303,6 +345,8 @@
   "part": "PL1",
   "owner": "dev04",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "RUD",
   "planned_start": "2026-06-05",
   "planned_end": "2026-06-17",
   "status": "완료"
@@ -317,6 +361,8 @@
   "part": "PL1",
   "owner": "dev02",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-05-22",
   "planned_end": "2026-06-04",
   "status": "완료"
@@ -331,6 +377,8 @@
   "part": "PL1",
   "owner": "dev02",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "R",
   "planned_start": "2026-06-24",
   "planned_end": "2026-07-03",
   "status": "완료"
@@ -345,6 +393,8 @@
   "part": "PL1",
   "owner": "dev02",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "RU",
   "planned_start": "2026-07-03",
   "planned_end": "2026-07-13",
   "status": "완료"
@@ -359,6 +409,8 @@
   "part": "PL1",
   "owner": "dev02",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "CR",
   "planned_start": "2026-07-13",
   "planned_end": "2026-07-24",
   "status": "완료"
@@ -373,6 +425,8 @@
   "part": "PL1",
   "owner": "dev04",
   "plan_mm": 0.6,
+  "complexity": "상",
+  "crud": "R",
   "planned_start": "2026-05-22",
   "planned_end": "2026-06-05",
   "status": "완료"
@@ -387,6 +441,8 @@
   "part": "PL1",
   "owner": "dev04",
   "plan_mm": 0.6,
+  "complexity": "상",
+  "crud": "R",
   "planned_start": "2026-06-17",
   "planned_end": "2026-07-03",
   "status": "완료"
@@ -401,6 +457,8 @@
   "part": "PL1",
   "owner": "dev04",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "RU",
   "planned_start": "2026-07-03",
   "planned_end": "2026-07-14",
   "status": "완료"
@@ -415,6 +473,8 @@
   "part": "PL1",
   "owner": "dev04",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "CR",
   "planned_start": "2026-07-14",
   "planned_end": "2026-07-24",
   "status": "완료"
@@ -429,6 +489,8 @@
   "part": "PL1",
   "owner": "dev04",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "RUD",
   "planned_start": "2026-08-05",
   "planned_end": "2026-08-14",
   "status": "완료"
@@ -443,6 +505,8 @@
   "part": "PL1",
   "owner": "dev01",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-05-22",
   "planned_end": "2026-06-02",
   "status": "완료"
@@ -457,6 +521,8 @@
   "part": "PL1",
   "owner": "dev01",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-06-16",
   "planned_end": "2026-06-26",
   "status": "완료"
@@ -471,6 +537,8 @@
   "part": "PL1",
   "owner": "dev01",
   "plan_mm": 0.6,
+  "complexity": "상",
+  "crud": "RU",
   "planned_start": "2026-07-03",
   "planned_end": "2026-07-22",
   "status": "완료"
@@ -485,6 +553,8 @@
   "part": "PL1",
   "owner": "dev01",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "CR",
   "planned_start": "2026-07-22",
   "planned_end": "2026-07-30",
   "status": "완료"
@@ -499,6 +569,8 @@
   "part": "PL1",
   "owner": "dev01",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "RUD",
   "planned_start": "2026-08-07",
   "planned_end": "2026-08-18",
   "status": "완료"
@@ -513,6 +585,8 @@
   "part": "PL1",
   "owner": "dev01",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "R",
   "planned_start": "2026-09-01",
   "planned_end": "2026-09-09",
   "status": "완료"
@@ -527,6 +601,8 @@
   "part": "PL1",
   "owner": "dev03",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-05-21",
   "planned_end": "2026-06-02",
   "status": "완료"
@@ -541,6 +617,8 @@
   "part": "PL1",
   "owner": "dev03",
   "plan_mm": 0.6,
+  "complexity": "상",
+  "crud": "R",
   "planned_start": "2026-06-19",
   "planned_end": "2026-07-08",
   "status": "완료"
@@ -555,6 +633,8 @@
   "part": "PL1",
   "owner": "dev03",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "RU",
   "planned_start": "2026-07-24",
   "planned_end": "2026-08-07",
   "status": "완료"
@@ -569,6 +649,8 @@
   "part": "PL1",
   "owner": "dev03",
   "plan_mm": 0.6,
+  "complexity": "상",
+  "crud": "CR",
   "planned_start": "2026-08-07",
   "planned_end": "2026-08-25",
   "status": "완료"
@@ -583,6 +665,8 @@
   "part": "PL1",
   "owner": "dev03",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "RUD",
   "planned_start": "2026-09-04",
   "planned_end": "2026-09-15",
   "status": "진행중"
@@ -597,6 +681,8 @@
   "part": "PL1",
   "owner": "dev03",
   "plan_mm": 0.6,
+  "complexity": "상",
+  "crud": "R",
   "planned_start": "2026-09-24",
   "planned_end": "2026-10-12",
   "status": "완료"
@@ -611,6 +697,8 @@
   "part": "PL1",
   "owner": "dev02",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "R",
   "planned_start": "2026-07-24",
   "planned_end": "2026-08-05",
   "status": "완료"
@@ -625,6 +713,8 @@
   "part": "PL1",
   "owner": "dev02",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-08-05",
   "planned_end": "2026-08-18",
   "status": "완료"
@@ -639,6 +729,8 @@
   "part": "PL1",
   "owner": "dev02",
   "plan_mm": 0.5,
+  "complexity": "중",
+  "crud": "RU",
   "planned_start": "2026-08-18",
   "planned_end": "2026-09-03",
   "status": "진행중"
@@ -653,6 +745,8 @@
   "part": "PL1",
   "owner": "dev02",
   "plan_mm": 0.5,
+  "complexity": "중",
+  "crud": "CR",
   "planned_start": "2026-09-03",
   "planned_end": "2026-09-18",
   "status": "완료"
@@ -667,6 +761,8 @@
   "part": "PL1",
   "owner": "dev02",
   "plan_mm": 0.6,
+  "complexity": "상",
+  "crud": "RUD",
   "planned_start": "2026-10-02",
   "planned_end": "2026-10-21",
   "status": "진행중"
@@ -681,6 +777,8 @@
   "part": "PL1",
   "owner": "dev04",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-07-24",
   "planned_end": "2026-08-05",
   "status": "완료"
@@ -695,6 +793,8 @@
   "part": "PL1",
   "owner": "dev04",
   "plan_mm": 0.6,
+  "complexity": "상",
+  "crud": "R",
   "planned_start": "2026-08-14",
   "planned_end": "2026-09-01",
   "status": "완료"
@@ -709,6 +809,8 @@
   "part": "PL1",
   "owner": "dev04",
   "plan_mm": 0.6,
+  "complexity": "상",
+  "crud": "RU",
   "planned_start": "2026-09-01",
   "planned_end": "2026-09-17",
   "status": "완료"
@@ -723,6 +825,8 @@
   "part": "PL1",
   "owner": "dev04",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "CR",
   "planned_start": "2026-09-17",
   "planned_end": "2026-09-25",
   "status": "완료"
@@ -737,6 +841,8 @@
   "part": "PL1",
   "owner": "dev04",
   "plan_mm": 0.6,
+  "complexity": "상",
+  "crud": "RUD",
   "planned_start": "2026-10-08",
   "planned_end": "2026-10-23",
   "status": "완료"
@@ -751,6 +857,8 @@
   "part": "PL1",
   "owner": "dev01",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "R",
   "planned_start": "2026-07-30",
   "planned_end": "2026-08-07",
   "status": "완료"
@@ -765,6 +873,8 @@
   "part": "PL1",
   "owner": "dev01",
   "plan_mm": 0.5,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-08-18",
   "planned_end": "2026-09-01",
   "status": "완료"
@@ -779,6 +889,8 @@
   "part": "PL1",
   "owner": "dev01",
   "plan_mm": 0.6,
+  "complexity": "상",
+  "crud": "RU",
   "planned_start": "2026-09-09",
   "planned_end": "2026-09-25",
   "status": "완료"
@@ -793,6 +905,8 @@
   "part": "PL1",
   "owner": "dev01",
   "plan_mm": 0.6,
+  "complexity": "상",
+  "crud": "CR",
   "planned_start": "2026-09-25",
   "planned_end": "2026-10-12",
   "status": "완료"
@@ -807,6 +921,8 @@
   "part": "PL1",
   "owner": "dev01",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "RUD",
   "planned_start": "2026-10-23",
   "planned_end": "2026-11-05",
   "status": "완료"
@@ -821,6 +937,8 @@
   "part": "PL1",
   "owner": "dev01",
   "plan_mm": 0.6,
+  "complexity": "상",
+  "crud": "R",
   "planned_start": "2026-11-13",
   "planned_end": "2026-11-30",
   "status": "진행중"
@@ -835,6 +953,8 @@
   "part": "PL1",
   "owner": "dev03",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "CR",
   "planned_start": "2026-08-25",
   "planned_end": "2026-09-04",
   "status": "진행중"
@@ -849,6 +969,8 @@
   "part": "PL1",
   "owner": "dev03",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "R",
   "planned_start": "2026-09-15",
   "planned_end": "2026-09-24",
   "status": "진행중"
@@ -863,6 +985,8 @@
   "part": "PL1",
   "owner": "dev03",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "RU",
   "planned_start": "2026-10-12",
   "planned_end": "2026-10-21",
   "status": "완료"
@@ -877,6 +1001,8 @@
   "part": "PL1",
   "owner": "dev03",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "CR",
   "planned_start": "2026-10-21",
   "planned_end": "2026-10-30",
   "status": "진행중"
@@ -891,6 +1017,8 @@
   "part": "PL1",
   "owner": "dev03",
   "plan_mm": 0.6,
+  "complexity": "상",
+  "crud": "RUD",
   "planned_start": "2026-11-17",
   "planned_end": "2026-12-04",
   "status": "미착수"
@@ -905,6 +1033,8 @@
   "part": "PL1",
   "owner": "dev02",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-09-18",
   "planned_end": "2026-10-02",
   "status": "완료"
@@ -919,6 +1049,8 @@
   "part": "PL1",
   "owner": "dev02",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "R",
   "planned_start": "2026-10-21",
   "planned_end": "2026-10-30",
   "status": "진행중"
@@ -933,6 +1065,8 @@
   "part": "PL1",
   "owner": "dev02",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "RU",
   "planned_start": "2026-10-30",
   "planned_end": "2026-11-13",
   "status": "완료"
@@ -947,6 +1081,8 @@
   "part": "PL1",
   "owner": "dev02",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "CR",
   "planned_start": "2026-11-13",
   "planned_end": "2026-11-23",
   "status": "진행중"
@@ -961,6 +1097,8 @@
   "part": "PL1",
   "owner": "dev02",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "RUD",
   "planned_start": "2026-12-11",
   "planned_end": "2026-12-25",
   "status": "미착수"
@@ -975,6 +1113,8 @@
   "part": "PL1",
   "owner": "dev04",
   "plan_mm": 0.5,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-09-25",
   "planned_end": "2026-10-08",
   "status": "완료"
@@ -989,6 +1129,8 @@
   "part": "PL1",
   "owner": "dev04",
   "plan_mm": 0.5,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-10-23",
   "planned_end": "2026-11-06",
   "status": "진행중"
@@ -1003,6 +1145,8 @@
   "part": "PL1",
   "owner": "dev04",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "RU",
   "planned_start": "2026-11-06",
   "planned_end": "2026-11-18",
   "status": "진행중"
@@ -1017,6 +1161,8 @@
   "part": "PL1",
   "owner": "dev04",
   "plan_mm": 0.5,
+  "complexity": "중",
+  "crud": "CR",
   "planned_start": "2026-11-18",
   "planned_end": "2026-12-01",
   "status": "진행중"
@@ -1031,6 +1177,8 @@
   "part": "PL1",
   "owner": "dev04",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "RUD",
   "planned_start": "2026-12-17",
   "planned_end": "2026-12-25",
   "status": "미착수"
@@ -1045,6 +1193,8 @@
   "part": "PL1",
   "owner": "dev03",
   "plan_mm": 0.6,
+  "complexity": "상",
+  "crud": "CR",
   "planned_start": "2026-10-30",
   "planned_end": "2026-11-17",
   "status": "진행중"
@@ -1059,6 +1209,8 @@
   "part": "PL1",
   "owner": "dev03",
   "plan_mm": 0.5,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-12-04",
   "planned_end": "2026-12-18",
   "status": "미착수"
@@ -1073,6 +1225,8 @@
   "part": "PL1",
   "owner": "dev03",
   "plan_mm": 0.6,
+  "complexity": "상",
+  "crud": "RU",
   "planned_start": "2026-12-18",
   "planned_end": "2027-01-07",
   "status": "미착수"
@@ -1087,6 +1241,8 @@
   "part": "PL1",
   "owner": "dev03",
   "plan_mm": 0.6,
+  "complexity": "상",
+  "crud": "CR",
   "planned_start": "2027-01-07",
   "planned_end": "2027-01-25",
   "status": "미착수"
@@ -1101,6 +1257,8 @@
   "part": "PL1",
   "owner": "dev03",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "RUD",
   "planned_start": "2027-01-25",
   "planned_end": "2027-02-03",
   "status": "미착수"
@@ -1115,6 +1273,8 @@
   "part": "PL1",
   "owner": "dev03",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "R",
   "planned_start": "2027-02-03",
   "planned_end": "2027-02-12",
   "status": "미착수"
@@ -1129,6 +1289,8 @@
   "part": "PL1",
   "owner": "dev01",
   "plan_mm": 0.5,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-10-12",
   "planned_end": "2026-10-23",
   "status": "완료"
@@ -1143,6 +1305,8 @@
   "part": "PL1",
   "owner": "dev01",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "R",
   "planned_start": "2026-11-05",
   "planned_end": "2026-11-13",
   "status": "완료"
@@ -1157,6 +1321,8 @@
   "part": "PL1",
   "owner": "dev01",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "RU",
   "planned_start": "2026-11-30",
   "planned_end": "2026-12-08",
   "status": "미착수"
@@ -1171,6 +1337,8 @@
   "part": "PL1",
   "owner": "dev01",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "CR",
   "planned_start": "2026-12-08",
   "planned_end": "2026-12-16",
   "status": "미착수"
@@ -1185,6 +1353,8 @@
   "part": "PL1",
   "owner": "dev01",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "RUD",
   "planned_start": "2026-12-30",
   "planned_end": "2027-01-07",
   "status": "미착수"
@@ -1199,6 +1369,8 @@
   "part": "PL1",
   "owner": "dev02",
   "plan_mm": 0.6,
+  "complexity": "상",
+  "crud": "R",
   "planned_start": "2026-11-23",
   "planned_end": "2026-12-11",
   "status": "미착수"
@@ -1213,6 +1385,8 @@
   "part": "PL1",
   "owner": "dev02",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "R",
   "planned_start": "2026-12-25",
   "planned_end": "2027-01-04",
   "status": "미착수"
@@ -1227,6 +1401,8 @@
   "part": "PL1",
   "owner": "dev02",
   "plan_mm": 0.6,
+  "complexity": "상",
+  "crud": "RU",
   "planned_start": "2027-01-04",
   "planned_end": "2027-01-22",
   "status": "미착수"
@@ -1241,6 +1417,8 @@
   "part": "PL1",
   "owner": "dev02",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "CR",
   "planned_start": "2027-01-22",
   "planned_end": "2027-02-02",
   "status": "미착수"
@@ -1255,6 +1433,8 @@
   "part": "PL1",
   "owner": "dev02",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "RUD",
   "planned_start": "2027-02-02",
   "planned_end": "2027-02-12",
   "status": "미착수"
@@ -1269,6 +1449,8 @@
   "part": "PL1",
   "owner": "dev04",
   "plan_mm": 0.6,
+  "complexity": "상",
+  "crud": "R",
   "planned_start": "2026-12-01",
   "planned_end": "2026-12-17",
   "status": "미착수"
@@ -1283,6 +1465,8 @@
   "part": "PL1",
   "owner": "dev04",
   "plan_mm": 0.6,
+  "complexity": "상",
+  "crud": "R",
   "planned_start": "2026-12-25",
   "planned_end": "2027-01-08",
   "status": "미착수"
@@ -1297,6 +1481,8 @@
   "part": "PL1",
   "owner": "dev04",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "RU",
   "planned_start": "2027-01-08",
   "planned_end": "2027-01-21",
   "status": "미착수"
@@ -1311,6 +1497,8 @@
   "part": "PL1",
   "owner": "dev04",
   "plan_mm": 0.5,
+  "complexity": "중",
+  "crud": "CR",
   "planned_start": "2027-01-21",
   "planned_end": "2027-02-03",
   "status": "미착수"
@@ -1325,6 +1513,8 @@
   "part": "PL1",
   "owner": "dev04",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "RUD",
   "planned_start": "2027-02-03",
   "planned_end": "2027-02-12",
   "status": "미착수"
@@ -1339,6 +1529,8 @@
   "part": "PL1",
   "owner": "dev01",
   "plan_mm": 0.5,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-12-16",
   "planned_end": "2026-12-30",
   "status": "미착수"
@@ -1353,6 +1545,8 @@
   "part": "PL1",
   "owner": "dev01",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "R",
   "planned_start": "2027-01-07",
   "planned_end": "2027-01-15",
   "status": "미착수"
@@ -1367,6 +1561,8 @@
   "part": "PL1",
   "owner": "dev01",
   "plan_mm": 0.5,
+  "complexity": "중",
+  "crud": "RU",
   "planned_start": "2027-01-15",
   "planned_end": "2027-01-29",
   "status": "미착수"
@@ -1381,6 +1577,8 @@
   "part": "PL1",
   "owner": "dev01",
   "plan_mm": 0.5,
+  "complexity": "중",
+  "crud": "CR",
   "planned_start": "2027-01-29",
   "planned_end": "2027-02-12",
   "status": "미착수"
@@ -1395,6 +1593,8 @@
   "part": "PL2",
   "owner": "dev05",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "R",
   "planned_start": "2026-04-01",
   "planned_end": "2026-04-09",
   "status": "완료"
@@ -1409,6 +1609,8 @@
   "part": "PL2",
   "owner": "dev05",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-04-09",
   "planned_end": "2026-04-20",
   "status": "완료"
@@ -1423,6 +1625,8 @@
   "part": "PL2",
   "owner": "dev05",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "RU",
   "planned_start": "2026-04-20",
   "planned_end": "2026-04-29",
   "status": "완료"
@@ -1437,6 +1641,8 @@
   "part": "PL2",
   "owner": "dev05",
   "plan_mm": 0.6,
+  "complexity": "상",
+  "crud": "CR",
   "planned_start": "2026-04-29",
   "planned_end": "2026-05-15",
   "status": "완료"
@@ -1451,6 +1657,8 @@
   "part": "PL2",
   "owner": "dev05",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "RUD",
   "planned_start": "2026-06-02",
   "planned_end": "2026-06-12",
   "status": "완료"
@@ -1465,6 +1673,8 @@
   "part": "PL2",
   "owner": "dev06",
   "plan_mm": 0.5,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-04-01",
   "planned_end": "2026-04-16",
   "status": "완료"
@@ -1479,6 +1689,8 @@
   "part": "PL2",
   "owner": "dev06",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-04-16",
   "planned_end": "2026-04-29",
   "status": "완료"
@@ -1493,6 +1705,8 @@
   "part": "PL2",
   "owner": "dev06",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "RU",
   "planned_start": "2026-04-29",
   "planned_end": "2026-05-08",
   "status": "완료"
@@ -1507,6 +1721,8 @@
   "part": "PL2",
   "owner": "dev06",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "CR",
   "planned_start": "2026-05-08",
   "planned_end": "2026-05-21",
   "status": "완료"
@@ -1521,6 +1737,8 @@
   "part": "PL2",
   "owner": "dev06",
   "plan_mm": 0.6,
+  "complexity": "상",
+  "crud": "RUD",
   "planned_start": "2026-06-02",
   "planned_end": "2026-06-19",
   "status": "완료"
@@ -1535,6 +1753,8 @@
   "part": "PL2",
   "owner": "dev07",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-04-01",
   "planned_end": "2026-04-13",
   "status": "완료"
@@ -1549,6 +1769,8 @@
   "part": "PL2",
   "owner": "dev07",
   "plan_mm": 0.5,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-04-13",
   "planned_end": "2026-04-29",
   "status": "완료"
@@ -1563,6 +1785,8 @@
   "part": "PL2",
   "owner": "dev07",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "RU",
   "planned_start": "2026-04-29",
   "planned_end": "2026-05-08",
   "status": "완료"
@@ -1577,6 +1801,8 @@
   "part": "PL2",
   "owner": "dev07",
   "plan_mm": 0.6,
+  "complexity": "상",
+  "crud": "CR",
   "planned_start": "2026-05-08",
   "planned_end": "2026-05-27",
   "status": "완료"
@@ -1591,6 +1817,8 @@
   "part": "PL2",
   "owner": "dev07",
   "plan_mm": 0.5,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-05-27",
   "planned_end": "2026-06-12",
   "status": "완료"
@@ -1605,6 +1833,8 @@
   "part": "PL2",
   "owner": "dev07",
   "plan_mm": 0.5,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-06-12",
   "planned_end": "2026-06-26",
   "status": "완료"
@@ -1619,6 +1849,8 @@
   "part": "PL2",
   "owner": "dev07",
   "plan_mm": 0.6,
+  "complexity": "상",
+  "crud": "RU",
   "planned_start": "2026-06-26",
   "planned_end": "2026-07-16",
   "status": "완료"
@@ -1633,6 +1865,8 @@
   "part": "PL2",
   "owner": "dev07",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "CR",
   "planned_start": "2026-07-16",
   "planned_end": "2026-07-24",
   "status": "완료"
@@ -1647,6 +1881,8 @@
   "part": "PL2",
   "owner": "dev07",
   "plan_mm": 0.5,
+  "complexity": "중",
+  "crud": "RUD",
   "planned_start": "2026-08-13",
   "planned_end": "2026-08-28",
   "status": "완료"
@@ -1661,6 +1897,8 @@
   "part": "PL2",
   "owner": "dev05",
   "plan_mm": 0.6,
+  "complexity": "상",
+  "crud": "R",
   "planned_start": "2026-05-15",
   "planned_end": "2026-06-02",
   "status": "완료"
@@ -1675,6 +1913,8 @@
   "part": "PL2",
   "owner": "dev05",
   "plan_mm": 0.5,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-06-12",
   "planned_end": "2026-06-26",
   "status": "완료"
@@ -1689,6 +1929,8 @@
   "part": "PL2",
   "owner": "dev05",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "RU",
   "planned_start": "2026-06-26",
   "planned_end": "2026-07-06",
   "status": "완료"
@@ -1703,6 +1945,8 @@
   "part": "PL2",
   "owner": "dev05",
   "plan_mm": 0.5,
+  "complexity": "중",
+  "crud": "CR",
   "planned_start": "2026-07-06",
   "planned_end": "2026-07-20",
   "status": "완료"
@@ -1717,6 +1961,8 @@
   "part": "PL2",
   "owner": "dev05",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "RUD",
   "planned_start": "2026-08-06",
   "planned_end": "2026-08-14",
   "status": "완료"
@@ -1731,6 +1977,8 @@
   "part": "PL2",
   "owner": "dev06",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-05-21",
   "planned_end": "2026-06-02",
   "status": "완료"
@@ -1745,6 +1993,8 @@
   "part": "PL2",
   "owner": "dev06",
   "plan_mm": 0.5,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-06-19",
   "planned_end": "2026-07-07",
   "status": "완료"
@@ -1759,6 +2009,8 @@
   "part": "PL2",
   "owner": "dev06",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "RU",
   "planned_start": "2026-07-07",
   "planned_end": "2026-07-16",
   "status": "완료"
@@ -1773,6 +2025,8 @@
   "part": "PL2",
   "owner": "dev06",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "CR",
   "planned_start": "2026-07-16",
   "planned_end": "2026-07-24",
   "status": "완료"
@@ -1787,6 +2041,8 @@
   "part": "PL2",
   "owner": "dev06",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-07-24",
   "planned_end": "2026-08-07",
   "status": "진행중"
@@ -1801,6 +2057,8 @@
   "part": "PL2",
   "owner": "dev06",
   "plan_mm": 0.5,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-08-07",
   "planned_end": "2026-08-21",
   "status": "완료"
@@ -1815,6 +2073,8 @@
   "part": "PL2",
   "owner": "dev06",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "RU",
   "planned_start": "2026-08-21",
   "planned_end": "2026-09-01",
   "status": "완료"
@@ -1829,6 +2089,8 @@
   "part": "PL2",
   "owner": "dev06",
   "plan_mm": 0.6,
+  "complexity": "상",
+  "crud": "CR",
   "planned_start": "2026-09-01",
   "planned_end": "2026-09-18",
   "status": "완료"
@@ -1843,6 +2105,8 @@
   "part": "PL2",
   "owner": "dev07",
   "plan_mm": 0.6,
+  "complexity": "상",
+  "crud": "R",
   "planned_start": "2026-07-24",
   "planned_end": "2026-08-13",
   "status": "완료"
@@ -1857,6 +2121,8 @@
   "part": "PL2",
   "owner": "dev07",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "R",
   "planned_start": "2026-08-28",
   "planned_end": "2026-09-08",
   "status": "완료"
@@ -1871,6 +2137,8 @@
   "part": "PL2",
   "owner": "dev07",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "RU",
   "planned_start": "2026-09-08",
   "planned_end": "2026-09-17",
   "status": "완료"
@@ -1885,6 +2153,8 @@
   "part": "PL2",
   "owner": "dev07",
   "plan_mm": 0.6,
+  "complexity": "상",
+  "crud": "CR",
   "planned_start": "2026-09-17",
   "planned_end": "2026-10-06",
   "status": "완료"
@@ -1899,6 +2169,8 @@
   "part": "PL2",
   "owner": "dev05",
   "plan_mm": 0.6,
+  "complexity": "상",
+  "crud": "R",
   "planned_start": "2026-07-20",
   "planned_end": "2026-08-06",
   "status": "완료"
@@ -1913,6 +2185,8 @@
   "part": "PL2",
   "owner": "dev05",
   "plan_mm": 0.5,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-08-14",
   "planned_end": "2026-08-28",
   "status": "완료"
@@ -1927,6 +2201,8 @@
   "part": "PL2",
   "owner": "dev05",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-08-28",
   "planned_end": "2026-09-09",
   "status": "완료"
@@ -1941,6 +2217,8 @@
   "part": "PL2",
   "owner": "dev05",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-09-09",
   "planned_end": "2026-09-18",
   "status": "완료"
@@ -1955,6 +2233,8 @@
   "part": "PL2",
   "owner": "dev05",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-10-02",
   "planned_end": "2026-10-16",
   "status": "완료"
@@ -1969,6 +2249,8 @@
   "part": "PL2",
   "owner": "dev06",
   "plan_mm": 0.6,
+  "complexity": "상",
+  "crud": "R",
   "planned_start": "2026-09-18",
   "planned_end": "2026-10-09",
   "status": "진행중"
@@ -1983,6 +2265,8 @@
   "part": "PL2",
   "owner": "dev06",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-10-09",
   "planned_end": "2026-10-22",
   "status": "미착수"
@@ -1997,6 +2281,8 @@
   "part": "PL2",
   "owner": "dev06",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-10-22",
   "planned_end": "2026-11-03",
   "status": "미착수"
@@ -2011,6 +2297,8 @@
   "part": "PL2",
   "owner": "dev06",
   "plan_mm": 0.5,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-11-03",
   "planned_end": "2026-11-19",
   "status": "미착수"
@@ -2025,6 +2313,8 @@
   "part": "PL2",
   "owner": "dev07",
   "plan_mm": 0.6,
+  "complexity": "상",
+  "crud": "R",
   "planned_start": "2026-10-06",
   "planned_end": "2026-10-23",
   "status": "완료"
@@ -2039,6 +2329,8 @@
   "part": "PL2",
   "owner": "dev07",
   "plan_mm": 0.6,
+  "complexity": "상",
+  "crud": "R",
   "planned_start": "2026-10-23",
   "planned_end": "2026-11-12",
   "status": "진행중"
@@ -2053,6 +2345,8 @@
   "part": "PL2",
   "owner": "dev07",
   "plan_mm": 0.5,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-11-12",
   "planned_end": "2026-11-27",
   "status": "미착수"
@@ -2067,6 +2361,8 @@
   "part": "PL2",
   "owner": "dev07",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-11-27",
   "planned_end": "2026-12-11",
   "status": "미착수"
@@ -2081,6 +2377,8 @@
   "part": "PL2",
   "owner": "dev05",
   "plan_mm": 0.5,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-09-18",
   "planned_end": "2026-10-02",
   "status": "완료"
@@ -2095,6 +2393,8 @@
   "part": "PL2",
   "owner": "dev05",
   "plan_mm": 0.5,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-10-16",
   "planned_end": "2026-10-30",
   "status": "진행중"
@@ -2109,6 +2409,8 @@
   "part": "PL2",
   "owner": "dev05",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-10-30",
   "planned_end": "2026-11-10",
   "status": "미착수"
@@ -2123,6 +2425,8 @@
   "part": "PL2",
   "owner": "dev05",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-11-10",
   "planned_end": "2026-11-20",
   "status": "미착수"
@@ -2137,6 +2441,8 @@
   "part": "PL2",
   "owner": "dev05",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "R",
   "planned_start": "2026-12-03",
   "planned_end": "2026-12-11",
   "status": "미착수"
@@ -2151,6 +2457,8 @@
   "part": "PL2",
   "owner": "dev05",
   "plan_mm": 0.6,
+  "complexity": "상",
+  "crud": "R",
   "planned_start": "2026-12-25",
   "planned_end": "2027-01-11",
   "status": "미착수"
@@ -2165,6 +2473,8 @@
   "part": "PL2",
   "owner": "dev06",
   "plan_mm": 0.5,
+  "complexity": "중",
+  "crud": "RU",
   "planned_start": "2026-11-19",
   "planned_end": "2026-12-04",
   "status": "미착수"
@@ -2179,6 +2489,8 @@
   "part": "PL2",
   "owner": "dev06",
   "plan_mm": 0.5,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-12-04",
   "planned_end": "2026-12-18",
   "status": "미착수"
@@ -2193,6 +2505,8 @@
   "part": "PL2",
   "owner": "dev06",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "RU",
   "planned_start": "2026-12-18",
   "planned_end": "2027-01-01",
   "status": "미착수"
@@ -2207,6 +2521,8 @@
   "part": "PL2",
   "owner": "dev06",
   "plan_mm": 0.5,
+  "complexity": "중",
+  "crud": "CR",
   "planned_start": "2027-01-01",
   "planned_end": "2027-01-15",
   "status": "미착수"
@@ -2221,6 +2537,8 @@
   "part": "PL2",
   "owner": "dev06",
   "plan_mm": 0.5,
+  "complexity": "중",
+  "crud": "RUD",
   "planned_start": "2027-01-15",
   "planned_end": "2027-02-02",
   "status": "미착수"
@@ -2235,6 +2553,8 @@
   "part": "PL2",
   "owner": "dev06",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "R",
   "planned_start": "2027-02-02",
   "planned_end": "2027-02-12",
   "status": "미착수"
@@ -2249,6 +2569,8 @@
   "part": "PL2",
   "owner": "dev07",
   "plan_mm": 0.6,
+  "complexity": "상",
+  "crud": "R",
   "planned_start": "2026-12-11",
   "planned_end": "2026-12-30",
   "status": "미착수"
@@ -2263,6 +2585,8 @@
   "part": "PL2",
   "owner": "dev07",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-12-30",
   "planned_end": "2027-01-11",
   "status": "미착수"
@@ -2277,6 +2601,8 @@
   "part": "PL2",
   "owner": "dev07",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "RU",
   "planned_start": "2027-01-11",
   "planned_end": "2027-01-21",
   "status": "미착수"
@@ -2291,6 +2617,8 @@
   "part": "PL2",
   "owner": "dev07",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "CR",
   "planned_start": "2027-01-21",
   "planned_end": "2027-02-02",
   "status": "미착수"
@@ -2305,6 +2633,8 @@
   "part": "PL2",
   "owner": "dev07",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "RUD",
   "planned_start": "2027-02-02",
   "planned_end": "2027-02-12",
   "status": "미착수"
@@ -2319,6 +2649,8 @@
   "part": "PL2",
   "owner": "dev05",
   "plan_mm": 0.4,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-11-20",
   "planned_end": "2026-12-03",
   "status": "미착수"
@@ -2333,6 +2665,8 @@
   "part": "PL2",
   "owner": "dev05",
   "plan_mm": 0.5,
+  "complexity": "중",
+  "crud": "R",
   "planned_start": "2026-12-11",
   "planned_end": "2026-12-25",
   "status": "미착수"
@@ -2347,6 +2681,8 @@
   "part": "PL2",
   "owner": "dev05",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "RU",
   "planned_start": "2027-01-11",
   "planned_end": "2027-01-20",
   "status": "미착수"
@@ -2361,6 +2697,8 @@
   "part": "PL2",
   "owner": "dev05",
   "plan_mm": 0.3,
+  "complexity": "하",
+  "crud": "CR",
   "planned_start": "2027-01-20",
   "planned_end": "2027-01-28",
   "status": "미착수"
@@ -2375,6 +2713,8 @@
   "part": "PL2",
   "owner": "dev05",
   "plan_mm": 0.5,
+  "complexity": "중",
+  "crud": "RUD",
   "planned_start": "2027-01-28",
   "planned_end": "2027-02-12",
   "status": "미착수"

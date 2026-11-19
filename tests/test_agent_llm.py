@@ -63,6 +63,32 @@ def test_docs_qa_llm_answer_with_contexts():
     assert "tool_call" in steps and "llm_answer" in steps
 
 
+def test_docs_qa_last_week_resolves_to_previous_week_minutes():
+    """'지난주' 질문: 코드가 기준 주(2026-11-16) 직전 주 회의록(MIN-2026-W46)을 골라 LLM 문맥과 [기준 정보]로 넘긴다.
+    (LLM은 오늘 날짜를 모르므로 이 안내가 없으면 회의록이 '지난주'인지 확인하지 못해 근거 없음으로 답했다)"""
+    seen = []
+
+    def llm(prompt):
+        seen.append(prompt.to_string())
+        return AIMessage("PG사 테스트 계정 발급 재요청(강앙리)이 미완료다. [MIN-2026-W46]")
+    config.set_llm(RunnableLambda(llm))
+    out = agent.answer_docs_qa("지난주 액션아이템 중에 아직 완료 안 된 게 뭐야?", "pm", "pm01")
+    ids = [c["doc_id"] for c in out["contexts"]]
+    assert ids[0] == "MIN-2026-W46" and not {"MIN-2026-W45", "MIN-2026-W47"} & set(ids)
+    prompt = seen[0]
+    assert "[기준 정보]" in prompt and "2026-11-09(월) 주" in prompt and "MIN-2026-W46(2026-11-13)" in prompt
+    # 액션아이템 줄(상태 포함)이 가드레일 정리 후에도 그대로 LLM 문맥에 들어간다
+    assert "PG사 테스트 계정 발급 재요청(강앙리) - 미완료" in prompt
+    assert "회원 데이터 이관 검증 결과 공유(서살라) - 미완료" in prompt
+
+
+def test_docs_qa_week_note_only_with_filter_lever(monkeypatch):
+    # 1차 baseline(dense)은 사전 고정 설정이라 기준 정보를 넣지 않는다
+    monkeypatch.setenv("RAG_LEVERS", "dense")
+    from src import retriever
+    assert retriever.week_note("지난주 액션아이템 뭐야?") == ""
+
+
 def test_progress_react_calls_tools_and_keeps_tool_numbers():
     calls = [{"name": "calc_progress", "args": {}, "id": "1"}, {"name": "calc_remaining_mm", "args": {}, "id": "2"}]
     config.set_llm(fake([AIMessage("", tool_calls=calls), AIMessage("이번 주 본인 업무를 요약했습니다.")]))
@@ -133,6 +159,11 @@ def test_meeting_plan_execute_interrupt_and_approve():
     ok = post_query(client, {"question": "승인", "user_id": "pm01", "role": "pm",
                                      "thread_id": d["thread_id"], "approval": "approve"}).json()
     assert "게시했습니다" in ok["answer"] and len(confluence.list_pages()) == 1
+    page = confluence.get_page(confluence.list_pages()[0])["body"]
+    # 게시 꼬리말은 실제 내용과 맞아야 한다: 공용 자료라 이름·연락처·개인별 진척률이 없다
+    assert page.rstrip().endswith(agent.PUBLISH_FOOTER) and "이름만 표기" not in page
+    assert not [x for d in tools.load_developers() for x in (d["name"], d["email"]) if x in page]
+    assert "@" not in page
     assert ok["contexts"] == [] and dev["contexts"] == []  # R3: 승인·거절 응답에 초안 contexts 없음
     assert any(t["step"] == "confluence_publish" for t in ok["trace"])
     # 장기 메모리: 지난주 스냅샷으로 초기화 → 게시 후 이번 주 스냅샷 저장 (다음 주 회의의 '지난주')
@@ -215,6 +246,50 @@ def test_team_report_prints_part_rows():
     text = tools.format_progress_report(tools.build_progress_report())
     assert "## 파트별" in text
     assert f"- PL2 파트: 진척률 {exp['progress'] * 100:.2f}%, 남은 {exp['remaining_mm']:.2f}MM" in text
+
+
+@pytest.mark.parametrize("user,role,expect", [
+    ("pm01", "pm", None),                       # PM: 전체 미연결 커밋
+    ("pl01", "pl", {"dev01", "dev02", "dev03"}),  # PL1: 본인 파트 구성원 커밋만
+    ("dev01", "developer", {"dev01"}),            # 개발자: 본인 커밋만
+])
+def test_appended_report_lists_unlinked_commit_authors_masked_in_scope(user, role, expect):
+    """[도구 계산 결과]의 미연결 커밋에도 get_commits 도구처럼 작성자 이름·이메일을 싣는다(출력 단계 마스킹).
+    답변 서술과 근거 표가 같은 정보를 보여 줘야 judge가 이메일을 지어낸 것으로 보지 않는다."""
+    calls = [{"name": "get_commits", "args": {}, "id": "1"}]
+    llm = fake([AIMessage("", tool_calls=calls), AIMessage("미연결 커밋을 정리했습니다."),
+                AIMessage("", tool_calls=calls), AIMessage("미연결 커밋을 정리했습니다.")],
+               RouteDecision=supervisor.RouteDecision(route="progress", reason="커밋"))
+    wire(llm)
+    supervisor.set_llm_router(supervisor.make_llm_router(llm))
+    ans = post_query(TestClient(api.app), {"question": "화면 ID 없이 올라온 커밋들 있어?",
+                                           "user_id": user, "role": role}).json()["answer"]
+    section = ans[ans.index("## 미연결 커밋"):]
+    devs = {d["developer_id"]: d for d in tools.load_developers()}
+    unlinked = tools.get_commits()["unlinked"]
+    visible = [c for c in unlinked if expect is None or c["developer_id"] in expect]
+    assert visible and len(visible) < len(unlinked) or expect is None
+    for c in unlinked:
+        d = devs[c["developer_id"]]
+        masked = f"{d['name']} <{d['email'][0]}***@{d['email'].split('@')[1]}>"
+        assert (f"- {c['hash']} {masked}" in section) is (c in visible)
+        assert d["email"] not in ans  # 원문 이메일은 어디에도 없다
+
+
+def test_meeting_draft_falls_back_when_structured_output_fails():
+    """LLM 구조화 출력이 실패(예: 출력 토큰 한도로 잘려 필드 누락)해도 요청 전체가 실패하지 않고 결정적 초안으로 대신한다."""
+    flow = meeting.MeetingFlow(fake(Plan=meeting.Plan(steps=list(meeting.STEPS))), lambda t, b: "p")  # MeetingDraft 없음 → 실패
+    tid, st = flow.start()
+    assert all(h in st["body"] for h in ("## 결정사항", "## 블로커", "## 액션아이템"))
+    assert any(t["step"] == "llm_draft" and t["output"].startswith("fallback:default_draft") for t in st["log"])
+
+
+def test_meeting_material_report_has_no_commit_authors():
+    # 회의 자료(공용 문서) 입력·초안에는 미연결 커밋 작성자 이름·이메일을 싣지 않는다
+    flow = meeting.MeetingFlow(_meeting_llm(), lambda t, b: "p")
+    text = flow._collect_progress({"log": []})["report_text"]
+    assert "c0436" in text and "@" not in text
+    assert not [d["name"] for d in tools.load_developers() if d["name"] in text]
 
 
 def test_check_previous_meeting_reads_last_week_page_via_mcp():

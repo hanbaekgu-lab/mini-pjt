@@ -64,6 +64,37 @@ PARTS = json.loads((ROOT / "data/fixtures/project.json").read_text(encoding="utf
 JUDGE_PROMPT = (ROOT / "evaluation/judge_prompt.md").read_text(encoding="utf-8")
 QUERIES = ROOT / "evaluation/test_queries.csv"
 RAGAS_METRICS = ("faithfulness", "context_recall", "context_precision", "answer_relevancy")
+# 2차 첫 실행(18/20) 뒤 실패 분석으로 고친 결함. 2차를 다시 실행할 때 결과 JSON·리포트에 함께 남긴다.
+# 1차는 사전 고정 baseline이라 다시 실행하지 않는다(아래 '1차 경로 영향'인 항목은 1차 수치에 반영되지 않음).
+RERUN_FIXES = [
+    "7번(지난주 액션아이템): 검색은 지난주 회의록(MIN-2026-W46)을 가져왔지만 LLM이 오늘 날짜를 몰라 그 회의록이 '지난주'인지 "
+    "확인하지 못하고 grounded 규칙대로 '알 수 없음'으로 답했다. filter 레버가 코드로 정한 기준 주·지난주 회의록 ID를 "
+    "[기준 정보]로 프롬프트에 넣고, 해당 주 회의록을 다른 문서보다 우선하도록 했다(2차 레버 경로만, 1차 경로 영향 없음).",
+    "15번(미연결 커밋): 답변 서술은 get_commits 도구의 작성자 이메일(마스킹)을 인용했는데 덧붙인 [도구 계산 결과]에는 "
+    "작성자 열이 없어 judge가 이메일을 지어낸 것으로 봤다. 결정적 보고서의 미연결 커밋에 작성자 이름·이메일(출력 단계 마스킹)을 "
+    "요청자 범위(PM 전체, PL 본인 파트, 개발자 본인)로 싣고, 회의 자료(공용 문서)에는 싣지 않는다(진척 경로 공통, 1차 경로 영향 있음).",
+    "8번(게시 꼬리말): '업무 담당 확인을 위해 이름만 표기합니다'는 이름을 싣지 않는 회의 자료와 맞지 않아 "
+    "'참석자 공용 자료로, 개인 이름·연락처·개인별 진척률을 싣지 않습니다'로 바꿨다(게시 경로 공통, 1차 경로 영향 있음).",
+    "answer relevancy 하락(1차 0.6012 → 2차 첫 실행 0.4422) 점검: 설명형 5건 중 7번이 3회 모두 '알 수 없음'이라 RAGAS가 "
+    "비확답(noncommittal)으로 0점을 매긴 것이 주원인이다(7번 제외 평균 1차 0.5383, 2차 0.5527). RAGAS에 넘기는 응답은 "
+    "문서 Q&A 답변이고 인용 표기([doc_id])는 1·2차 모두 이미 제거하며, 설명형 케이스에는 [도구 계산 결과] 블록이 없어 "
+    "측정 결함은 찾지 못했다. 지표 정의·입력은 바꾸지 않았다.",
+    "(2차 두 번째 실행에서 발견) 회의 자료 초안: LLM 구조화 출력(MeetingDraft)이 출력 토큰 한도(2048)에 걸려 잘리면서 "
+    "action_items가 빠져 요청 전체가 검증 오류로 실패했다(1·8·11번, 수치 exact-match·가드레일 차단율 하락). 초안 항목 수를 "
+    "섹션별 5개 이내·한 문장으로 제한하고(출력 약 1,100토큰), 구조화 출력이 실패해도 결정적 초안으로 대체해 요청이 실패하지 "
+    "않게 했다(회의 자료 경로 공통, 1차 경로 영향 있음).",
+]
+# 최종 2차 실행 뒤에도 남은 실패·지표 한계 (고치지 않은 이유와 함께 리포트에 남긴다)
+KNOWN_LIMITS = [
+    "8번(승인 후 게시): 게시물에는 이메일·전화번호가 아예 없는데, judge가 trait '게시물의 이메일·전화번호 마스킹'을 "
+    "'마스킹된 값이 보여야 충족'으로 읽어 3회 중 2회 미충족으로 판정했다. 게시 경로는 PII 마스킹을 그대로 거치며, 바뀐 것은 "
+    "꼬리말 문구(이전 문구에는 '마스킹 처리' 안내가 있었음)뿐이다. 판정을 맞추려고 문구·trait를 바꾸지는 않았다.",
+    "16번 context precision 0.0: 검색된 W44·W47·W45 회의록은 모두 reference에 쓰였지만, RAGAS(LLMContextPrecisionWithReference)가 "
+    "문서별로 '이 문서만으로 reference에 이르는가'로 판정해 여러 문서를 합쳐야 하는 요약 질문은 모든 문서가 0이 된다(1차도 0.0). "
+    "지표 정의라 바꾸지 않았다.",
+    "answer relevancy는 목표 0.80에 못 미친다(5번 0.30 등). ResponseRelevancy는 답변에서 역질문을 만들어 원 질문과 임베딩 "
+    "유사도를 재므로, 문서 표현을 그대로 옮기는 짧은 인용형 답변(grounded 규칙)은 점수가 낮게 나온다. 측정 결함은 찾지 못했다.",
+]
 
 
 def load_rows() -> list[dict]:
@@ -375,8 +406,30 @@ def write_report(res: dict, prev: dict | None) -> str:
          *(f"| {METRIC_LABEL[k]}(설명형) | {fmt(s.get(k))} |" for k in RAGAS_METRICS),
          f"| RAGAS 계산 오류(실행 수, 평균에서 제외) | {s.get('ragas_errors', 0)} |", ""]
     if prev:
-        L += [f"1차 대비 통과 증가: {s['pass_count'] - prev['summary']['pass_count']:+d}건 "
-              f"({prev['summary']['pass_count']} → {s['pass_count']})", ""]
+        p = prev["summary"]
+        L += [f"1차 대비 통과 증가: {s['pass_count'] - p['pass_count']:+d}건 ({p['pass_count']} → {s['pass_count']})", "",
+              "## 1차 대비", "", "| 지표 | 1차 | 2차 | 차이 |", "|---|---|---|---|",
+              f"| 통과 | {p['pass_count']} / {p['total']} | {s['pass_count']} / {s['total']} | "
+              f"{s['pass_count'] - p['pass_count']:+d} |",
+              *(f"| {METRIC_LABEL[k]}(설명형) | {fmt(p.get(k))} | {fmt(s.get(k))} | "
+                f"{'-' if p.get(k) is None or s.get(k) is None else f'{s[k] - p[k]:+.4f}'} |" for k in RAGAS_METRICS),
+              f"| LLM 호출 | {prev['config'].get('llm_calls', '-')} | {cfg.get('llm_calls', '-')} | |", ""]
+    hist = res.get("previous_runs", [])
+    if hist:
+        L += [f"## 2차 실행 이력 (이번이 {len(hist) + 1}번째 2차 실행)", "",
+              "이전 2차 실행 결과도 투명성을 위해 남긴다. 1차(사전 고정 baseline)는 다시 실행하지 않았다.", "",
+              "| 실행 | 통과 | " + " | ".join(METRIC_LABEL[k] for k in RAGAS_METRICS) + " | 실패 케이스 | LLM 호출 |",
+              "|---|---|" + "---|" * len(RAGAS_METRICS) + "---|---|"]
+        for i, h in enumerate(hist + [{"summary": s, "failed": [c["id"] for c in res["cases"] if not c["pass"]],
+                                       "llm_calls": cfg.get("llm_calls")}], 1):
+            hs = h["summary"]
+            L.append(f"| {i}번째{' (이번)' if i == len(hist) + 1 else ''} | {hs['pass_count']} / {hs['total']} | "
+                     + " | ".join(fmt(hs.get(k)) for k in RAGAS_METRICS)
+                     + f" | {', '.join(map(str, h['failed'])) or '없음'} | {h.get('llm_calls', '-')} |")
+        L += ["", "## 2차 재실행 시 함께 고친 결함", "",
+              "1차는 다시 실행하지 않았으므로, '1차 경로 영향 있음' 항목은 1차 수치에 반영되지 않았다(비교 시 유의).", ""]
+        L += [f"{i}. {x}" for i, x in enumerate(cfg.get("rerun_fixes", []), 1)] + [""]
+        L += ["## 남은 실패·지표 한계", ""] + [f"- {x}" for x in KNOWN_LIMITS] + [""]
     L += ["## 케이스별 결과", "", "| id | 구분 | 통과(3회) | 판정 | 실패 사유(첫 실패 실행) |", "|---|---|---|---|---|"]
     for c in res["cases"]:
         why = ""
@@ -400,8 +453,15 @@ def main():
     ap.add_argument("--rescore-ragas", action="store_true", help="저장된 결과로 RAGAS 지표만 다시 계산")
     args = ap.parse_args()
     n = args.round
-    res = rescore_ragas(n) if args.rescore_ragas else evaluate(n)
     ev = ROOT / "evaluation"
+    old = ev / f"round{n}_results.json"
+    res = rescore_ragas(n) if args.rescore_ragas else evaluate(n)
+    if n == 2 and not args.rescore_ragas and old.exists():  # 2차 재실행: 이전 2차 실행 요약을 이력으로 남긴다
+        o = json.loads(old.read_text(encoding="utf-8"))
+        res["previous_runs"] = o.get("previous_runs", []) + [
+            {"summary": o["summary"], "failed": [c["id"] for c in o["cases"] if not c["pass"]],
+             "llm_calls": o["config"].get("llm_calls")}]
+        res["config"]["rerun_fixes"] = RERUN_FIXES
     (ev / f"round{n}_results.json").write_text(json.dumps(res, ensure_ascii=False, indent=2), encoding="utf-8")
     prev = json.loads((ev / "round1_results.json").read_text(encoding="utf-8")) if n == 2 else None
     (ev / f"round{n}_report.md").write_text(write_report(res, prev), encoding="utf-8")

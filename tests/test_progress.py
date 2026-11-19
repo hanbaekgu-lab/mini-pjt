@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from src import tools
+from src import middleware, tools
 
 EXPECTED = json.loads((Path(tools.FIXTURE_DIR) / "expected_progress.json").read_text(encoding="utf-8"))
 AGG_KEYS = ("progress", "remaining_mm", "screens_done", "screens_total")
@@ -124,7 +124,11 @@ def test_no_email_in_tool_output():
     for rep in (tools.build_progress_report(), tools.build_progress_report(part="PL1"),
                 tools.build_progress_report(developer_id="dev01")):
         assert "@" not in json.dumps(rep, ensure_ascii=False)
-        assert "@" not in tools.format_progress_report(rep)
+        # 텍스트 보고서는 미연결 커밋 작성자 이메일만 싣고(출력 단계 미들웨어가 마스킹), 공유 문서용은 싣지 않는다
+        text = tools.format_progress_report(rep)
+        assert all("## 미연결 커밋" in text.split(ln)[0] for ln in text.splitlines() if "@" in ln)
+        assert not middleware.EMAIL_RE.search(middleware.mask_pii(text).replace("***@", ""))
+        assert "@" not in tools.format_progress_report(rep, authors=False)
 
 
 def test_team_report_text_shows_rollups_not_all_screens():

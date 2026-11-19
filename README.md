@@ -74,15 +74,20 @@ copy .env.example .env
 - 모델·리전 설정은 `src/config.py` 한 곳에서 관리한다. 설정 키 목록은 `.env.example`(mock 값)을 본다.
 
 ## RAGAS 평가 결과
-> 도메인 재설계(플랫폼 전환·화면 170개·역할 pm/pl/developer) 후 **재평가 예정**이다. 아래 숫자는 **이전 도메인 기준** 결과이며,
-> context precision·answer relevancy는 이번에 추가한 지표라 이전 값이 없다. 재평가 전까지 `tests/test_eval_reports.py`의 결과 판정은 건너뛴다.
+새 도메인(플랫폼 전환·화면 170개·역할 pm/pl/developer) 기준 실측값이다. 설명형 케이스(3·5·6·7·16) × 3회 평균, ragas 0.4.4 + Bedrock(Claude Sonnet 4.5, temperature=0) + Titan 임베딩.
+1차는 사전 고정 baseline으로 한 번만 실행했고, 2차는 실패 분석으로 결함을 고친 뒤 다시 실행했다(2차 3회 실행, 아래 '최종'은 세 번째 실행).
 
-| 지표 (설명형 케이스) | 1차 (dense-only) | 2차 (개선) | 성공 기준 |
-|---|---|---|---|
-| faithfulness | 0.8109 (이전 도메인 기준) | 0.9526 (이전 도메인 기준) | 0.85 이상 |
-| context recall | 0.80 (이전 도메인 기준) | 1.00 (이전 도메인 기준) | 0.80 이상 |
-| context precision | 재평가 예정 | 재평가 예정 | 0.80 이상 |
-| answer relevancy | 재평가 예정 | 재평가 예정 | 0.80 이상 |
+| 지표 (설명형 케이스) | 1차 (dense-only) | 2차 첫 실행 | 2차 최종 | 성공 기준 | 최종 판정 |
+|---|---|---|---|---|---|
+| faithfulness | 0.8368 | 0.7738 | **0.9600** | 0.85 이상 | 통과 |
+| context recall | 0.5000 | 0.9500 | **0.9500** | 0.80 이상 | 통과 |
+| context precision | 0.4000 | 0.7000 | **0.8000** | 0.80 이상 | 통과 |
+| answer relevancy | 0.6012 | 0.4422 | **0.5901** | 0.80 이상 | **미달** |
+
+- 2차 첫 실행의 faithfulness·answer relevancy 하락은 7번(지난주 액션아이템)이 3회 모두 '알 수 없음'으로 답해 0점을 받은 탓이 컸다(7번 제외 answer relevancy 1차 0.5383, 2차 첫 실행 0.5527).
+- answer relevancy 미달: `ResponseRelevancy`는 답변에서 역질문을 만들어 원 질문과 임베딩 유사도를 잰다. 문서 표현을 그대로 옮기는 짧은 인용형 답변(grounded 규칙)은 낮게 나온다(5번 0.30). 측정 결함은 찾지 못해 지표 정의는 그대로 두었다.
+- 16번 context precision 0.0은 RAGAS가 문서별로 '이 문서만으로 정답에 이르는가'를 판정해, 여러 회의록을 합쳐야 하는 요약 질문에서는 모든 문서가 0이 되기 때문이다(1차도 0.0).
+- 상세: `evaluation/round1_report.md`, `evaluation/round2_report.md`(2차 실행 이력·재실행 시 고친 결함·남은 한계 포함).
 
 ### 평가 설정 (사전 고정)
 - **1차 baseline**: `RAG_LEVERS=dense` — Titan 벡터 코사인 dense-only 검색, 문서 단위 top-3, **기본 프롬프트**(`BASELINE_PROMPT`: 문서를 참고해 답하라는 지시만,
@@ -105,13 +110,17 @@ copy .env.example .env
 테스트 세트 `evaluation/test_queries.csv` 20건(positive 8, negative 4, edge 5, guardrail 3), 케이스당 3회 실행해 2회 이상 통과하면 pass.
 판정은 LLM-as-Judge(expected_traits·forbidden)와 코드 검사(expected_tools 호출·수치 exact-match·PII 원문 노출)를 함께 쓴다.
 
-> 새 도메인 세트로는 **재평가 예정**이다. 아래는 **이전 도메인 기준** 결과다.
+| 항목 | 1차 (dense-only) | 2차 첫 실행 | 2차 최종 | 개선폭(1차→최종) | 성공 기준 | 최종 판정 |
+|---|---|---|---|---|---|---|
+| 통과 | 15 / 20 | 18 / 20 | **19 / 20** | +4건 | 16 이상, +3건 이상 | 통과 |
+| 수치 exact-match | 100% | 100% | 100% | - | 100% | 통과 |
+| 가드레일 차단 | 100% | 100% | 100% | - | 100% | 통과 |
+| LLM 호출(평가 1회분) | 303 | 300 | 300 | | | |
 
-| 항목 | 1차 (dense-only) | 2차 (개선) | 개선폭 | 성공 기준 |
-|---|---|---|---|---|
-| 통과 | 17 / 20 (이전 도메인 기준) | 20 / 20 (이전 도메인 기준) | +3건 | 16 이상, +3건 이상 |
-| 수치 exact-match | 100% | 100% | - | 100% |
-| 가드레일 차단 | 100% | 100% | - | 100% |
+- 2차 첫 실행 실패: 7번(지난주 액션아이템 '알 수 없음'), 15번(미연결 커밋 이메일을 judge가 지어낸 것으로 판단).
+- 2차 두 번째 실행(17/20, LLM 호출 308): 7·15번은 통과했지만 회의 자료 초안의 구조화 출력이 출력 토큰 한도에 잘려 1·8·11번이 실패했다(수치 exact-match 83.33%, 가드레일 차단 80%). 고친 뒤 세 번째 실행이 최종이다.
+- 2차 최종 실패: 8번(1/3). 게시물에 이메일·전화번호가 아예 없는데 judge가 '마스킹'을 확인할 수 없다며 미충족으로 판정했다. 판정에 맞춰 문구·trait를 바꾸지 않았다.
+- 1차는 사전 고정 baseline이라 다시 실행하지 않았다. 2차 재실행 때 고친 결함 중 진척 보고서 작성자 열·게시 꼬리말·회의 초안 대체는 1차 경로에도 해당하지만 1차 수치에는 반영되지 않았다(비교 시 유의).
 
 **주요 개선 사항 (2차)**
 - 검색 레버: 하이브리드 검색·쿼리 확장·주차/화면 ID 필터·grounded 프롬프트
@@ -128,6 +137,10 @@ copy .env.example .env
 - **평가 중 생성 문서 혼입**: 한 회차 안에서 8번 케이스(승인 후 게시)가 만든 회의 자료가 런타임 인덱스에 들어가 16번 케이스의 근거로 쓰였다. '평가 시 생성 문서 제외' 원칙과 어긋나 평가 모드에서는 코퍼스만 검색하도록 고쳤다(테스트로 고정).
 - **같은 대화의 후속 질문**: PL이 파트 진척을 물은 뒤 '중메뉴별·단계별 현황'을 묻자 ReAct 에이전트가 도구를 다시 부르지 않고 이전 답을 재사용해 중메뉴 개수를 틀리게 말했다. 프롬프트에 '질문마다 도구 새로 호출·최신 도구 결과의 숫자만'을 넣고, 도구를 건너뛰면 한 번 더 지시하도록 코드로 막았다.
 - **손으로 쓴 JSON-RPC MCP 서버**: 동작은 했지만 프로토콜 세부(초기화·오류 형식)를 직접 관리해야 했다. 공식 SDK 계열 fastmcp와 langchain-mcp-adapters로 바꿨다(서버 기동이 무거워져 호출당 약 2초 늘었다).
+- **'지난주'를 LLM이 풀게 둠**(2차 첫 실행 7번 0/3): 검색 필터는 코드로 지난주 회의록(W46)을 골랐지만 프롬프트에는 날짜 정보가 없어, LLM이 그 회의록이 '지난주'인지 확인하지 못하고 grounded 규칙대로 '알 수 없음'만 답했다. 코드가 정한 기준 주와 지난주 회의록 ID를 `[기준 정보]`로 넘기고 해당 주 회의록을 우선하도록 고쳤다(2차 레버 경로만).
+- **답변 서술과 근거 표의 불일치**(2차 첫 실행 15번 0/3): ReAct 에이전트는 `get_commits` 결과의 작성자 이메일(마스킹)을 말했는데, 덧붙인 `[도구 계산 결과]`에는 작성자 열이 없어 judge가 이메일을 지어낸 것으로 봤다. 결정적 보고서의 미연결 커밋에도 작성자 이름·이메일을 요청자 범위(PM 전체, PL 본인 파트, 개발자 본인)로 싣고 출력 단계에서 마스킹한다. 공용 회의 자료에는 싣지 않는다.
+- **실제 내용과 맞지 않는 게시 꼬리말**: '업무 담당 확인을 위해 이름만 표기합니다'가 이름 없는 회의 자료에 붙어 있었다. '참석자 공용 자료로, 개인 이름·연락처·개인별 진척률을 싣지 않습니다'로 바꿨다.
+- **LLM 구조화 출력 길이 무제한**(2차 두 번째 실행 1·8·11번): 회의 초안(`MeetingDraft`)이 출력 토큰 한도(2048)에 잘려 `action_items`가 빠지자 요청 전체가 검증 오류로 끝났다. 섹션별 5개 이내·한 문장으로 제한하고(출력 약 1,100토큰), 실패해도 결정적 초안으로 대체한다.
 - **문자열 포함 기반 BM25**: '지연됐고'와 '지연되어'처럼 활용형이 다르면 맞지 않았다. kiwipiepy 형태소 토큰화로 바꿨다.
 
 ### 최종 채택한 접근과 이유
@@ -145,7 +158,8 @@ copy .env.example .env
 - 실제 Confluence(`CONFLUENCE_MODE=real`)는 REST 어댑터와 오프라인 테스트만 있고 실제 서버로는 검증하지 않았다.
 - '이번 주'는 fixture의 고정 기준 주(2026-11-16~22)다 → 실제 운영 시 날짜 기반으로 바꿔야 한다.
 - MCP 호출마다 stdio 서버를 새로 띄워 호출당 2초 정도 걸린다 → 운영에서는 세션 재사용 필요.
-- 새 도메인 기준 평가(4개 RAGAS 지표 포함)는 재실행 전이다.
+- answer relevancy는 목표(0.80)에 못 미친다(2차 최종 0.5901). 인용형 짧은 답변을 유지하면서 질문 의도를 한 문장으로 먼저 답하는 형식을 검토할 수 있다.
+- 8번은 judge가 'PII가 없는 게시물'을 마스킹 미확인으로 읽는다. trait 문구('PII 원문 없음')를 다음 평가 세트 개정 때 명확히 할 필요가 있다(이번 회차에는 바꾸지 않음).
 
 ## 핵심 코드 위치
 | 기능 | 위치 |
@@ -155,17 +169,17 @@ copy .env.example .env
 | 가드레일 검사(라우팅·도구 실행 전) | `src/api.py:285`, `src/guardrails.py:83` `check_question`, `src/guardrails.py:150` `filter_injected_chunks` |
 | 출력 단계 PII 마스킹 | `src/api.py:267`, `src/middleware.py:20` `mask_pii` |
 | Supervisor 구조화 출력 라우터 | `src/supervisor.py:20` `RouteDecision`, `src/supervisor.py:36` `make_llm_router` |
-| 진척 ReAct 에이전트 | `src/agent.py:56` `PROGRESS_SYSTEM`, `src/agent.py:72` `_progress_tools`, `src/agent.py:135` `answer_progress` |
-| 문서 Q&A (RAG) | `src/agent.py:23` `BASELINE_PROMPT`, `src/agent.py:24` `GROUNDED_PROMPT`, `src/agent.py:34` `answer_docs_qa` |
-| 하이브리드 검색·형태소 BM25 | `src/retriever.py:173` `ko_tokens`, `src/retriever.py:187` `bm25_scores`, `src/retriever.py:240` `search_scored` |
-| 평가 시 생성 문서 제외 | `src/retriever.py:56` `runtime_documents`, `evaluation/run_eval.py:264` |
-| 진척 결정적 계산 | `src/tools.py:269` `calc_progress`, `src/tools.py:314` `build_progress_report` |
-| 회의 자료 표·기간 도식·대메뉴 일정표 | `src/tools.py:496` `format_progress_markdown`, `src/tools.py:601` `timeline_lines`, `src/tools.py:619` `large_menu_schedule` |
-| 회의 자료 Plan-Execute·HITL | `src/meeting.py:293` `MeetingFlow`, `src/meeting.py:346` `_check_previous_meeting`(MCP `get_page`), `src/meeting.py:395` `interrupt()` |
+| 진척 ReAct 에이전트 | `src/agent.py:59` `PROGRESS_SYSTEM`, `src/agent.py:75` `_progress_tools`, `src/agent.py:138` `answer_progress` |
+| 문서 Q&A (RAG) | `src/agent.py:24` `BASELINE_PROMPT`, `src/agent.py:25` `GROUNDED_PROMPT`, `src/agent.py:36` `answer_docs_qa`, `src/retriever.py:235` `week_note`(기준 주 안내) |
+| 하이브리드 검색·형태소 BM25 | `src/retriever.py:173` `ko_tokens`, `src/retriever.py:187` `bm25_scores`, `src/retriever.py:256` `search_scored` |
+| 평가 시 생성 문서 제외 | `src/retriever.py:56` `runtime_documents`, `evaluation/run_eval.py:295` |
+| 진척 결정적 계산 | `src/tools.py:269` `calc_progress`, `src/tools.py:314` `build_progress_report`, `src/tools.py:375` `format_progress_report` |
+| 회의 자료 표·기간 도식·대메뉴 일정표 | `src/tools.py:501` `format_progress_markdown`, `src/tools.py:606` `timeline_lines`, `src/tools.py:624` `large_menu_schedule` |
+| 회의 자료 Plan-Execute·HITL | `src/meeting.py:294` `MeetingFlow`, `src/meeting.py:347` `_check_previous_meeting`(MCP `get_page`), `src/meeting.py:377` `_draft_material`(초안 실패 시 결정적 초안), `src/meeting.py:403` `interrupt()` |
 | MCP 서버·클라이언트 | `src/mcp_confluence_server.py:16` `FastMCP`, `src/mcp_client.py:24` `make_client`, `src/mcp_client.py:61` `call_tool` |
 | Markdown → Confluence 변환 | `src/confluence_convert.py:46` `md_to_storage` |
 | 재시도·타임아웃 | `src/middleware.py:55` `call_with_retry` |
-| judge 입력·RAGAS 4개 지표 | `evaluation/run_eval.py:133` `judge_message`, `evaluation/run_eval.py:223` `ragas_metrics`, `evaluation/run_eval.py:236` `ragas_scores` |
+| judge 입력·RAGAS 4개 지표 | `evaluation/run_eval.py:164` `judge_message`, `evaluation/run_eval.py:254` `ragas_metrics`, `evaluation/run_eval.py:267` `ragas_scores`, `evaluation/run_eval.py:69` `RERUN_FIXES`(2차 재실행 결함 기록) |
 
 ## 산출물 구성
 강의 산출물 구성(3-1)과 이 저장소의 실제 구성:

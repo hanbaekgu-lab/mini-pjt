@@ -372,11 +372,14 @@ def _phase_ids(s: dict, phases: list[int]) -> str:
     return ",".join(f"{s['screen_id']}-{n}({PHASES[n]})" for n in phases) or "없음"
 
 
-def format_progress_report(report: dict) -> str:
-    """결정적 텍스트 렌더링 (LLM 없이도 숫자가 그대로 표시됨). 화면 170개를 모두 나열하지 않고 집계 위주로 보여준다."""
+def format_progress_report(report: dict, authors: bool = True) -> str:
+    """결정적 텍스트 렌더링 (LLM 없이도 숫자가 그대로 표시됨). 화면 170개를 모두 나열하지 않고 집계 위주로 보여준다.
+    미연결 커밋에는 작성자 이름·이메일을 적는다(이메일은 출력 단계 미들웨어가 마스킹). 보고서 범위가 곧 요청자 범위라
+    PM 전체, PL 본인 파트, 개발자 본인 커밋만 나온다. 공유 문서(회의 자료) 입력은 authors=False로 작성자를 뺀다."""
     if "error" in report:
         return report["message"]
     names = {d["developer_id"]: d["name"] for d in load_developers()}
+    emails = {d["developer_id"]: d["email"] for d in load_developers()}
     p = report["progress"]
     lines = [f"[기준 주 {report['reference_week']}] {report['project']} 진척 현황 ({report['month_label']})"]
     if p["scope"] == "screen":
@@ -433,7 +436,9 @@ def format_progress_report(report: dict) -> str:
     lines.append("## 경고: 상태-커밋 불일치")
     lines += [f"- {w['message']}" for w in report["mismatch_warnings"]] or ["- 없음"]
     lines.append("## 미연결 커밋 (화면 ID 없음·형식 오류·없는 화면)")
-    lines += [f"- {c['hash']} {names.get(c['developer_id'], '알 수 없음')} {c['date']} \"{c['message']}\""
+    who = lambda c: (f" {names[c['developer_id']]} <{emails[c['developer_id']]}>" if c["developer_id"] in names  # noqa: E731
+                     else " 작성자 알 수 없음") if authors else ""
+    lines += [f"- {c['hash']}{who(c)} {c['date']} \"{c['message']}\" ({UNLINKED_REASON.get(c['reason'], c['reason'])})"
               for c in report["unlinked_commits"]] or ["- 없음"]
     return "\n".join(lines)
 

@@ -20,6 +20,7 @@ from src import tools
 
 NOTICE = ("> 주간 진척 보고 에이전트가 커밋·화면 데이터로 자동 작성하고, PM 또는 PL 승인 후 게시한 문서입니다. "
           "참석자 전원에게 공유되므로 업무 단위 진척만 싣습니다(개인별 진척률·이름 없음).")
+DRAFT_MAX_ITEMS = 5    # LLM 초안 섹션별 항목 수 상한(출력 토큰 한도 안에서 구조화 출력이 잘리지 않게)
 LONG_ISSUE_WEEKS = 8  # 이 주수 이상 지속된 미해결 이슈는 기본 초안의 블로커로 올린다
 SNAPSHOT_NS = ("meeting_snapshot",)  # 장기 메모리 네임스페이스 (키: 주 시작일)
 
@@ -338,7 +339,7 @@ class MeetingFlow:
         # 지연 화면 담당자·커밋 작성자 이름도 초안 입력에서 뺀다 (공유 문서라 사람 이름을 쓰지 않음)
         log = state["log"] + [{"step": "tool_call", "input": {"tool": n, "plan_step": "collect_progress"}, "output": "ok"}
                               for n in ("calc_progress", "calc_remaining_mm", "check_mismatch")]
-        return {"report_text": strip_names(tools.format_progress_report(team_only)), "warnings": warns, "log": log}
+        return {"report_text": strip_names(tools.format_progress_report(team_only, authors=False)), "warnings": warns, "log": log}
 
     def snapshots(self) -> list:
         return sorted(self.store.search(SNAPSHOT_NS, limit=1000), key=lambda it: it.key)
@@ -375,9 +376,11 @@ class MeetingFlow:
 
     def _draft_material(self, state):
         ctx = meeting_context(state.get("previous"), load_history=False)
-        draft = self.llm.with_structured_output(MeetingDraft).invoke(
+        prompt = (
             "아래 자료로 주간 진척 회의 자료의 결정사항·블로커·액션아이템을 한국어로 작성하라. "
             "진척률·MM 같은 숫자는 쓰지 마라(도구 결과가 따로 붙는다). 사람을 평가하거나 순위를 매기지 마라.\n"
+            f"각 섹션은 {DRAFT_MAX_ITEMS}개 이내, 항목은 한 문장으로 짧게 쓴다. 지연 화면·미연결 커밋은 하나씩 나열하지 말고 묶어서 쓴다"
+            "(전체 목록은 표로 따로 붙는다).\n"
             "이 자료는 회의 참석자 전원(PM·PL·개발자)에게 공유된다. 개인별 진척률이나 개인 간 진척 비교는 언급하지 말고, "
             "진척은 대메뉴·중메뉴·단계·화면 같은 업무 단위로만 말하라. 결정사항·블로커·액션아이템 어디에도 사람 이름을 쓰지 마라.\n"
             "계획 대비 차이가 큰 대메뉴, 오래 지속된 미해결 이슈, 지난주 미완료 액션아이템을 결정사항·블로커·액션아이템에 반영하라.\n\n"
@@ -385,8 +388,13 @@ class MeetingFlow:
             "[불일치 경고·미연결 커밋]\n" + "\n".join(state["warnings"])
             + "\n\n[지난주 회의록 결정사항·블로커]\n" + state.get("previous_minutes", "")
             + "\n\n[지난주 게시 회의 자료의 액션아이템]\n" + state.get("previous_page", ""))
-        body = render(draft.decisions, draft.blockers, draft.action_items, ctx)
-        log = state["log"] + [{"step": "llm_draft", "input": "meeting_material", "output": "drafted"}]
+        try:
+            d = self.llm.with_structured_output(MeetingDraft).invoke(prompt)
+            parts, out = (d.decisions, d.blockers, d.action_items), "drafted"
+        except Exception as e:  # noqa: BLE001  출력 한도 초과로 잘린 구조화 출력 등: 요청 전체를 실패시키지 않고 결정적 초안으로 대체
+            parts, out = default_draft(ctx), f"fallback:default_draft({type(e).__name__})"
+        body = render(*parts, ctx)
+        log = state["log"] + [{"step": "llm_draft", "input": "meeting_material", "output": out}]
         return {"body": body, "log": log}
 
     # --- HITL

@@ -232,6 +232,22 @@ def _target_week(query: str):
     return None
 
 
+def week_note(query: str) -> str:
+    """LLM에 넘길 기준 주 안내 (filter 레버). '지난주' 같은 상대 표현을 코드가 정한 주차·회의록 ID로 풀어 준다.
+    LLM은 오늘 날짜를 모르므로, 이 안내가 없으면 회의록 날짜가 '지난주'인지 확인하지 못해 근거 없음으로 답한다."""
+    if "filter" not in levers():
+        return ""
+    from src import tools
+    lines = [f"- 이번 주(기준 주): {tools.load_reference_week()['label']}"]
+    tw = _target_week(query)
+    if tw is not None:
+        mins = [f"{d['doc_id']}({m['date']})" for d in runtime_documents()
+                if (m := doc_meta(d))["kind"] == "회의록" and m["date"] and _week_start(m["date"]) == tw]
+        lines.append(f"- 질문의 '지난주·지난 회의'는 {tw.isoformat()}(월) 주이며, 그 주 회의록은 "
+                     f"{', '.join(mins) or '없음'}이다.")
+    return "[기준 정보]\n" + "\n".join(lines)
+
+
 def json_ref_start() -> str:
     from src import tools
     return tools.load_reference_week()["start"]
@@ -260,8 +276,7 @@ def search_scored(query: str, k: int = 3, docs: list[dict] | None = None) -> lis
         if "filter" in lv:
             tw = _target_week(query)
             if tw is not None and meta["kind"] == "회의록" and meta["date"]:
-                if _week_start(meta["date"]) != tw:
-                    sc *= 0.2  # 주차 혼입 방지
+                sc *= 1.5 if _week_start(meta["date"]) == tw else 0.2  # 해당 주 회의록 우선, 다른 주차 혼입 방지
             if screen_ids and meta["kind"] != "팀규칙" and not (screen_ids & meta["screens"]):
                 sc *= 0.3
             if re.search(r"완료\s*조건|정의서", query) and meta["kind"] == "화면정의서":

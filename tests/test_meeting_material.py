@@ -223,13 +223,13 @@ def test_previous_week_page_from_snapshot():
 
 
 def test_committed_meeting_pages_are_current():
-    # 저장소에 커밋한 회의 자료 페이지는 결정적 렌더 결과와 같다 (이번 주·지난주)
+    # 저장소에 커밋한 회의 자료 페이지(샘플)는 결정적 렌더 + 게시 꼬리말과 같다 (이번 주·지난주)
     from src import middleware
     from src.confluence_convert import md_to_storage
     root = Path(__file__).resolve().parent.parent / "data" / "confluence_pages"
     prev = tools.previous_snapshot()
     for week, body in (("2026-11-16", meeting.build_meeting_material()), ("2026-11-09", meeting.render_snapshot_page(prev))):
-        body = middleware.mask_pii(body)
+        body = middleware.mask_pii(meeting.with_footer(body))  # 실제 게시본과 같게 꼬리말 포함
         md = (root / f"{meeting.meeting_page_id(week)}.md").read_text(encoding="utf-8")
         assert md == f"# {meeting.meeting_title(week)}\n\n{body}\n"
         assert (root / f"{meeting.meeting_page_id(week)}.storage.xml").read_text(encoding="utf-8") == md_to_storage(body)

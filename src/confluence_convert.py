@@ -1,7 +1,7 @@
 """Markdown → Confluence 저장 형식(storage format, XHTML) 변환기.
 
 MCP 서버의 create_page가 게시 직전에 호출한다(에이전트는 Markdown만 넘긴다).
-회의 자료에 쓰는 문법만 지원: 제목, 문단, 인용(→ info 패널), 목록, 체크리스트(→ 작업 목록), 표, **굵게**, `코드`,
+회의 자료에 쓰는 문법만 지원: 제목, 문단, 구분선, 인용(→ info 패널), 목록, 체크리스트(→ 작업 목록), 표, **굵게**, `코드`,
 펜스 코드 블록(```  → code 매크로, 고정폭 타임라인 도식용),
 지난주 대비 증감 표시(``▲ +1.86%p`` → 초록 글자, ``▼ -0.50%p`` → 빨강 글자).
 """
@@ -48,6 +48,9 @@ def md_to_storage(md: str) -> str:
     while i < len(lines):
         line = lines[i].rstrip()
         if not line.strip():
+            i += 1
+        elif re.fullmatch(r"-{3,}|\*{3,}", line.strip()):  # 구분선 (게시 꼬리말 앞)
+            out.append("<hr />")
             i += 1
         elif line.startswith("```"):  # 펜스 코드 블록 → code 매크로 (본문은 CDATA로 그대로)
             i += 1

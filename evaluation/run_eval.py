@@ -223,7 +223,7 @@ def rescore_ragas(round_no: int, names: tuple[str, ...] = RAGAS_METRICS) -> dict
         r = rows[case["id"]]
         for run in case["runs"]:
             if any(i not in docs for i in run["context_doc_ids"]):
-                # 생성 문서 제외 이전 실행이 생성 문서(임시 폴더, 삭제됨)를 근거로 쓴 경우: 재구성할 수 없어 기존 점수를 유지하고
+                # 근거 문서가 지금 코퍼스에 없으면(예: 평가 중 생성 문서, 임시 폴더라 삭제됨) 재구성할 수 없어 기존 점수를 유지하고
                 # 없는 지표는 None으로 두어 평균에서 뺀다
                 for k in RAGAS_METRICS:
                     run.setdefault(k, None)

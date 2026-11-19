@@ -20,9 +20,16 @@ from src import tools
 
 NOTICE = ("> 주간 진척 보고 에이전트가 커밋·화면 데이터로 자동 작성하고, PM 또는 PL 승인을 거쳐 게시하는 문서입니다. "
           "참석자 전원에게 공유되므로 업무 단위 진척만 싣습니다(개인별 진척률·이름 없음).")
+PUBLISH_FOOTER = ("※ 이 문서는 참석자 공용 자료로, 개인 이름·연락처·개인별 진척률을 싣지 않습니다. "
+                  "이메일·전화번호는 게시 전 마스킹됩니다.")
 DRAFT_MAX_ITEMS = 5    # LLM 초안 섹션별 항목 수 상한(출력 토큰 한도 안에서 구조화 출력이 잘리지 않게)
 LONG_ISSUE_WEEKS = 8  # 이 주수 이상 지속된 미해결 이슈는 기본 초안의 블로커로 올린다
 SNAPSHOT_NS = ("meeting_snapshot",)  # 장기 메모리 네임스페이스 (키: 주 시작일)
+
+
+def with_footer(body: str) -> str:
+    """게시 본문 끝에 공용 자료·마스킹 안내 꼬리말을 붙인다 (게시 경로와 저장소 샘플 페이지 공통)."""
+    return f"{body}\n\n---\n{PUBLISH_FOOTER}"
 
 
 def meeting_page_id(week: str | None = None) -> str:

@@ -128,3 +128,9 @@ def test_real_mode_missing_settings_names_only(monkeypatch):
     with pytest.raises(RuntimeError) as e:
         confluence.create_page("t", "b")
     assert "CONFLUENCE_BASE_URL" in str(e.value) and "secret-value" not in str(e.value)
+
+
+def test_converter_renders_rule_before_publish_footer():
+    s = md_to_storage(meeting.with_footer("## 액션아이템\n- [ ] 일"))
+    assert "<hr />" in s and "<p>---</p>" not in s
+    assert s.endswith(f"<p>{meeting.PUBLISH_FOOTER}</p>")

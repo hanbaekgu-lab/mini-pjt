@@ -229,7 +229,6 @@ def test_pii_masked_in_confluence_page(monkeypatch):
                         lambda *a, **k: "담당 messi.kim@example.com 010-9999-8888")
     tid = ask("이번 주 회의 자료 초안 만들어줘", user="pm01", role="pm")["thread_id"]
     ask("승인", user="pm01", role="pm", thread_id=tid, approval="approve")
-    from pathlib import Path
     pages = list(confluence.confluence_dir().glob("*.md"))
     assert pages
     body = pages[0].read_text(encoding="utf-8")

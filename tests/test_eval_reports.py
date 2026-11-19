@@ -2,11 +2,10 @@
 import json
 from pathlib import Path
 
-import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 EV = ROOT / "evaluation"
-# 1차(사전 고정 baseline)와 2차(최종 재실행) 실제 결과로 성공 기준을 판정한다.
+# 1차(사전 고정 baseline)와 2차(개선 레버 적용) 실제 결과로 성공 기준을 판정한다.
 
 
 def load(n):

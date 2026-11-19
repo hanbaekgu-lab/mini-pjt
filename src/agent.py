@@ -13,8 +13,7 @@ import re
 
 from src import config, guardrails, mcp_client, meeting, middleware, retriever, supervisor, tools
 
-PUBLISH_FOOTER = ("※ 이 문서는 참석자 공용 자료로, 개인 이름·연락처·개인별 진척률을 싣지 않습니다. "
-                  "이메일·전화번호는 게시 전 마스킹됩니다.")
+PUBLISH_FOOTER = meeting.PUBLISH_FOOTER
 NO_ANSWER = "문서에서 근거를 찾지 못해 알 수 없습니다. 확인 가능한 담당자(PM·PL)나 팀 채널에 문의해 주세요."
 
 _flow: meeting.MeetingFlow | None = None
@@ -179,7 +178,7 @@ def answer_progress(question: str, role: str, user_id: str, thread_id: str | Non
 # ----------------------------------------------------------------------------- 회의 자료 (Plan-Execute + HITL)
 def _publish(title: str, body: str) -> str:
     """Confluence MCP 게시. PII 마스킹 후 한 번만 시도(타임아웃 15초, 중복 게시 방지를 위해 재시도 없음)."""
-    body += "\n\n---\n" + PUBLISH_FOOTER
+    body = meeting.with_footer(body)
     title, body = middleware.mask_pii(title), middleware.mask_pii(body)
     page = middleware.call_with_retry(mcp_client.call_tool, "create_page",
                                       {"title": title, "body": body, "page_id": meeting.meeting_page_id()}, retries=0)

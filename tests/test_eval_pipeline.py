@@ -4,7 +4,6 @@ import json
 from pathlib import Path
 
 import pytest
-from fastapi.testclient import TestClient  # noqa: F401  (run_once가 내부에서 사용)
 from langchain_core.embeddings import FakeEmbeddings
 from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
 from langchain_core.messages import AIMessage

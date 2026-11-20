@@ -274,6 +274,17 @@ def week_note(query: str) -> str:
     return "[기준 정보]\n" + "\n".join(lines)
 
 
+WEEK_CONTEXT_ID = "tool:week_note"
+
+
+def week_context(query: str) -> dict | None:
+    """'지난주·지난 회의'를 기준 정보로 풀어 답한 경우, 그 기준 정보를 근거(contexts)로도 돌려준다.
+    상대 주차가 없는 질문은 기준 정보를 답에 쓰지 않으므로 근거에 넣지 않는다 (filter 레버)."""
+    if "filter" not in levers() or _target_week(query) is None:
+        return None
+    return {"doc_id": WEEK_CONTEXT_ID, "text": week_note(query)}
+
+
 HISTORY = re.compile(r"지금까지|그동안|여태|경과|히스토리|이력|흐름")
 
 

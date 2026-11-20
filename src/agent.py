@@ -11,7 +11,12 @@ from __future__ import annotations
 import json
 import re
 
-from src import config, guardrails, mcp_client, meeting, middleware, retriever, supervisor, tools
+from pydantic import BaseModel, Field
+
+from src import config, guardrails, mcp_client, meeting, middleware, retriever, supervisor, tools, tracing
+
+TOOL_CALL_LIMIT = 8    # 진척 에이전트 한 번 실행에서 도구 호출 상한 (넘으면 도구 대신 답하게 한다)
+RECURSION_LIMIT = 25   # LangGraph 단계 상한 (모델↔도구 왕복 무한 루프 방지)
 
 PUBLISH_FOOTER = meeting.PUBLISH_FOOTER
 NO_ANSWER = "문서에서 근거를 찾지 못해 알 수 없습니다. 확인 가능한 담당자(PM·PL)나 팀 채널에 문의해 주세요."
@@ -26,6 +31,9 @@ GROUNDED_PROMPT = (
     "너는 팀 회의록·화면 정의서·팀 규칙·전환 일정 문서에 근거해 답하는 어시스턴트다. 규칙:\n"
     "1. 아래 문서에 있는 내용만 쓰고, 문장마다 근거 문서를 [doc_id] 형식으로 표기한다.\n"
     "   문서 문장의 표현을 최대한 그대로 옮기고, 문서에 없는 추론·부연 설명은 덧붙이지 않는다. 질문에 필요한 내용만 짧게 답한다.\n"
+    "   액션아이템·결정사항은 담당자와 완료·미완료 상태를 문서 표기 그대로 쓴다(이미 완료된 항목을 '~하기로 했다'로 쓰지 않는다).\n"
+    "   질문이 두 가지 이상을 물으면(예: 이유와 조치) 각 부분을 질문의 대상과 핵심어를 넣은 문장으로 시작해 차례로 답한다"
+    "(예: 'SCR-C02-01이 지연된 이유는 …', '지난 회의에서 하기로 한 조치는 …'). 목록·표 형식은 그대로 쓴다.\n"
     "2. 질문과 직접 관련된 문서만 인용한다. 다른 주차 회의록은 질문이 요구할 때만 쓴다. "
     "'지난주'·'지난 회의'·'이번 주'는 [기준 정보]에 적힌 주차·회의록으로 판단한다.\n"
     "3. 문서에 근거가 없으면 정확히 다음 문장만 답한다: " + NO_ANSWER + "\n"
@@ -33,7 +41,7 @@ GROUNDED_PROMPT = (
     "5. 사람을 평가하거나 순위를 매기지 않는다.\n\n{note}[문서]\n{docs}\n\n[질문]\n{question}")
 
 
-def answer_docs_qa(question: str, role: str, user_id: str) -> dict:
+def answer_docs_qa(question: str, role: str, user_id: str, focus: str | None = None) -> dict:
     """검색 → 간접 인젝션 줄 제외·역할 범위 적용(코드) → LLM 답변 (LCEL). 인용 규칙 프롬프트는 2차(grounded)만."""
     from langchain_core.output_parsers import StrOutputParser
     from langchain_core.prompts import ChatPromptTemplate
@@ -49,10 +57,14 @@ def answer_docs_qa(question: str, role: str, user_id: str) -> dict:
     chain = ChatPromptTemplate.from_template(prompt) | config.get_llm() | StrOutputParser()
     docs = "\n\n".join(f"[{c['doc_id']}]\n{c['text']}" for c in ctx)
     note = retriever.week_note(question)  # 상대 주차('지난주')를 코드가 정한 주차·회의록 ID로 풀어 준다 (filter 레버)
+    if focus:  # 다중 의도의 답변 범위 안내: 프롬프트에만 넣고 검색어는 바꾸지 않는다
+        note = f"{note}\n[답변 범위] {focus}" if note else f"[답변 범위] {focus}"
     answer = config.text_of(chain.invoke({"docs": docs, "question": question, "note": f"{note}\n\n" if note else ""}))
     trace.append({"step": "llm_answer", "input": {"prompt": "grounded" if "grounded" in lv else "baseline"},
                   "output": "ok"})
-    return {"answer": answer, "contexts": ctx, "trace": trace, "pending_approval": False}
+    # '지난주'를 풀 때 쓴 기준 정보도 근거로 함께 돌려준다(답변이 기댄 근거 전부). 검색 순위를 흐리지 않게 검색 문서 뒤에 둔다
+    wc = retriever.week_context(question)
+    return {"answer": answer, "contexts": ctx + ([wc] if wc else []), "trace": trace, "pending_approval": False}
 
 
 # ----------------------------------------------------------------------------- 진척 에이전트 (ReAct)
@@ -70,6 +82,19 @@ PROGRESS_SYSTEM = (
     "- 특정 화면(SCR-xxx-xx)의 진척 질문: calc_progress, calc_remaining_mm, check_mismatch를 모두 호출해 경고 여부를 함께 알린다.\n"
     "- 커밋 질문: get_commits를 호출하고, 미연결 커밋은 작성자 이름과 이메일을 함께 적는다(이메일은 출력 단계에서 마스킹된다).\n"
     "숫자를 바꾸거나 추정하지 말고, 도구 결과를 2~4문장으로 설명한다. 사람을 평가하거나 순위를 매기지 않는다.")
+
+
+def _called(called: list, name: str) -> None:
+    """진척 도구 호출 기록(trace용) + 진행 이벤트(SSE)."""
+    called.append(name)
+    tracing.emit("tool_call", {"tool": name})
+
+
+class ProgressArgs(BaseModel):
+    """진척 도구 인자. 형식이 틀리면 도구 실행 전에 검증 오류가 LLM에 돌아가 다시 호출하게 한다."""
+    screen_id: str = Field("", description="화면 ID (예: SCR-A01-03). 화면 단건 조회일 때만", pattern=r"^(|SCR-[A-Z]\d{2}-\d{2})$")
+    developer_id: str = Field("", description="개발자 ID(dev01) 또는 이름(김메시). 특정 개발자 조회일 때만")
+    part: str = Field("", description="파트 코드 PL1 또는 PL2. 파트 단위 조회일 때만", pattern=r"^(|[Pp][Ll]\s*[12])$")
 
 
 def _progress_tools(role: str, user_id: str, called: list[str]):
@@ -101,34 +126,38 @@ def _progress_tools(role: str, user_id: str, called: list[str]):
             return {"part": part} if role == "pm" or (role == "pl" and own.get("part") == part) else None
         return own
 
-    @tool
+    @tool(args_schema=ProgressArgs)
     def calc_progress(screen_id: str = "", developer_id: str = "", part: str = "") -> str:
         """진척률을 계산한다. screen_id(예: SCR-A01-03)를 주면 화면 단건, developer_id(예: dev01 또는 이름 '김메시')를 주면 그 개발자 담당분,
         part(PL1|PL2)를 주면 그 파트 합계·대메뉴별, 모두 비우면 요청자 범위 전체(파트·대메뉴·중메뉴·단계별 집계와 계획 대비
-        차이 포함). 수치 질문마다 새로 호출한다."""
-        called.append("calc_progress")
+        차이 포함). 수치 질문마다 새로 호출한다.
+        쓰지 말 것: 지연 이유·회의 결정사항·규칙·완료 조건처럼 문서에 적힌 내용 질문(진척 수치가 아님)."""
+        _called(called, "calc_progress")
         t = target(screen_id, developer_id, part)
         return guardrails.DENY if t is None else tools.format_progress_report(tools.build_progress_report(**t))
 
-    @tool
+    @tool(args_schema=ProgressArgs)
     def calc_remaining_mm(screen_id: str = "", developer_id: str = "", part: str = "") -> str:
-        """남은 MM(계획 MM x (1-진척률))을 계산한다. screen_id·developer_id·part를 비우면 요청자 범위 전체."""
-        called.append("calc_remaining_mm")
+        """남은 MM(계획 MM x (1-진척률))을 계산한다. screen_id·developer_id·part를 비우면 요청자 범위 전체.
+        쓰지 말 것: 진척률(%)만 묻는 질문은 calc_progress로 충분하다."""
+        _called(called, "calc_remaining_mm")
         t = target(screen_id, developer_id, part)
         return guardrails.DENY if t is None else json.dumps(tools.calc_remaining_mm(**t), ensure_ascii=False)
 
     @tool
     def check_mismatch() -> str:
-        """화면 상태와 커밋의 불일치 경고, 미연결 커밋을 조회한다."""
-        called.append("check_mismatch")
+        """화면 상태와 커밋의 불일치 경고, 미연결 커밋을 조회한다(요청자 범위).
+        쓰지 말 것: 커밋 목록·작성자 질문은 get_commits, 진척률 수치는 calc_progress."""
+        _called(called, "check_mismatch")
         r = tools.build_progress_report(**own)
         return json.dumps({"mismatch_warnings": r.get("mismatch_warnings", []),
                            "unlinked_commits": r.get("unlinked_commits", [])}, ensure_ascii=False)
 
     @tool
     def get_commits() -> str:
-        """기준 주까지의 커밋을 화면에 연결하고, 화면 ID가 없거나 형식이 틀린 미연결 커밋을 보여준다."""
-        called.append("get_commits")
+        """기준 주까지의 커밋을 화면에 연결하고, 화면 ID가 없거나 형식이 틀린 미연결 커밋을 보여준다(요청자 범위).
+        쓰지 말 것: 진척률·남은 MM 계산(calc_progress·calc_remaining_mm 사용)."""
+        _called(called, "get_commits")
         c = tools.get_commits()
         devs = {d["developer_id"]: d for d in tools.load_developers()}
         mine = lambda x: people is None or x["developer_id"] in people  # noqa: E731
@@ -141,23 +170,35 @@ def _progress_tools(role: str, user_id: str, called: list[str]):
     return [calc_progress, calc_remaining_mm, check_mismatch, get_commits]
 
 
-def answer_progress(question: str, role: str, user_id: str, thread_id: str | None = None) -> dict:
+def answer_progress(question: str, role: str, user_id: str, thread_id: str | None = None,
+                    focus: str | None = None) -> dict:
     from langchain.agents import create_agent
-    from langchain.agents.middleware import ModelRetryMiddleware, SummarizationMiddleware
+    from langchain.agents.middleware import ModelRetryMiddleware, SummarizationMiddleware, ToolCallLimitMiddleware
     from langchain_core.messages import HumanMessage
+    from langgraph.errors import GraphRecursionError
 
     llm, called = config.get_llm(), []
     agent = create_agent(
         llm, _progress_tools(role, user_id, called), system_prompt=PROGRESS_SYSTEM,
         middleware=[SummarizationMiddleware(model=llm, trigger=("tokens", 6000), keep=("messages", 6)),  # 긴 회의 대화 요약
-                    ModelRetryMiddleware(max_retries=1)],                                              # LLM 호출 재시도 1회
+                    ModelRetryMiddleware(max_retries=1),                                               # LLM 호출 재시도 1회
+                    ToolCallLimitMiddleware(run_limit=TOOL_CALL_LIMIT, exit_behavior="end")],          # 도구 반복 호출 상한
         checkpointer=_memory)
-    cfg = {"configurable": {"thread_id": f"progress-{thread_id or user_id}"}}  # 대화 기억은 thread별
-    result = agent.invoke({"messages": [HumanMessage(question)]}, cfg)
+    cfg = {"configurable": {"thread_id": f"progress-{thread_id or user_id}"},  # 대화 기억은 thread별
+           "recursion_limit": RECURSION_LIMIT}                                     # 그래프 단계 상한(무한 루프 방지)
+
+    def run(text: str) -> str | None:
+        """에이전트 실행. 단계 상한에 걸리면 서술 없이(None) 끝내고, 아래에서 도구 계산 결과만 붙인다."""
+        try:
+            return config.text_of(agent.invoke({"messages": [HumanMessage(text)]}, cfg)["messages"][-1])
+        except GraphRecursionError:
+            return None
+
+    narrative = run(f"{question}\n[답변 범위] {focus}" if focus else question)  # 다중 의도 역할 안내 (LLM 메시지에만)
     if not called:  # 이전 대화 답을 재사용하고 도구를 건너뛴 경우: 한 번 더 도구 호출을 지시한다 (숫자는 최신 도구 결과만)
-        result = agent.invoke({"messages": [HumanMessage(
-            "방금 질문에 답하려면 도구를 다시 호출해 최신 결과로 답하라. 이전 답변의 숫자·개수는 쓰지 않는다.")]}, cfg)
-    narrative = config.text_of(result["messages"][-1])
+        narrative = run("방금 질문에 답하려면 도구를 다시 호출해 최신 결과로 답하라. 이전 답변의 숫자·개수는 쓰지 않는다.")
+    if narrative is None or len(called) >= TOOL_CALL_LIMIT:  # 상한에 걸린 실행의 서술은 믿지 않는다
+        narrative = "도구 호출이 상한에 도달해 요약 없이 도구 계산 결과만 보여 드립니다."
     # 숫자는 도구가 계산한 결과를 그대로 붙인다 (LLM이 바꾸지 않음)
     m = tools.SCREEN_ID_RE.search(question)
     devs = {d["developer_id"] for d in tools.load_developers() if d["role"] == "developer"}
@@ -192,6 +233,9 @@ def answer_meeting(role: str) -> dict:
                 "trace": [{"step": "guardrail", "input": "meeting_material", "output": "denied"}],
                 "pending_approval": False}
     tid, st = _flow.start()
+    if st.get("error"):  # Replan이 중단을 결정: 초안·승인 대기 없이 오류를 알린다
+        return {"answer": f"회의 자료를 만들지 못했습니다. {st['error']}", "contexts": [], "trace": st["log"],
+                "pending_approval": False}
     return {
         "answer": f"[회의 자료 초안 - 승인 대기]\n{st['body']}\n\nPM 또는 PL의 approve 후 Confluence에 게시됩니다.",
         "contexts": [{"doc_id": "tool:build_progress_report", "text": st["report_text"]}],
@@ -207,18 +251,21 @@ def _read_page(page_id: str) -> dict:
     return middleware.call_with_retry(mcp_client.call_tool, "get_page", {"page_id": page_id}, retries=0)
 
 
-def resume_meeting(saved: dict, approval: str) -> dict:
+def resume_meeting(saved: dict, approval: str, edits=None) -> dict:
     """api가 PM·PL 권한을 확인한 뒤 호출한다. LangGraph interrupt()를 Command(resume=...)로 재개.
-    응답에는 게시 결과와 재개 이후 trace만 담는다(초안·contexts 없음)."""
+    approval=edit이면 고친 제목·본문(edits)으로 게시한다. 응답에는 게시 결과와 재개 이후 trace만 담는다(초안·contexts 없음)."""
     before = len(_flow.graph.get_state({"configurable": {"thread_id": saved["graph_thread"]}}).values.get("log", []))
-    st = _flow.resume(saved["graph_thread"], approval)
+    decision = approval if approval != "edit" else {"action": "edit", "title": getattr(edits, "title", None),
+                                                    "body": getattr(edits, "body", None)}
+    st = _flow.resume(saved["graph_thread"], decision)
     trace = st["log"][before:]
     if approval == "reject":
         answer = "반려되어 게시하지 않았습니다."
     elif st.get("error"):
         answer = f"게시 실패(게시하지 않음): {st['error']}"
     else:
-        answer = f"승인되어 Confluence에 게시했습니다: {st['page_id']} (이메일·전화번호 마스킹 적용 후 게시)"
+        head = "수정 내용을 반영해 승인되어" if approval == "edit" else "승인되어"
+        answer = f"{head} Confluence에 게시했습니다: {st['page_id']} (이메일·전화번호 마스킹 적용 후 게시)"
     return {"answer": answer, "contexts": [], "trace": trace, "pending_approval": False}
 
 
@@ -238,21 +285,23 @@ def handle(req, route: str) -> dict:
     if route == "meeting_material":
         return answer_meeting(req.role)
     if route == "progress":
-        return answer_progress(req.question, req.role, req.user_id, req.thread_id)
-    return answer_docs_qa(req.question, req.role, req.user_id)
+        return answer_progress(req.question, req.role, req.user_id, req.thread_id, getattr(req, "focus", None))
+    return answer_docs_qa(req.question, req.role, req.user_id, getattr(req, "focus", None))
 
 
 def reset_memory() -> None:
     """진척 에이전트 대화 기억만 비운다 (평가에서 케이스마다 호출해 실행 순서 의존을 없앤다)."""
     global _memory
-    from langgraph.checkpoint.memory import InMemorySaver
-    _memory = InMemorySaver()
+    from src import state
+    _memory = state.checkpointer()
 
 
-def reset() -> None:
-    """평가 실행 전 고정 상태로 초기화 (대화 기억·장기 메모리·런타임 인덱스)."""
+def reset(keep_persistent: bool = False) -> None:
+    """평가 실행 전 고정 상태로 초기화 (대화 기억·장기 메모리·런타임 인덱스).
+    keep_persistent=True(서버 기동)이고 STATE_DB가 있으면 저장된 장기 메모리(회의 스냅샷)는 지우지 않는다."""
+    from src import state
     reset_memory()
-    if _flow is not None:
+    if _flow is not None and not (keep_persistent and state.persistent()):
         _flow.reset_store()
     retriever.RUNTIME_INDEX.clear()
 
@@ -266,6 +315,6 @@ def setup() -> None:
     guardrails.set_llm_classifier(guardrails.make_llm_classifier(llm))  # 정규식 다음 2차 입력 검사
     retriever.set_embedder(config.get_embeddings())
     _flow = meeting.MeetingFlow(llm, _publish, _read_page)
-    reset()
+    reset(keep_persistent=True)  # 서버 기동: 영구 저장된 회의 스냅샷은 유지
     api.set_handler(handle)
     api.set_graph_resume(resume_meeting)

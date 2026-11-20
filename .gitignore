@@ -20,6 +20,10 @@ venv/
 # 실행 산출물
 logs/
 data/generated/
+data/state/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
 
 # 에디터
 .vscode/

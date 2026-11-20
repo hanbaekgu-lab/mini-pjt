@@ -74,7 +74,9 @@ def test_docs_qa_last_week_resolves_to_previous_week_minutes():
     config.set_llm(RunnableLambda(llm))
     out = agent.answer_docs_qa("지난주 액션아이템 중에 아직 완료 안 된 게 뭐야?", "pm", "pm01")
     ids = [c["doc_id"] for c in out["contexts"]]
-    assert ids[0] == "MIN-2026-W46" and not {"MIN-2026-W45", "MIN-2026-W47"} & set(ids)
+    # 검색 1순위는 지난주 회의록이고, 답이 기댄 기준 정보(지난주 = W46)는 검색 문서 뒤에 근거로 함께 돌려준다
+    assert ids[0] == "MIN-2026-W46" and ids[-1] == "tool:week_note" and not {"MIN-2026-W45", "MIN-2026-W47"} & set(ids)
+    assert "MIN-2026-W46(2026-11-13)" in out["contexts"][-1]["text"]
     prompt = seen[0]
     assert "[기준 정보]" in prompt and "2026-11-09(월) 주" in prompt and "MIN-2026-W46(2026-11-13)" in prompt
     # 액션아이템 줄(상태 포함)이 가드레일 정리 후에도 그대로 LLM 문맥에 들어간다
@@ -87,6 +89,26 @@ def test_docs_qa_week_note_only_with_filter_lever(monkeypatch):
     monkeypatch.setenv("RAG_LEVERS", "dense")
     from src import retriever
     assert retriever.week_note("지난주 액션아이템 뭐야?") == ""
+    assert retriever.week_context("지난주 액션아이템 뭐야?") is None
+
+
+def test_week_context_only_for_relative_week_questions():
+    from src import retriever
+    assert retriever.week_context("지난 회의에서 어떤 조치를 하기로 했어?")["doc_id"] == "tool:week_note"
+    # 상대 주차가 없는 질문은 기준 정보를 답에 쓰지 않으므로 근거에 넣지 않는다
+    assert retriever.week_context("커밋 메시지는 어떤 형식으로 써야 해?") is None
+    config.set_llm(fake([AIMessage("커밋 메시지는 '[화면ID] 작업 요약' 형식이다. [RULE-COMMIT]")]))
+    out = agent.answer_docs_qa("커밋 메시지는 어떤 형식으로 써야 해?", "developer", "dev01")
+    assert all(not c["doc_id"].startswith("tool:") for c in out["contexts"])
+
+
+def test_grounded_prompt_keeps_document_action_item_status():
+    # 이미 완료된 액션아이템을 '~하기로 했다'로 쓰던 오류(3번) 방지
+    assert "완료·미완료 상태를 문서 표기 그대로" in agent.GROUNDED_PROMPT
+    assert "완료·미완료" not in agent.BASELINE_PROMPT  # 1차 baseline은 사전 고정 그대로
+    # 두 가지 이상을 묻는 질문은 각 부분을 질문의 대상·핵심어로 시작해 답하되, 목록·표 형식은 유지한다
+    assert "각 부분을 질문의 대상과 핵심어를 넣은 문장으로 시작" in agent.GROUNDED_PROMPT
+    assert "목록·표 형식은 그대로" in agent.GROUNDED_PROMPT and "각 부분" not in agent.BASELINE_PROMPT
 
 
 def test_progress_react_calls_tools_and_keeps_tool_numbers():
@@ -337,3 +359,202 @@ def test_bedrock_clients_have_explicit_timeout_and_retries():
     c = config.boto_config()
     assert c.read_timeout == 120 and c.connect_timeout == 10
     assert c.retries == {"max_attempts": 3, "mode": "standard"}
+
+
+def test_progress_tool_rejects_malformed_screen_id_and_agent_recovers():
+    """형식이 틀린 화면 ID는 도구 실행 전에 검증 오류로 LLM에 돌아가고, LLM이 고쳐 다시 호출한다."""
+    bad = [{"name": "calc_progress", "args": {"screen_id": "scr-a01"}, "id": "1"}]
+    good = [{"name": "calc_progress", "args": {"screen_id": "SCR-A01-03"}, "id": "2"}]
+    config.set_llm(fake([AIMessage("", tool_calls=bad), AIMessage("", tool_calls=good), AIMessage("SCR-A01-03 현황입니다.")]))
+    agent.reset()
+    out = agent.answer_progress("SCR-A01-03 진척 알려줘", "pm", "pm01")
+    assert [t["input"]["tool"] for t in out["trace"] if t["step"] == "tool_call"] == ["calc_progress"]  # 실제 실행은 1번
+    assert "SCR-A01-03" in out["answer"]
+
+
+def test_progress_agent_tool_calls_are_capped():
+    """도구를 끝없이 부르는 LLM이어도 한 번 실행에서 TOOL_CALL_LIMIT까지만 실행된다."""
+    loop = [AIMessage("", tool_calls=[{"name": "calc_progress", "args": {}, "id": f"c{i}"}]) for i in range(15)]
+    config.set_llm(fake(loop + [AIMessage("요약입니다.")]))
+    agent.reset()
+    out = agent.answer_progress("내 진척률 알려줘", "developer", "dev01")
+    n = sum(1 for t in out["trace"] if t["step"] == "tool_call")
+    assert 1 <= n <= agent.TOOL_CALL_LIMIT and "[도구 계산 결과]" in out["answer"]
+
+
+def test_meeting_edit_then_approve_publishes_edited_title_and_body():
+    """HITL 수정 후 승인: PL이 제목·본문을 고쳐 승인하면 고친 내용으로 게시하고, 구성원 이름은 지우고 연락처는 가린다."""
+    llm = _meeting_llm()
+    wire(llm)
+    supervisor.set_llm_router(supervisor.make_llm_router(llm))
+    client = TestClient(api.app)
+    d = post_query(client, {"question": "이번 주 회의 자료 만들어줘", "user_id": "pl01", "role": "pl"}).json()
+    body = "## 결정사항\n- 결제 화면은 강앙리 확인 후 배포 (문의 ang.kang@example.com)\n\n## 액션아이템\n- [ ] 배포 체크리스트 점검"
+    ok = post_query(client, {"question": "고쳐서 승인", "user_id": "pl01", "role": "pl", "thread_id": d["thread_id"],
+                             "approval": "edit", "edits": {"title": "주간회의 자료 2026-11-16 (수정)", "body": body}}).json()
+    assert "수정 내용을 반영해 승인되어" in ok["answer"] and ok["pending_approval"] is False and ok["contexts"] == []
+    assert any(t["step"] == "hitl_edit" and t["output"] == "title,body" for t in ok["trace"])
+    page = confluence.get_page(confluence.list_pages()[0])
+    assert page["title"] == "주간회의 자료 2026-11-16 (수정)"
+    assert "배포 체크리스트 점검" in page["body"] and "강앙리" not in page["body"] and "ang.kang@" not in page["body"]
+    assert page["body"].rstrip().endswith(agent.PUBLISH_FOOTER)
+    snap = {it.key: it.value for it in agent._flow.snapshots()}["2026-11-16"]
+    assert snap["action_items"] == ["배포 체크리스트 점검"]  # 수정본의 액션아이템이 다음 주 '지난주'가 된다
+    again = post_query(client, {"question": "다시", "user_id": "pl01", "role": "pl", "thread_id": d["thread_id"],
+                                "approval": "approve"}).json()
+    assert again["answer"] == ok["answer"] and len(confluence.list_pages()) == 1  # 멱등
+
+
+def test_meeting_edit_by_developer_is_denied():
+    llm = _meeting_llm()
+    wire(llm)
+    supervisor.set_llm_router(supervisor.make_llm_router(llm))
+    client = TestClient(api.app)
+    d = post_query(client, {"question": "이번 주 회의 자료 만들어줘", "user_id": "pm01", "role": "pm"}).json()
+    r = post_query(client, {"question": "고쳐서 승인", "user_id": "dev01", "role": "developer", "thread_id": d["thread_id"],
+                            "approval": "edit", "edits": {"body": "## 결정사항\n- 임의 수정"}}).json()
+    assert r["answer"] == "해당 정보는 조회 권한이 없습니다" and confluence.list_pages() == []
+
+
+# --- Replan: 단계 실패 시 다시 시도·건너뛰기·중단 ---
+def _flow_with(replan_action, monkeypatch, fail_step, fail_times=99):
+    llm = fake(Plan=meeting.Plan(steps=list(meeting.STEPS)),
+               MeetingDraft=meeting.MeetingDraft(decisions=["결정"], blockers=["블로커"], action_items=["할 일"]),
+               Replan=meeting.Replan(action=replan_action, reason="테스트"))
+    flow = meeting.MeetingFlow(llm, lambda t, b: "p")
+    orig, n = getattr(flow, "_" + fail_step), {"calls": 0}
+
+    def flaky(state):
+        n["calls"] += 1
+        if n["calls"] <= fail_times:
+            raise TimeoutError("MCP 타임아웃")
+        return orig(state)
+    monkeypatch.setattr(flow, "_" + fail_step, flaky)
+    return flow, n
+
+
+def test_replan_retry_recovers_transient_failure(monkeypatch):
+    flow, n = _flow_with("retry", monkeypatch, "check_previous_meeting", fail_times=1)
+    _, st = flow.start()
+    assert n["calls"] == 2 and st.get("body") and not st.get("error")
+    rp = [t for t in st["log"] if t["step"] == "replan"]
+    assert rp[0]["output"]["action"] == "retry" and rp[0]["input"]["failed_step"] == "check_previous_meeting"
+
+
+def test_replan_skips_optional_step_and_still_drafts(monkeypatch):
+    flow, n = _flow_with("skip", monkeypatch, "check_previous_meeting")
+    _, st = flow.start()
+    assert n["calls"] == 1 and "## 결정사항" in st["body"]  # 지난주 확인 없이도 초안 작성 → 승인 대기
+
+
+def test_replan_cannot_skip_required_step_and_aborts(monkeypatch):
+    flow, n = _flow_with("skip", monkeypatch, "collect_progress")  # LLM이 skip이라 해도 필수 단계는 건너뛸 수 없다
+    _, st = flow.start()
+    assert n["calls"] == 2 and st.get("error") and not st.get("body")  # 1회 재시도 후 중단, 승인 대기 없음
+    acts = [t["output"]["action"] for t in st["log"] if t["step"] == "replan"]
+    assert acts == ["retry", "abort"]
+
+
+def test_aborted_meeting_returns_error_without_pending(monkeypatch):
+    llm = _meeting_llm()
+    wire(llm)
+    monkeypatch.setattr(agent._flow, "_collect_progress", lambda s: (_ for _ in ()).throw(RuntimeError("DB 없음")))
+    out = agent.answer_meeting("pm")
+    assert out["pending_approval"] is False and "만들지 못했습니다" in out["answer"] and "_draft" not in out
+
+
+# --- 영구 저장 (STATE_DB): 재시작해도 승인 대기·장기 메모리·thread 기록 유지 ---
+def test_pending_approval_survives_restart_with_state_db(tmp_path, monkeypatch):
+    from src import state
+    monkeypatch.setenv("STATE_DB", str(tmp_path / "state" / "agent.sqlite"))
+    state.close()
+    llm = _meeting_llm()
+    wire(llm)
+    supervisor.set_llm_router(supervisor.make_llm_router(llm))
+    client = TestClient(api.app)
+    d = post_query(client, {"question": "이번 주 회의 자료 만들어줘", "user_id": "pm01", "role": "pm"}).json()
+    assert d["pending_approval"] is True and confluence.list_pages() == []
+
+    # 재시작 흉내: 메모리의 그래프·thread 기록·세션을 버리고 같은 DB에서 다시 만든다
+    api.THREADS.clear()
+    api.SESSIONS.clear()
+    state.close()
+    agent._flow = meeting.MeetingFlow(llm, agent._publish)
+    agent.reset(keep_persistent=True)
+    api.THREADS.update(state.load_threads())
+    assert api.THREADS[d["thread_id"]]["status"] == "pending"
+    assert {it.key for it in agent._flow.snapshots()} == {"2026-11-09"}  # 장기 메모리(지난주 스냅샷)도 남아 있다
+
+    ok = post_query(client, {"question": "승인", "user_id": "pm01", "role": "pm", "thread_id": d["thread_id"],
+                             "approval": "approve"}).json()  # 다시 로그인한 세션으로 승인
+    assert "게시했습니다" in ok["answer"] and len(confluence.list_pages()) == 1
+    assert state.load_threads()[d["thread_id"]]["status"] == "approved"
+    assert {it.key for it in agent._flow.snapshots()} == {"2026-11-09", "2026-11-16"}
+    state.close()
+
+
+def test_state_defaults_to_memory_without_env(monkeypatch):
+    from langgraph.checkpoint.memory import InMemorySaver
+    from langgraph.store.memory import InMemoryStore
+    from src import state
+    monkeypatch.delenv("STATE_DB", raising=False)
+    assert isinstance(state.checkpointer(), InMemorySaver) and isinstance(state.store(), InMemoryStore)
+    assert state.load_threads() == {}
+    state.save_thread("x", {"a": 1})  # 메모리 모드: 아무것도 저장하지 않는다
+    assert state.load_threads() == {}
+
+
+# --- 다중 의도: 진척 수치 + 문서 내용을 함께 묻는 질문 ---
+def test_router_returns_multi_only_for_progress_plus_docs():
+    mk = lambda **kw: supervisor.make_llm_router(fake(RouteDecision=supervisor.RouteDecision(reason="r", **kw)))  # noqa: E731
+    assert mk(route="progress", also="docs_qa")("q") == supervisor.MULTI
+    assert mk(route="docs_qa", also="progress")("q") == supervisor.MULTI   # 순서와 관계없이 진척 → 문서
+    assert mk(route="docs_qa", also="docs_qa")("q") == "docs_qa"
+    assert mk(route="meeting_material", also="progress")("q") == "meeting_material"  # 회의 자료는 묶지 않는다
+    assert mk(route="docs_qa")("q") == "docs_qa"
+
+
+def test_multi_intent_query_answers_progress_then_docs():
+    """다중 의도: 진척 → 문서 순서로 두 핸들러를 부르고 답·근거·trace를 합친다 (가드레일은 질문 전체로 한 번)."""
+    seen = []
+
+    def handler(req, route):
+        seen.append(route)
+        # 질문(검색어)은 그대로 두고, 역할 안내는 focus로 넘긴다: 진척 담당은 수치만, 문서 담당은 이유·결정·조치만
+        assert req.question == "SCR-C02-01 진척률이랑 지연 이유 알려줘" and req.focus == api.MULTI_HINT[route]
+        doc = {"progress": ("SCR-C02-01 진척률 50%", "tool:build_progress_report"),
+               "docs_qa": ("PG사 계정 지연이 원인 [MIN-2026-W46]", "MIN-2026-W46")}[route]
+        return {"answer": doc[0], "contexts": [{"doc_id": doc[1], "text": doc[0]}],
+                "trace": [{"step": "tool_call", "input": {"tool": route}, "output": "ok"}], "pending_approval": False}
+    api.set_handler(handler)
+    supervisor.set_llm_router(lambda q: supervisor.MULTI)
+    d = post_query(TestClient(api.app), {"question": "SCR-C02-01 진척률이랑 지연 이유 알려줘",
+                                         "user_id": "pm01", "role": "pm"}).json()
+    assert seen == ["progress", "docs_qa"]
+    assert d["answer"] == "[진척]\nSCR-C02-01 진척률 50%\n\n[문서 근거]\nPG사 계정 지연이 원인 [MIN-2026-W46]"
+    assert next(t for t in d["trace"] if t["step"] == "supervisor_route")["output"] == supervisor.MULTI
+    assert [t["input"] for t in d["trace"] if t["step"] == "multi_intent"] == ["progress", "docs_qa"]
+    assert [c["doc_id"] for c in d["contexts"]] == ["tool:build_progress_report", "MIN-2026-W46"]
+
+
+
+def test_docs_focus_goes_to_prompt_not_retrieval():
+    seen = []
+
+    def llm(prompt):
+        seen.append(prompt.to_string())
+        return AIMessage("PG사 테스트 계정 발급 지연 [MIN-2026-W46]")
+    config.set_llm(RunnableLambda(llm))
+    q = "SCR-C02-01 진척률이랑 지연 이유 알려줘"
+    plain = agent.answer_docs_qa(q, "pm", "pm01")
+    focused = agent.answer_docs_qa(q, "pm", "pm01", focus=api.MULTI_HINT["docs_qa"])
+    assert [c["doc_id"] for c in plain["contexts"]] == [c["doc_id"] for c in focused["contexts"]]  # 검색 결과 동일
+    assert "[답변 범위]" in seen[1] and "[답변 범위]" not in seen[0]
+
+
+def test_multi_intent_drops_out_of_scope_no_answer_from_docs_part():
+    na = agent.NO_ANSWER
+    mixed = f"## 지연 화면\n\n{na}\n\n## 지난 회의 결정사항\n\n- 목 PG 서버로 단위테스트 [MIN-2026-W46]"
+    assert api._drop_no_answer(mixed) == "## 지난 회의 결정사항\n\n- 목 PG 서버로 단위테스트 [MIN-2026-W46]"
+    assert api._drop_no_answer(na) == na                       # 내용이 전혀 없으면 '근거 없음'은 그대로 둔다
+    assert api._drop_no_answer("이유는 PG 지연 [MIN-2026-W46]") == "이유는 PG 지연 [MIN-2026-W46]"

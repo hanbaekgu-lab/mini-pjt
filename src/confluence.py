@@ -11,6 +11,8 @@ import base64
 import json
 import os
 import re
+import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime
@@ -83,15 +85,57 @@ def real_settings() -> dict:
     return s
 
 
+# 실패 유형별 처리: 429(요청 과다)·503(일시 불가)는 처리되지 않은 요청이라 짧게 기다렸다 다시 보낸다(최대 2회, 1초→2초,
+# Retry-After가 있으면 따르되 최대 4초 — MCP 내부 대기 10초 안에 끝나게). 401·403·404 등은 다시 보내도 같으므로 바로 실패한다.
+RETRY_STATUS = {429, 503}
+MAX_HTTP_RETRIES = 2
+HTTP_KIND = {401: "인증 실패", 403: "권한 없음", 404: "찾을 수 없음", 429: "요청 과다", 503: "일시적으로 사용할 수 없음"}
+
+
+class ConfluenceHTTPError(RuntimeError):
+    """Confluence REST 오류. 메시지에는 토큰·계정 같은 비밀 값을 싣지 않는다."""
+
+    def __init__(self, msg: str, code: int | None = None):
+        super().__init__(msg)
+        self.code = code
+
+
+def _sleep(seconds: float) -> None:  # 테스트에서 바꿔 끼울 수 있게 분리
+    time.sleep(seconds)
+
+
+def redact(text: str, settings: dict) -> str:
+    """오류 메시지·로그에서 인증 정보(계정, API 토큰, Basic 토큰)를 [REDACTED]로 바꾼다."""
+    secrets = [settings.get("CONFLUENCE_API_TOKEN", ""), settings.get("CONFLUENCE_USER", "")]
+    if all(secrets):
+        secrets.append(base64.b64encode(f"{secrets[1]}:{secrets[0]}".encode()).decode())
+    for v in sorted(filter(None, secrets), key=len, reverse=True):
+        text = text.replace(v, "[REDACTED]")
+    return text
+
+
 def _request(method: str, path: str, payload: dict | None = None) -> dict:
     s = real_settings()
     token = base64.b64encode(f"{s['CONFLUENCE_USER']}:{s['CONFLUENCE_API_TOKEN']}".encode()).decode()
-    req = urllib.request.Request(
-        s["CONFLUENCE_BASE_URL"].rstrip("/") + path, method=method,
-        data=json.dumps(payload).encode() if payload is not None else None,
-        headers={"Authorization": f"Basic {token}", "Content-Type": "application/json", "Accept": "application/json"})
-    with urllib.request.urlopen(req, timeout=10) as resp:
-        return json.loads(resp.read().decode() or "{}")
+    for attempt in range(MAX_HTTP_RETRIES + 1):
+        req = urllib.request.Request(
+            s["CONFLUENCE_BASE_URL"].rstrip("/") + path, method=method,
+            data=json.dumps(payload).encode() if payload is not None else None,
+            headers={"Authorization": f"Basic {token}", "Content-Type": "application/json", "Accept": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                return json.loads(resp.read().decode() or "{}")
+        except urllib.error.HTTPError as e:
+            if e.code in RETRY_STATUS and attempt < MAX_HTTP_RETRIES:
+                after = (e.headers or {}).get("Retry-After") if hasattr(e, "headers") else None
+                _sleep(min(float(after) if after and str(after).isdigit() else 2 ** attempt, 4.0))
+                continue
+            kind = HTTP_KIND.get(e.code, "HTTP 오류")
+            raise ConfluenceHTTPError(redact(f"Confluence {kind}({e.code}): {method} {path.split('?')[0]}", s),
+                                      e.code) from None
+        except urllib.error.URLError as e:  # 연결 실패: 주소·네트워크 문제라 재시도하지 않는다
+            raise ConfluenceHTTPError(redact(f"Confluence 연결 실패: {e.reason}", s)) from None
+    raise ConfluenceHTTPError("Confluence 재시도 초과")  # 도달하지 않음
 
 
 def _real_create(title: str, body: str) -> dict:
@@ -115,7 +159,12 @@ def _real_create(title: str, body: str) -> dict:
 
 
 def _real_get(page_id: str) -> dict | None:
-    res = _request("GET", f"/rest/api/content/{urllib.parse.quote(page_id)}?expand=body.storage")
+    try:
+        res = _request("GET", f"/rest/api/content/{urllib.parse.quote(page_id)}?expand=body.storage")
+    except ConfluenceHTTPError as e:
+        if e.code == 404:  # 없는 페이지는 None (MCP 서버가 'page not found'로 알린다)
+            return None
+        raise
     if not res.get("id"):
         return None
     return {"page_id": str(res["id"]), "title": res["title"], "body": res["body"]["storage"]["value"]}

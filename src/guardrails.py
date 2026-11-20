@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 from typing import Callable, Literal, Optional
 
 from pydantic import BaseModel, Field
@@ -111,7 +112,7 @@ def llm_check(question: str) -> tuple[dict | None, dict | None]:
     if _llm_classifier is None:
         return None, None
     try:
-        v = _llm_classifier(question)
+        v = _llm_classifier(normalize(question))
     except Exception as e:  # noqa: BLE001  fail-open: 정규식·범위 고정 도구가 남아 있다
         return None, {"step": "guardrail", "input": "llm_classifier", "output": f"error(통과): {type(e).__name__}"}
     if v.category == "injection":
@@ -125,12 +126,24 @@ def llm_check(question: str) -> tuple[dict | None, dict | None]:
     return None, {"step": "guardrail", "input": "llm_classifier", "output": "passed"}
 
 
+_INVISIBLE = re.compile("[\u00ad\u200b-\u200f\u202a-\u202e\u2060-\u2064\ufeff]")  # soft hyphen·zero-width·방향 제어 문자
+
+
+def normalize(text: str) -> str:
+    """검사 전 입력 정규화: 전각·호환 문자를 NFKC로 펴고(ｉｇｎｏｒｅ → ignore), 보이지 않는 문자(zero-width 등)를 지우고,
+    공백을 하나로 모은다. 'ignore'에 zero-width 문자를 끼우는 식으로 정규식을 피하는 입력을 막는다."""
+    text = _INVISIBLE.sub("", unicodedata.normalize("NFKC", text))
+    return re.sub(r"\s+", " ", text).strip()
+
+
 def is_injection(text: str) -> bool:
+    text = normalize(text)
     return any(p.search(text) for p in INJECTION_PATTERNS)
 
 
 def is_ranking(text: str) -> bool:
     """사람을 평가·비교·줄 세우는 요청인가 (사람 지칭 또는 이름 + 평가·비교 표현)."""
+    text = normalize(text)
     if _hit(RANKING_ALWAYS, text):
         return True
     return bool(RANKING_ACT.search(text)) and bool(RANKING_PEOPLE.search(text) or mentioned_people(text))
@@ -152,6 +165,7 @@ def check_question(question: str, user_id: str, role: str) -> dict | None:
         return {"policy": policy, "answer": answer,
                 "trace": [{"step": "guardrail", "input": policy, "output": "refused"}]}
 
+    question = normalize(question)  # 이후 모든 검사는 정규화한 문장으로 한다
     if is_injection(question):
         return block("direct_injection", INJECTION_REFUSAL)
     if is_ranking(question):

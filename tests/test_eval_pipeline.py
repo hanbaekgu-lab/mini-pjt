@@ -216,6 +216,23 @@ def test_rescore_computes_new_metrics_from_stored_answers(tmp_path, monkeypatch)
     assert "faithfulness" not in res["cases"][1]  # 설명형이 아닌 케이스는 건드리지 않는다
 
 
+def test_rescore_rebuilds_week_note_context(tmp_path, monkeypatch):
+    """'지난주' 질문의 기준 정보 근거(tool:week_note)는 저장되지 않으므로 재채점 때 질문에서 다시 만든다."""
+    run = {"answer": "지난주 미완료 액션아이템 [MIN-2026-W46]", "context_doc_ids": ["MIN-2026-W46", "tool:week_note"],
+           "faithfulness": 0.8}
+    stored = {"round": 2, "config": {}, "summary": {}, "cases": [{"id": 7, "runs": [run], "faithfulness": 0.8}]}
+    (tmp_path / "evaluation").mkdir()
+    (tmp_path / "evaluation/round2_results.json").write_text(json.dumps(stored), encoding="utf-8")
+    monkeypatch.setattr(run_eval, "ROOT", tmp_path)
+    monkeypatch.setattr(config, "get_llm", lambda: FakeLLM(messages=iter([])))
+    monkeypatch.setenv("RAG_LEVERS", "hybrid,expand,filter,grounded")
+    seen = []
+    monkeypatch.setattr(run_eval, "ragas_scores", lambda q, a, ctx, ref, names=run_eval.RAGAS_METRICS:
+                        seen.append([c["doc_id"] for c in ctx]) or {k: 1.0 for k in names})
+    res = run_eval.rescore_ragas(2, ("faithfulness",))
+    assert seen == [["MIN-2026-W46", "tool:week_note"]] and res["cases"][0]["faithfulness"] == 1.0
+
+
 def test_rescore_selected_metric_keeps_other_metrics(tmp_path, monkeypatch):
     """측정 결함을 고친 지표(answer_relevancy)만 다시 재고, 나머지 지표 값은 그대로 둔다."""
     run = {"answer": "커밋 메시지는 '[화면ID] 작업 요약' 형식 [RULE-COMMIT]", "context_doc_ids": ["RULE-COMMIT"],
@@ -246,3 +263,19 @@ def test_report_renders_four_metrics():
     for label in ("faithfulness(설명형) | 0.9000", "context recall(설명형) | 0.8500",
                   "context precision(설명형) | 0.8200", "answer relevancy(설명형) | -"):
         assert label in t
+
+
+def test_routing_test_set_is_well_formed_and_rule_fallback_floor():
+    """라우팅 정확도 세트: 형식 확인 + LLM이 실패할 때 쓰는 규칙 라우터의 최소 정확도(80%)."""
+    from src import supervisor
+    items = json.loads((run_eval.ROOT / "evaluation/routing_test.json").read_text(encoding="utf-8"))["items"]
+    assert len(items) >= 15 and len({i["id"] for i in items}) == len(items)
+    valid = set(supervisor.ROUTES) | {supervisor.MULTI}
+    assert all(set(i["expected"]) <= valid and i["expected"] for i in items)
+    assert {r for i in items for r in i["expected"]} == valid
+    multi = [i for i in items if i["multi_intent"]]
+    assert len(multi) >= 2 and all(i["expected"] == [supervisor.MULTI] for i in multi)
+    # 규칙 라우터(LLM 실패 시 대체)는 다중 의도를 나누지 않으므로, 다중 의도 항목은 둘 중 하나로 보내면 맞은 것으로 본다
+    accept = lambda i: i["expected"] + (i["expected"][0].split("+") if i["multi_intent"] else [])  # noqa: E731
+    hit = sum(supervisor.route(i["question"]) in accept(i) for i in items)
+    assert hit / len(items) >= 0.8

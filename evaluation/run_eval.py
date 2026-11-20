@@ -91,6 +91,14 @@ FIXES = [
     "도구가 이름을 ID로 바꾼 뒤 범위를 검사한다(진척 경로 공통, 1차 경로 영향 있음).",
     "게시된 회의 자료(약 1.6만 자)가 Titan 입력 한도를 넘어 이후 문서 Q&A가 실패했다. 긴 문서는 문단 조각으로 임베딩한다. "
     "평가는 생성 문서를 검색에서 빼므로 평가 수치에는 영향이 없다. Bedrock 클라이언트 타임아웃·재시도도 명시했다.",
+    "7번(지난주 액션아이템) faithfulness: '지난주 = W46'은 프롬프트의 [기준 정보]로만 LLM에 전달되고 근거(contexts)에는 "
+    "없어서 RAGAS가 '지난주' 주장을 근거 없음으로 판정했다. '지난주·지난 회의' 질문은 기준 정보를 근거로도 돌려준다"
+    "(검색 순위를 흐리지 않게 검색 문서 뒤에 둔다, 2차 레버 경로만).",
+    "3번(지연 이유와 조치): 회의록에 '완료'로 적힌 액션아이템(목 PG 서버 구성)을 '구성하기로 했다'로 쓴 실제 답변 오류. "
+    "grounded 프롬프트에 '액션아이템·결정사항은 담당자와 완료·미완료 상태를 문서 표기 그대로 쓴다'를 넣었다(2차 레버 경로만).",
+    "3번 answer relevancy(0.51): '왜 지연됐고, 어떤 조치를 하기로 했어?'처럼 두 가지를 묻는 질문에 두 내용을 섞어 답하자 RAGAS 역질문이 "
+    "한쪽만 담겼다. grounded 프롬프트에 '두 가지 이상을 물으면 각 부분을 질문의 대상·핵심어로 시작하는 문장으로 차례로 답하되 목록·표 "
+    "형식은 그대로 쓴다'를 넣었다(2차 레버 경로만). '소제목 대신 문장으로 답하라'는 이전 시도는 목록·요약을 한 문장으로 뭉쳐 되돌렸다.",
 ]
 # 최종 2차 결과에 남은 지표 한계 (고치지 않은 이유와 함께 리포트에 남긴다)
 KNOWN_LIMITS = [
@@ -98,7 +106,10 @@ KNOWN_LIMITS = [
     "문서별로 '이 문서만으로 reference에 이르는가'로 판정해 여러 문서를 합쳐야 하는 요약 질문은 모든 문서가 0이 된다(1차도 0.0). "
     "지표 정의라 바꾸지 않았고, 설명형 5건 평균이 기준(0.80)에 정확히 걸쳐 있다.",
     "1차 answer relevancy는 역질문 언어를 고친 기준으로 저장된 답변을 다시 채점한 값이다(나머지 지표·판정은 그대로).",
-    "3번 faithfulness 0.92, 7번 0.80: 답변 주장 일부를 RAGAS가 근거 문서로 뒷받침되지 않는다고 판정했다. judge 판정은 3회 모두 통과다.",
+    "3번 faithfulness 0.87: 3회 중 일부 실행에서 '지난 회의' 주장을 RAGAS가 근거 문서만으로는 확인하지 못한다고 판정했다"
+    "(회의록 날짜와 기준 주 안내를 함께 봐야 하는 주장). judge 판정은 3회 모두 통과다.",
+    "answer relevancy는 실행마다 흔들림이 크다(같은 코드 계열에서 0.80~0.94). 케이스당 3회 평균을 쓰지만 기준 근처에서는 "
+    "한 번의 실행으로 판단하지 않는다.",
     "judge(LLM) 판정은 실행마다 흔들릴 수 있어(근거 문장과 위반 플래그가 어긋나는 경우 등) 케이스당 3회 중 2회 통과 규칙으로 흡수한다. "
     "judge 프롬프트는 1·2차 공통이다.",
 ]
@@ -216,19 +227,22 @@ def rescore_ragas(round_no: int, names: tuple[str, ...] = RAGAS_METRICS) -> dict
     res = json.loads((ev / f"round{round_no}_results.json").read_text(encoding="utf-8"))
     rows = {int(r["id"]): r for r in load_rows()}
     docs = {d["doc_id"]: d for d in _corpus()}
-    config.get_llm().callbacks = [CallCounter()]
+    count_llm_calls()
     for case in res["cases"]:
         if "faithfulness" not in case:
             continue
         r = rows[case["id"]]
+        from src import retriever
+        wc = retriever.week_context(r["input"])  # 기준 정보 근거는 질문에서 결정적으로 다시 만든다
+        docs_q = {**docs, **({wc["doc_id"]: wc} if wc else {})}
         for run in case["runs"]:
-            if any(i not in docs for i in run["context_doc_ids"]):
+            if any(i not in docs_q for i in run["context_doc_ids"]):
                 # 근거 문서가 지금 코퍼스에 없으면(예: 평가 중 생성 문서, 임시 폴더라 삭제됨) 재구성할 수 없어 기존 점수를 유지하고
                 # 없는 지표는 None으로 두어 평균에서 뺀다
                 for k in RAGAS_METRICS:
                     run.setdefault(k, None)
                 continue
-            ctx = [docs[i] for i in run["context_doc_ids"]]
+            ctx = [docs_q[i] for i in run["context_doc_ids"]]
             run.pop("ragas_error", None)
             run.update(ragas_scores(r["input"], run["answer"], ctx, r["reference"], names=names))
         case.update(mean_metrics(case["runs"]))
@@ -240,6 +254,12 @@ def rescore_ragas(round_no: int, names: tuple[str, ...] = RAGAS_METRICS) -> dict
     res["config"]["ragas_rescored"] = (f"저장된 답변으로 {which}만 재채점 "
                                        f"(LLM 호출 {CallCounter.count}회, 에이전트·judge 판정 불변)")
     return res
+
+
+def count_llm_calls() -> None:
+    """LLM 호출 수 집계 콜백을 붙인다. 운영용 사용량 콜백(tracing.USAGE_HANDLER)은 그대로 둔다."""
+    llm = config.get_llm()
+    llm.callbacks = [c for c in (llm.callbacks or []) if not isinstance(c, CallCounter)] + [CallCounter()]
 
 
 def mean_metrics(items: list[dict]) -> dict:
@@ -346,7 +366,7 @@ def evaluate(round_no: int) -> dict:
     from src import agent
     os.environ["RAG_LEVERS"] = ROUND_LEVERS[round_no]
     agent.setup()
-    config.get_llm().callbacks = [CallCounter()]
+    count_llm_calls()
     rows = load_rows()
     judge_sha = hashlib.sha256((ROOT / "evaluation/judge_prompt.md").read_bytes()).hexdigest()[:12]
     runs = []
@@ -409,6 +429,35 @@ def fmt(v) -> str:
     return "-" if v is None else f"{v:.4f}"
 
 
+CATEGORY_ORDER = ("positive", "negative", "edge", "guardrail")
+
+
+def category_table(res: dict, prev: dict | None) -> list[str]:
+    """유형(category)별 통과 수. prev가 있으면 1차와 나란히 보여준다."""
+    def counts(r: dict) -> dict:
+        out: dict = {}
+        for c in r["cases"]:
+            p, t = out.get(c["category"], (0, 0))
+            out[c["category"]] = (p + c["pass"], t + 1)
+        return out
+    now, before = counts(res), counts(prev) if prev else {}
+    cats = [c for c in CATEGORY_ORDER if c in now] + sorted(set(now) - set(CATEGORY_ORDER))
+    head = ["## 유형별 통과", "", "| 유형 | " + ("1차 | 2차 |" if prev else "통과 |"), "|---|" + ("---|---|" if prev else "---|")]
+    rows = [f"| {c} | " + (f"{before.get(c, (0, 0))[0]} / {before.get(c, (0, 0))[1]} | " if prev else "")
+            + f"{now[c][0]} / {now[c][1]} |" for c in cats]
+    return head + rows + [""]
+
+
+def case_changes(res: dict, prev: dict) -> list[str]:
+    """1차 대비 케이스 변화: 개선(FAIL→PASS)·악화(PASS→FAIL) id 목록. 악화가 있으면 원인을 따로 확인해야 한다."""
+    before = {c["id"]: c["pass"] for c in prev["cases"]}
+    fixed = [c["id"] for c in res["cases"] if c["pass"] and before.get(c["id"]) is False]
+    regressed = [c["id"] for c in res["cases"] if not c["pass"] and before.get(c["id"]) is True]
+    fmt_ids = lambda ids: ", ".join(map(str, ids)) or "없음"  # noqa: E731
+    return ["## 1차 대비 케이스 변화", "", f"- 개선(1차 FAIL → 2차 PASS): {fmt_ids(fixed)}",
+            f"- 악화(1차 PASS → 2차 FAIL): {fmt_ids(regressed)}", ""]
+
+
 def write_report(res: dict, prev: dict | None) -> str:
     s, cfg = res["summary"], res["config"]
     name = {1: "1차 (dense-only baseline)", 2: "2차 (개선 레버 적용)"}[res["round"]]
@@ -433,6 +482,9 @@ def write_report(res: dict, prev: dict | None) -> str:
               *(f"| {METRIC_LABEL[k]}(설명형) | {fmt(p.get(k))} | {fmt(s.get(k))} | "
                 f"{'-' if p.get(k) is None or s.get(k) is None else f'{s[k] - p[k]:+.4f}'} |" for k in RAGAS_METRICS),
               f"| LLM 호출 | {prev['config'].get('llm_calls', '-')} | {cfg.get('llm_calls', '-')} | |", ""]
+    L += category_table(res, prev)
+    if prev:
+        L += case_changes(res, prev)
     if res["round"] == 2:
         L += ["## 2차 개선 중 고친 결함", "",
               "1차는 다시 실행하지 않았으므로, '1차 경로 영향 있음' 항목은 1차 수치에 반영되지 않았다(비교 시 유의).", ""]

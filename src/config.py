@@ -33,8 +33,10 @@ def get_llm():
     global _llm
     if _llm is None:
         from langchain_aws import ChatBedrockConverse
+
+        from src import tracing
         _llm = ChatBedrockConverse(model=MODEL, region_name=region(), temperature=0, max_tokens=2048,
-                                   config=boto_config())
+                                   config=boto_config(), callbacks=[tracing.USAGE_HANDLER])  # 요청별 사용량 집계
     return _llm
 
 

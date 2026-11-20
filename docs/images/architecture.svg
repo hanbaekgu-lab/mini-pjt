@@ -34,8 +34,8 @@
   <text x="56" y="146" class="s">PM · PL · 개발자</text>
   <text x="56" y="168" class="f">POST /login {user_id}</text>
   <text x="56" y="186" class="f">→ session_token</text>
-  <text x="56" y="206" class="f">POST /query (Bearer)</text>
-  <text x="56" y="222" class="f">본문 {"question"}만</text>
+  <text x="56" y="206" class="f">POST /query (+/stream)</text>
+  <text x="56" y="222" class="f">Bearer + 본문 {"question"}</text>
 
   <!-- API · 세션 -->
   <rect x="270" y="100" width="220" height="128" rx="10" fill="#f1f5f9" stroke="#64748b" stroke-width="1.5"/>
@@ -59,7 +59,7 @@
   <text x="816" y="126" class="t">Supervisor</text>
   <text x="816" y="146" class="f">supervisor.py</text>
   <text x="816" y="168" class="s">구조화 출력 LLM 라우터</text>
-  <text x="816" y="186" class="s">요청당 1회 · 실패 시 규칙 라우팅</text>
+  <text x="816" y="186" class="s">요청당 1회 · 다중 의도: 진척+문서</text>
   <text x="816" y="204" class="s">→ 진척 / 문서 Q&amp;A / 회의 자료</text>
   <circle cx="966" cy="118" r="11" fill="#6366f1"/><text x="966" y="122" text-anchor="middle" class="p">9</text>
   <circle cx="990" cy="118" r="11" fill="#6366f1"/><text x="990" y="122" text-anchor="middle" class="p">1</text>
@@ -128,14 +128,14 @@
   <text x="876" y="356" class="s">1. 계획 (LLM 계획 → 고정 단계로 검증)</text>
   <text x="876" y="376" class="s">2. 진척 수집 (①의 결정적 계산)</text>
   <text x="876" y="396" class="s">3. 지난주 회의 확인 (MCP get_page · 스냅샷)</text>
-  <text x="876" y="416" class="s">4. 초안 (구조화 출력 · 실패 시 결정적 초안)</text>
+  <text x="876" y="416" class="s">4. 초안 (구조화 출력) · 단계 실패 시 Replan</text>
   <text x="876" y="436" class="b">5. interrupt() → PM/PL 승인 대기</text>
   <text x="876" y="456" class="s">6. 승인 시 게시 · 이번 주 스냅샷 저장</text>
   <text x="876" y="482" class="s">업무 단위만 (개인 이름·진척률 없음)</text>
   <text x="876" y="502" class="s">일정 대비 진척 · 지난주 대비 ▲▼ · 이슈 추적</text>
   <rect x="876" y="520" width="348" height="50" rx="8" fill="#ffffff" stroke="#f0abfc"/>
   <text x="888" y="541" class="b">HITL: 응답에 thread_id + pending_approval</text>
-  <text x="888" y="560" class="s">같은 thread로 approval=approve|reject (소유자 확인)</text>
+  <text x="888" y="560" class="s">approval=approve|reject|edit (고쳐서 승인)</text>
   <circle cx="1172" cy="304" r="11" fill="#a21caf"/><text x="1172" y="308" text-anchor="middle" class="p">10</text>
   <circle cx="1196" cy="304" r="11" fill="#a21caf"/><text x="1196" y="308" text-anchor="middle" class="p">7</text>
   <circle cx="1220" cy="304" r="11" fill="#a21caf"/><text x="1220" y="308" text-anchor="middle" class="p">1</text>
@@ -148,9 +148,9 @@
   <!-- 미들웨어·메모리 -->
   <rect x="40" y="620" width="590" height="96" rx="10" fill="#fefce8" stroke="#ca8a04" stroke-width="1.5"/>
   <text x="56" y="646" class="t">미들웨어 · 메모리</text>
-  <text x="56" y="666" class="f">middleware.py · LangGraph checkpointer / InMemoryStore</text>
+  <text x="56" y="666" class="f">middleware.py · state.py (STATE_DB면 SQLite 영구 저장)</text>
   <text x="56" y="688" class="s">출력 단계 PII 마스킹(answer·contexts·trace·게시물) · 타임아웃 · 재시도(게시는 1회만)</text>
-  <text x="56" y="706" class="s">thread별 대화 기억 · 주차별 회의 스냅샷(장기 메모리: 지난주 대비·이슈 추적)</text>
+  <text x="56" y="706" class="s">승인 대기·thread 기록·회의 스냅샷(장기 메모리) · LLM 사용량 집계</text>
   <circle cx="586" cy="638" r="11" fill="#ca8a04"/><text x="586" y="642" text-anchor="middle" class="p">8</text>
   <circle cx="610" cy="638" r="11" fill="#ca8a04"/><text x="610" y="642" text-anchor="middle" class="p">10</text>
 
@@ -158,7 +158,7 @@
   <rect x="660" y="620" width="580" height="96" rx="10" fill="#f0fdfa" stroke="#0f766e" stroke-width="1.5"/>
   <text x="676" y="646" class="t">Confluence (MCP)</text>
   <text x="676" y="666" class="f">mcp_confluence_server.py (fastmcp, stdio) ↔ mcp_client.py (langchain-mcp-adapters)</text>
-  <text x="676" y="688" class="s">get_page · create_page · search_pages · Markdown → Confluence 저장 형식 변환기</text>
+  <text x="676" y="688" class="s">tool get_page·create_page·search_pages · resource·prompt · Markdown 변환기</text>
   <text x="676" y="706" class="s">CONFLUENCE_MODE=fake(로컬 .md·.storage.xml) | real(REST, .env 주소·인증)</text>
   <circle cx="1220" cy="638" r="11" fill="#0f766e"/><text x="1220" y="642" text-anchor="middle" class="p">5</text>
 
@@ -171,7 +171,7 @@
   <rect x="40" y="748" width="590" height="110" rx="10" class="box"/>
   <text x="56" y="774" class="t">Trace</text>
   <text x="56" y="794" class="f">tracing.py</text>
-  <text x="56" y="816" class="s">응답 trace: 가드레일 → 라우팅 → 도구 호출 → 승인·게시 (마스킹 후 기록)</text>
+  <text x="56" y="816" class="s">trace: 가드레일 → 라우팅 → 도구 → 승인·게시 → llm_usage (SSE로 실시간 진행)</text>
   <text x="56" y="836" class="s">LANGSMITH_API_KEY 있으면 LangSmith, 없으면 logs/trace/ JSON</text>
   <circle cx="610" cy="766" r="11" fill="#475569"/><text x="610" y="770" text-anchor="middle" class="p">11</text>
 

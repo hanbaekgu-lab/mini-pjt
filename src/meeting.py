@@ -12,7 +12,7 @@ from __future__ import annotations
 import re
 import uuid
 from datetime import date
-from typing import Optional, TypedDict
+from typing import Literal, Optional, TypedDict
 
 from pydantic import BaseModel, Field
 
@@ -25,6 +25,21 @@ PUBLISH_FOOTER = ("※ 이 문서는 참석자 공용 자료로, 개인 이름·
 DRAFT_MAX_ITEMS = 5    # LLM 초안 섹션별 항목 수 상한(출력 토큰 한도 안에서 구조화 출력이 잘리지 않게)
 LONG_ISSUE_WEEKS = 8  # 이 주수 이상 지속된 미해결 이슈는 기본 초안의 블로커로 올린다
 SNAPSHOT_NS = ("meeting_snapshot",)  # 장기 메모리 네임스페이스 (키: 주 시작일)
+
+
+MATERIAL_SECTIONS = ("진척 현황", "이슈 추적", "지난주 액션아이템 이행", "계획 대비 지연·불일치·미연결",
+                     "결정사항", "블로커", "액션아이템")
+
+
+def material_guide(week_start: str) -> str:
+    """주간 회의 자료 작성 지침 (MCP prompt로도 노출). render()의 섹션 구성·공개 원칙과 같은 내용이다."""
+    return (f"기준 주 {week_start} 주간 회의 자료를 아래 순서의 섹션으로 작성한다: "
+            + " → ".join(f"## {x}" for x in MATERIAL_SECTIONS) + ".\n"
+            "- 참석자 전원에게 공유되는 자료이므로 진척은 대메뉴·중메뉴·단계·화면 같은 업무 단위로만 쓰고, 사람 이름·연락처·"
+            "개인별 진척률은 싣지 않는다.\n"
+            "- 진척률·MM 같은 숫자는 진척 도구 결과를 그대로 쓰고, 지난주 대비 증가는 ▲, 감소는 ▼로 표시한다.\n"
+            "- 이슈는 해결·미해결(지속 N주)·신규로 나누고, 지난주 액션아이템은 커밋·화면 상태로 이행 여부를 판단한다.\n"
+            "- 액션아이템은 체크리스트(- [ ])로 쓰고, 게시는 PM 또는 PL 승인 뒤에만 한다.")
 
 
 def with_footer(body: str) -> str:
@@ -260,6 +275,17 @@ class Plan(BaseModel):
     steps: list[str] = Field(description=f"실행할 단계 이름 목록(순서대로). 사용 가능: {', '.join(STEPS)}")
 
 
+REQUIRED_STEPS = ("collect_progress", "draft_material")  # 이 단계 없이는 회의 자료를 만들 수 없다 (건너뛰기 불가)
+MAX_STEP_RETRIES = 1
+
+
+class Replan(BaseModel):
+    """단계 실패 뒤 계획 수정 결정."""
+    action: Literal["retry", "skip", "abort"] = Field(
+        description="retry=같은 단계를 한 번 더 시도, skip=이 단계 없이 다음 단계로, abort=회의 자료 작성을 중단")
+    reason: str = Field(description="한 문장 이유")
+
+
 class MeetingDraft(BaseModel):
     """회의 자료 본문 (숫자는 쓰지 않는다. 진척 수치는 도구 결과를 그대로 붙인다)."""
     decisions: list[str] = Field(description="이번 회의 결정사항 후보")
@@ -276,6 +302,7 @@ class MeetingState(TypedDict, total=False):
     previous_minutes: str
     previous_page: str
     body: str
+    title: str          # PM·PL이 고쳐서 승인한 제목 (없으면 기본 제목)
     approval: str
     page_id: str
     error: str
@@ -303,12 +330,12 @@ class MeetingFlow:
     read_page가 있으면 지난주 게시 페이지를 MCP get_page로 읽고, 없거나 실패하면 장기 메모리 스냅샷으로 대신한다."""
 
     def __init__(self, llm, publish, read_page=None):
-        from langgraph.checkpoint.memory import InMemorySaver
         from langgraph.graph import END, START, StateGraph
-        from langgraph.store.memory import InMemoryStore
+
+        from src import state
 
         self.llm, self.publish_fn, self.read_page = llm, publish, read_page
-        self.store = InMemoryStore()  # 장기 메모리: SNAPSHOT_NS / 주차 시작일 → 회의 스냅샷
+        self.store = state.store()  # 장기 메모리: SNAPSHOT_NS / 주차 시작일 → 회의 스냅샷 (STATE_DB면 영구 저장)
         g = StateGraph(MeetingState)
         g.add_node("plan", self._plan)
         g.add_node("execute", self._execute)
@@ -316,10 +343,10 @@ class MeetingFlow:
         g.add_node("publish", self._publish)
         g.add_edge(START, "plan")
         g.add_edge("plan", "execute")
-        g.add_edge("execute", "approve")
+        g.add_conditional_edges("execute", lambda s: END if s.get("error") else "approve")  # 중단되면 승인 없이 끝
         g.add_conditional_edges("approve", lambda s: "publish" if s.get("approval") == "approve" else END)
         g.add_edge("publish", END)
-        self.graph = g.compile(checkpointer=InMemorySaver(), store=self.store)
+        self.graph = g.compile(checkpointer=state.checkpointer(), store=self.store)  # 승인 대기 상태 (STATE_DB면 영구)
 
     # --- Plan
     def _plan(self, state: MeetingState) -> MeetingState:
@@ -331,12 +358,42 @@ class MeetingFlow:
         steps.sort(key=STEPS.index)                    # 데이터 의존 순서 보장
         return {"plan": steps, "log": [{"step": "plan", "input": plan.steps, "output": steps}]}
 
-    # --- Execute: 계획 순서대로 단계 실행
+    # --- Execute: 계획 순서대로 단계 실행. 단계가 실패하면 Replan으로 다시 시도·건너뛰기·중단을 정한다
     def _execute(self, state: MeetingState) -> MeetingState:
         out: MeetingState = {"log": list(state.get("log", []))}
         for step in state["plan"]:
-            out.update(getattr(self, "_" + step)({**state, **out}))
+            tries = 0
+            while True:
+                try:
+                    out.update(getattr(self, "_" + step)({**state, **out}))
+                    break
+                except Exception as e:  # noqa: BLE001
+                    action, reason = self._replan(step, e, tries)
+                    out["log"] = out["log"] + [{"step": "replan", "input": {"failed_step": step, "error": type(e).__name__},
+                                                "output": {"action": action, "reason": reason}}]
+                    if action == "retry":
+                        tries += 1
+                        continue
+                    if action == "abort":
+                        return {**out, "error": f"{step} 단계 실패로 회의 자료 작성을 중단했습니다: {e}"}
+                    break  # skip
         return out
+
+    def _replan(self, step: str, error: Exception, tries: int) -> tuple[str, str]:
+        """실패한 단계의 처리 방법. LLM이 판단하되 코드가 제약을 건다: 재시도는 1회까지, 필수 단계는 건너뛸 수 없다."""
+        try:
+            d = self.llm.with_structured_output(Replan).invoke(
+                f"주간 회의 자료 작성 중 '{step}' 단계가 실패했다(오류: {type(error).__name__}: {str(error)[:200]}). "
+                f"재시도 횟수 {tries}/{MAX_STEP_RETRIES}. 필수 단계: {', '.join(REQUIRED_STEPS)}. "
+                "일시적 오류(타임아웃·연결)면 retry, 선택 단계면 skip, 계속할 수 없으면 abort를 골라라.")
+            action, reason = d.action, d.reason
+        except Exception:  # noqa: BLE001  판단 실패 시 규칙으로
+            action, reason = ("retry" if tries < MAX_STEP_RETRIES else "abort"), "규칙 기반 판단(LLM 판단 실패)"
+        if action == "retry" and tries >= MAX_STEP_RETRIES:
+            action, reason = ("abort" if step in REQUIRED_STEPS else "skip"), f"재시도 한도 초과 ({reason})"
+        if action == "skip" and step in REQUIRED_STEPS:
+            action, reason = ("retry" if tries < MAX_STEP_RETRIES else "abort"), f"필수 단계는 건너뛸 수 없음 ({reason})"
+        return action, reason
 
     def _collect_progress(self, state):
         report = tools.build_progress_report()
@@ -408,22 +465,33 @@ class MeetingFlow:
     def _approve(self, state: MeetingState) -> MeetingState:
         from langgraph.types import interrupt
         decision = interrupt({"title": meeting_title(), "body": state["body"]})
+        if isinstance(decision, dict):  # 고쳐서 승인: {"action": "edit", "title"?, "body"?}
+            out: MeetingState = {"approval": "approve"}
+            changed = [k for k in ("title", "body") if decision.get(k)]
+            if decision.get("title"):
+                out["title"] = decision["title"].strip()
+            if decision.get("body"):
+                out["body"] = strip_names(decision["body"].strip())  # 공용 자료 원칙: 구성원 이름 제거
+            return {**out, "log": state["log"] + [
+                {"step": "hitl_decision", "input": "meeting_material", "output": "approve"},
+                {"step": "hitl_edit", "input": "meeting_material", "output": ",".join(changed)}]}
         return {"approval": decision, "log": state["log"] + [{"step": "hitl_decision", "input": "meeting_material",
                                                              "output": decision}]}
 
     def _publish(self, state: MeetingState) -> MeetingState:
+        title = state.get("title") or meeting_title()
         try:
-            page_id = self.publish_fn(meeting_title(), state["body"])
+            page_id = self.publish_fn(title, state["body"])
         except Exception as e:  # noqa: BLE001  게시 실패: 게시하지 않음
             return {"error": str(e), "log": state["log"] + [{"step": "confluence_publish", "input": meeting_title(),
                                                             "output": f"error: {e}"}]}
         week = tools.load_reference_week()["start"]
-        items = [ln.removeprefix("- [ ] ") for ln in state["body"].split("## 액션아이템", 1)[1].splitlines()
-                 if ln.startswith("- [ ] ")]
+        actions = state["body"].split("## 액션아이템", 1)[1] if "## 액션아이템" in state["body"] else ""  # 수정본에 없을 수 있음
+        items = [ln.removeprefix("- [ ] ") for ln in actions.splitlines() if ln.startswith("- [ ] ")]
         snap = week_snapshot(meeting_context(state.get("previous"), load_history=False), items)
         self.store.put(SNAPSHOT_NS, week, snap)  # 이번 주 스냅샷 저장 → 다음 주 회의의 '지난주'
         return {"page_id": page_id, "log": state["log"] + [
-            {"step": "confluence_publish", "input": meeting_title(), "output": page_id},
+            {"step": "confluence_publish", "input": title, "output": page_id},
             {"step": "memory_store", "input": f"snapshot:{week}", "output": "saved"}]}
 
     # --- 외부 진입점
@@ -433,7 +501,8 @@ class MeetingFlow:
         self.graph.invoke({}, cfg)
         return tid, self.graph.get_state(cfg).values
 
-    def resume(self, tid: str, approval: str) -> dict:
+    def resume(self, tid: str, approval: str | dict) -> dict:
+        """approval: 'approve' | 'reject' | {'action': 'edit', 'title'?, 'body'?} (고쳐서 승인)."""
         from langgraph.types import Command
         cfg = {"configurable": {"thread_id": tid}}
         self.graph.invoke(Command(resume=approval), cfg)

@@ -50,3 +50,33 @@ def test_page_id_arg_and_storage_conversion(tmp_path):
     assert page["page_id"] == "weekly_meeting_test"
     xml = (tmp_path / "pages" / "weekly_meeting_test.storage.xml").read_text(encoding="utf-8")
     assert "<table" in xml  # 서버 쪽 Markdown → Confluence 저장 형식 변환
+
+
+# --- MCP Resources / Prompts ---
+def test_server_exposes_resources_and_prompt():
+    got = asyncio.run(mcp_client.list_resources_and_prompts())
+    assert got["resources"] == ["confluence://pages"]
+    assert got["templates"] == ["confluence://page/{page_id}"]
+    assert got["prompts"] == ["weekly_meeting_material"]
+
+
+def test_read_page_resources():
+    import json
+    mcp_client.call_tool("create_page", {"title": "주간회의 자료 리소스", "body": "## 결정사항\n- 리소스키워드",
+                                         "page_id": "weekly_meeting_res"})
+    pages = json.loads(mcp_client.read_resource("confluence://pages"))
+    assert {"page_id": "weekly_meeting_res", "title": "주간회의 자료 리소스"} in pages
+    body = mcp_client.read_resource("confluence://page/weekly_meeting_res")
+    assert body.startswith("# 주간회의 자료 리소스") and body.count("# 주간회의 자료 리소스") == 1 and "리소스키워드" in body
+    with pytest.raises(mcp_client.MCPError):
+        mcp_client.read_resource("confluence://page/nope")
+
+
+def test_meeting_material_prompt_matches_render_sections():
+    from src import meeting
+    text = mcp_client.get_prompt("weekly_meeting_material", {"week_start": "2026-11-16"})
+    assert "2026-11-16" in text and all(f"## {s}" in text for s in meeting.MATERIAL_SECTIONS)
+    assert "사람 이름" in text and "승인" in text
+    body = meeting.build_meeting_material()  # 실제 회의 자료도 같은 섹션 순서를 따른다
+    pos = [body.index(f"## {s}") for s in meeting.MATERIAL_SECTIONS]
+    assert pos == sorted(pos)

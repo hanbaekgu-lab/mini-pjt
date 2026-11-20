@@ -11,17 +11,17 @@
 | # | 패턴 | 적용 위치 |
 |---|---|---|
 | 1 | LCEL + Pydantic 구조화 출력 | `src/supervisor.py` 라우터(`prompt \| llm.with_structured_output(RouteDecision)`), `src/meeting.py` `Plan`·`MeetingDraft`, `src/agent.py` 문서 Q&A 체인 |
-| 2 | ReAct (도구 자율 선택) | `src/agent.py` `answer_progress` — `create_agent` + 진척 도구. 질문마다 도구를 새로 부르고, 도구를 건너뛰면 한 번 더 지시한다 |
+| 2 | ReAct (도구 자율 선택) | `src/agent.py` `answer_progress` — `create_agent` + 진척 도구. 질문마다 도구를 새로 부르고, 도구를 건너뛰면 한 번 더 지시한다. 도구마다 인자 스키마(`ProgressArgs`: 화면 ID 형식 검증)와 '쓰지 말 것' 설명을 두고, 형식이 틀리면 검증 오류가 LLM에 돌아가 다시 호출한다 |
 | 3 | RAG | `src/retriever.py` (1차 Titan 벡터 dense-only, 2차 kiwipiepy 형태소 BM25 + 벡터 RRF·휴리스틱 리랭킹(질의 용어 커버리지·화면 ID 일치 가중치)·쿼리 확장·메타데이터 필터) + `src/agent.py` `answer_docs_qa` (2차는 근거 인용 답변) |
 | 4 | 다중 도구 | `src/tools.py` 결정적 계산 + `src/agent.py` `calc_progress`·`calc_remaining_mm`·`check_mismatch`·`get_commits` |
-| 5 | MCP | `src/mcp_confluence_server.py` (fastmcp, stdio, `get_page`·`create_page`·`search_pages`), `src/mcp_client.py` (langchain-mcp-adapters `MultiServerMCPClient`), `src/confluence.py`(fake/real), `src/confluence_convert.py`(Markdown→Confluence) |
-| 6 | 가드레일 | `src/guardrails.py` — 역할 범위(PM 전체·PL 본인 파트·개발자 본인, 신원은 로그인 세션 기준)·직접/간접 인젝션(숨은 지시 줄만 제외)·사람 평가·순위 금지를 도구 실행 전 코드로 강제, 진척 도구도 요청자 범위로 고정. 인젝션·순위는 정규식으로 먼저 거르고, 통과한 질문은 구조화 출력 LLM 분류기(`SafetyVerdict`)가 2차 판정한다(LLM 실패 시 통과, 범위는 코드가 강제). 문서 근거의 범위 밖 수치는 문단(블록) 단위로 가린다 |
-| 7 | HITL | `src/meeting.py` `interrupt()` + checkpointer, `src/api.py` thread_id·approval 재개 (PM·PL만 승인, thread 소유권 확인) |
-| 8 | 미들웨어 | `src/middleware.py` PII 마스킹(한 곳)·타임아웃·재시도(최대 1회, 타임아웃은 재시도 안 함), `src/agent.py` `SummarizationMiddleware`(회의 중 긴 대화 요약)·`ModelRetryMiddleware`(1회) |
-| 9 | Multi-Agent Supervisor | `src/supervisor.py` 구조화 출력 LLM 라우터 → 진척 / 문서 Q&A / 회의 자료 에이전트. 세션·가드레일 통과 뒤 요청당 한 번 호출(캐시 없음), trace는 `guardrail` → `supervisor_route` 순서 |
-| 10 | Plan-Execute + 장기 메모리 | `src/meeting.py` `MeetingFlow` (계획 → 진척 수집 → 지난주 회의 확인 → 초안 → 승인 → 게시). Plan 단계는 LLM이 낸 계획을 코드가 허용된 고정 단계(`STEPS`)로 검증·정규화(누락 보완·순서 정렬)한다. 지난주 게시 페이지는 MCP `get_page`로 읽고(없으면 스냅샷), LangGraph `InMemoryStore`에 주차별 회의 스냅샷 저장 |
-| 11 | Trace | `src/tracing.py` (LANGSMITH_API_KEY가 있으면 LangSmith, 없으면 `logs/trace/` JSON) + 응답 `trace` 필드 |
-| 12 | RAGAS + LLM-as-Judge | `evaluation/run_eval.py` (RAGAS 4개 지표), `evaluation/judge_prompt.md` |
+| 5 | MCP | `src/mcp_confluence_server.py` (fastmcp, stdio, `get_page`·`create_page`·`search_pages`), `src/mcp_client.py` (langchain-mcp-adapters `MultiServerMCPClient`), `src/confluence.py`(fake/real), `src/confluence_convert.py`(Markdown→Confluence). resource `confluence://pages`·`confluence://page/{page_id}`(읽기 전용 조회), prompt `weekly_meeting_material`(회의 자료 섹션 구성·공개 원칙) |
+| 6 | 가드레일 | `src/guardrails.py` — 역할 범위(PM 전체·PL 본인 파트·개발자 본인, 신원은 로그인 세션 기준)·직접/간접 인젝션(숨은 지시 줄만 제외)·사람 평가·순위 금지를 도구 실행 전 코드로 강제, 진척 도구도 요청자 범위로 고정. 인젝션·순위는 정규식으로 먼저 거르고, 통과한 질문은 구조화 출력 LLM 분류기(`SafetyVerdict`)가 2차 판정한다(LLM 실패 시 통과, 범위는 코드가 강제). 문서 근거의 범위 밖 수치는 문단(블록) 단위로 가린다. 검사 전 입력을 정규화한다(NFKC로 전각 문자 펴기, zero-width 등 보이지 않는 문자 제거, 공백 정리) |
+| 7 | HITL | `src/meeting.py` `interrupt()` + checkpointer, `src/api.py` thread_id·approval 재개 (PM·PL만 승인, thread 소유권 확인). `approve`·`reject`에 더해 `edit`(제목·본문을 고쳐서 승인, 구성원 이름은 지우고 연락처는 가림). `STATE_DB`를 주면 승인 대기 상태가 SQLite에 남아 재시작 뒤에도 승인할 수 있다 |
+| 8 | 미들웨어 | `src/middleware.py` PII 마스킹(한 곳)·타임아웃·재시도(최대 1회, 타임아웃은 재시도 안 함), `src/agent.py` `SummarizationMiddleware`(회의 중 긴 대화 요약)·`ModelRetryMiddleware`(1회)·`ToolCallLimitMiddleware`(한 실행에 도구 8회, 넘으면 종료하고 도구 결과만 답) + `recursion_limit` 25 |
+| 9 | Multi-Agent Supervisor | `src/supervisor.py` 구조화 출력 LLM 라우터 → 진척 / 문서 Q&A / 회의 자료 에이전트. 세션·가드레일 통과 뒤 요청당 한 번 호출(캐시 없음), trace는 `guardrail` → `supervisor_route` 순서. 진척 수치와 문서 내용(이유·결정·조치)을 함께 묻는 질문은 `progress+docs_qa`로 정해 두 에이전트를 진척 → 문서 순서로 차례로 부르고 답을 합친다. 질문(검색어)은 그대로 두고 역할만 나눠 알린다(진척은 수치만, 문서는 이유·결정·조치만, 문서 쪽의 범위 밖 '근거 없음' 문장은 걷어냄) |
+| 10 | Plan-Execute + 장기 메모리 | `src/meeting.py` `MeetingFlow` (계획 → 진척 수집 → 지난주 회의 확인 → 초안 → 승인 → 게시). Plan 단계는 LLM이 낸 계획을 코드가 허용된 고정 단계(`STEPS`)로 검증·정규화(누락 보완·순서 정렬)한다. 단계가 실패하면 Replan(LLM 구조화 출력: retry·skip·abort, 재시도 1회·필수 단계 건너뛰기 금지는 코드가 강제)으로 처리하고, 중단되면 승인 대기 없이 오류를 알린다. 지난주 게시 페이지는 MCP `get_page`로 읽고(없으면 스냅샷), LangGraph Store에 주차별 회의 스냅샷 저장(`STATE_DB`면 SqliteStore로 영구) |
+| 11 | Trace | `src/tracing.py` (LANGSMITH_API_KEY가 있으면 LangSmith, 없으면 `logs/trace/` JSON) + 응답 `trace` 필드. LLM을 부른 요청은 끝에 `llm_usage` 단계(호출 수·지연시간·입출력 토큰, 콜백 `UsageHandler`로 요청 단위 집계)를 붙인다 |
+| 12 | RAGAS + LLM-as-Judge | `evaluation/run_eval.py` (RAGAS 4개 지표, 유형별 통과·1차 대비 개선/악화 케이스), `evaluation/judge_prompt.md`. 보조 확인: `evaluation/guard_probe.py`(정상·공격 문구 오탐/미탐), `evaluation/route_check.py`(라우팅 정확도) |
 
 **Supervisor를 `langgraph_supervisor` 대신 구조화 출력 라우터로 둔 이유**: 라우팅이 한 번의 결정적 분기(`RouteDecision`)라서
 (1) 가드레일 차단과 HITL 재개(`thread_id`·`approval`)를 라우팅 전에 코드로 처리할 수 있고, (2) 승인 대기 중인 회의 자료 그래프가
@@ -44,7 +44,7 @@ Python 3.14, 가상환경 `.venv`. 모든 명령은 저장소 루트에서 실�
 ```bash
 ./run.sh setup          # .venv 생성, requirements 설치, .env가 없으면 .env.example 복사
 # .env의 mock 값을 실제 값으로 교체 (AWS 자격 증명·AWS_DEFAULT_REGION, Confluence 설정)
-./run.sh server         # API 서버 (POST /query, 포트 8000, PORT로 변경)
+./run.sh server         # API 서버 (POST /query·/query/stream, 포트 8000, PORT로 변경). STATE_DB=data/state/agent.sqlite면 상태 영구 저장
 ./run.sh test           # 오프라인 테스트 (가짜 LLM 주입, AWS 불필요)
 ./run.sh fixtures       # fixture 재생성 (고정 시드, 같은 결과)
 ./run.sh eval 1         # 1차 평가 (실제 Bedrock 호출, 비용 발생) / ./run.sh eval 2
@@ -79,10 +79,10 @@ copy .env.example .env
 
 | 지표 (설명형 케이스) | 1차 (dense-only) | 2차 | 성공 기준 | 판정 |
 |---|---|---|---|---|
-| faithfulness | 0.8368 | **0.9433** | 0.85 이상 | 통과 |
+| faithfulness | 0.8368 | **0.9738** | 0.85 이상 | 통과 |
 | context recall | 0.5000 | **1.0000** | 0.80 이상 | 통과 |
 | context precision | 0.4000 | **0.8000** | 0.80 이상 | 통과 |
-| answer relevancy | 0.7300 | **0.8916** | 0.80 이상 | 통과 |
+| answer relevancy | 0.7300 | **0.9397** | 0.80 이상 | 통과 |
 
 - **answer relevancy 측정 결함 수정**: `ResponseRelevancy`는 답변에서 역질문을 만들어 원 질문과 임베딩 유사도를 잰다. 기본 프롬프트가 영어라 한국어 답변에서도 영어 역질문이 나와,
   한국어 질문과의 언어 간 유사도를 재고 있었다(5번 역질문 'What is the format for writing commit messages…' 0.29, 같은 뜻의 한국어 역질문 0.98).
@@ -117,7 +117,7 @@ copy .env.example .env
 | 통과 | 15 / 20 | **20 / 20** | +5건 | 16 이상, +3건 이상 | 통과 |
 | 수치 exact-match | 100% | 100% | - | 100% | 통과 |
 | 가드레일 차단 | 100% | 100% | - | 100% | 통과 |
-| LLM 호출(평가 1회분) | 303 | 351 | | | |
+| LLM 호출(평가 1회분) | 303 | 357 | | | |
 
 - 1차는 사전 고정 baseline이라 다시 실행하지 않았다. 2차 개선 중 고친 결함 중 진척 보고서 작성자 열·게시 꼬리말·회의 초안 대체·개발자 이름→ID 변환은 1차 경로에도 해당하지만 1차 수치에는 반영되지 않았다(비교 시 유의).
 
@@ -145,6 +145,8 @@ copy .env.example .env
 - **긴 문서를 통째로 임베딩**(사용 예시 캡처 중 발견): 회의 자료를 게시하면 그 페이지(약 1.6만 자)가 런타임 검색 대상이 되는데, Titan 입력 한도(8,192토큰)를 넘어 이후 문서 Q&A가 모두 오류로 끝났다. 평가는 생성 문서를 검색에서 빼므로 드러나지 않았다. 긴 문서는 문단 경계로 3,000자 이하 조각을 만들어 각각 임베딩하고, 질의와 가장 가까운 조각의 유사도를 문서 점수로 쓴다.
 - **도구 인자에 ID만 기대**(사용 예시 캡처 중 발견): ReAct LLM은 개발자 ID를 모르므로 `developer_id`에 이름('정카카')을 넣었고, 도구가 이를 그대로 찾아 PM에게는 '찾을 수 없음', PL에게는 본인 파트 팀원인데도 '권한 없음'으로 답했다. 도구가 이름을 ID로 바꾼 뒤 범위를 검사한다.
 - **RAGAS 기본 프롬프트를 그대로 사용**: answer relevancy가 기준보다 낮게 나와 처음에는 '인용형 짧은 답변' 탓으로 봤다. 역질문을 직접 꺼내 보니 한국어 답변에서 영어 역질문이 만들어져 언어 간 유사도를 재고 있었다. 역질문 언어를 응답과 맞추고 1차도 같은 기준으로 재채점했다.
+- **답에 쓴 근거를 contexts에서 빠뜨림**: '지난주' 질문은 코드가 정한 기준 정보로 W46을 골랐지만, 이 정보가 응답 근거(contexts)에 없어 RAGAS가 '지난주' 주장을 근거 없음으로 판정했다. 기준 정보도 근거로 돌려준다. 같은 점검에서 완료된 액션아이템을 '하기로 했다'로 쓴 답변 오류(3번)를 찾아 상태를 문서 표기 그대로 쓰게 했다. 반면 '소제목 대신 문장으로 답하라'는 규칙은 목록·요약을 한 문장으로 뭉쳐 읽기와 answer relevancy를 함께 떨어뜨려 넣지 않았다.
+- **두 가지를 묻는 질문에 섞어 답함**(3번 answer relevancy 0.51): '왜 지연됐고, 어떤 조치를 하기로 했어?'에 이유와 조치를 한 덩어리로 답하자 RAGAS 역질문이 한쪽만 담겼다. 형식은 강제하지 않고 '각 부분을 질문의 대상·핵심어로 시작하는 문장으로 차례로 답하되 목록·표는 그대로'로 좁혀 넣었다(0.98).
 - **Bedrock 호출 타임아웃 미지정**: 일일 토큰 한도에 걸리자 기본 재시도·대기로 RAGAS 재채점이 20분 넘게 멈춰 있었다. 클라이언트에 연결 10초·응답 120초·재시도 3회(standard)를 명시했다.
 
 ### 최종 채택한 접근과 이유
@@ -155,14 +157,15 @@ copy .env.example .env
 - 회의 자료는 Plan-Execute + `interrupt()` → 승인 전 게시가 구조적으로 불가능하다.
 
 ### 남은 한계와 향후 방향
-- HITL 대기 상태(`THREADS`)와 LangGraph checkpointer·Store가 메모리에 있어 서버를 재시작하면 사라진다 → SQLite/Postgres checkpointer로 옮길 예정.
+- 상태 영구 저장은 `STATE_DB`(SQLite)를 줄 때만 켜진다(기본은 메모리). 로그인 세션 토큰은 데모라 메모리에만 있어 재시작 뒤에는 다시 로그인한다. 여러 서버 인스턴스가 상태를 나누려면 Postgres 같은 공유 저장소가 필요하다.
 - 사용자 식별은 비밀번호 없는 데모 로그인(`POST /login`, 토큰은 서버 메모리)이다 → 사내 SSO(OIDC 등)로 교체 필요.
 - 커밋 작성자를 개발자와 연결하려고 내부에서는 실제 이메일을 쓰며, 진척 도구 결과(미연결 커밋 작성자 이메일)가 LLM 입력으로 들어간다. 출력(answer·contexts·trace·게시물)에서만
   마스킹하고, LangSmith 자동 추적(LLM 입력 원문 전송)은 켜지 않는다(`LANGSMITH_API_KEY`가 있을 때도 마스킹된 trace만 기록).
 - 파이썬 스레드는 강제 종료할 수 없어 타임아웃 뒤에도 백그라운드 작업이 끝까지 돌 수 있다. 결과는 버리고 그 thread의 대화 기억 키를 바꿔 섞이지 않게만 한다.
-- 가드레일 LLM 분류기는 2차 평가에 포함되어 있다(요청당 LLM 1회 추가, 평가 1회분 LLM 호출 351). 평가 외에도 헷갈리기 쉬운 정상 질문·표현을 바꾼 공격 문구로 실제 Bedrock 판정을 확인했다(정상 28건 오탐 0, 공격 7건 모두 차단). 분류기 호출이 실패하면 막지 않고 통과시키므로(fail-open), 그때는 정규식과 범위 고정 도구만 남는다.
+- 가드레일 LLM 분류기는 2차 평가에 포함되어 있다(요청당 LLM 1회 추가, 평가 1회분 LLM 호출 357). 평가 외에도 헷갈리기 쉬운 정상 질문·표현을 바꾼 공격 문구로 실제 Bedrock 판정을 확인했다(정상 28건 오탐 0, 공격 7건 모두 차단). 분류기 호출이 실패하면 막지 않고 통과시키므로(fail-open), 그때는 정규식과 범위 고정 도구만 남는다.
 - 실제 Confluence(`CONFLUENCE_MODE=real`)는 REST 어댑터와 오프라인 테스트만 있고 실제 서버로는 검증하지 않았다.
 - '이번 주'는 fixture의 고정 기준 주(2026-11-16~22)다 → 실제 운영 시 날짜 기반으로 바꿔야 한다.
+- 다중 의도는 진척+문서 두 가지 조합만 지원한다(회의 자료 요청은 묶지 않음). LLM 라우터가 실패하면 규칙 라우터가 한 에이전트로만 보낸다.
 - MCP 호출마다 stdio 서버를 새로 띄워 호출당 2초 정도 걸린다 → 운영에서는 세션 재사용 필요.
 - context precision은 기준에 정확히 걸쳐 있다(0.80). 여러 회의록을 합치는 요약 질문(16번)이 지표 정의상 0점이 되므로, 요약형 질문에는 문서별 기여를 따로 보는 지표가 필요하다.
 - judge(LLM)가 근거 문장과 위반 플래그를 어긋나게 판정한 적이 있다(이전 실행 11번). 3회 중 2회 규칙으로 흡수하지만, judge 출력에 플래그-근거 일관성 검사를 넣는 것을 다음 평가 세트 개정 때 검토한다.
@@ -171,23 +174,30 @@ copy .env.example .env
 ## 핵심 코드 위치
 | 기능 | 위치 |
 |---|---|
-| 데모 로그인·세션 확인 | `src/api.py:235` `login`, `src/api.py:245` `session_user` |
-| API 진입점·thread 소유권·HITL 재개 | `src/api.py:260` `query`, `src/api.py:272` `_query` |
-| 가드레일 검사(라우팅·도구 실행 전) | `src/api.py:285`, `src/guardrails.py:149` `check_question`, `src/guardrails.py:216` `filter_injected_chunks`, `src/guardrails.py:109` `llm_check`(LLM 분류기 2차), `src/guardrails.py:234` `scope_chunks`(블록 단위 범위 가림) |
-| 출력 단계 PII 마스킹 | `src/api.py:267`, `src/middleware.py:20` `mask_pii` |
-| Supervisor 구조화 출력 라우터 | `src/supervisor.py:20` `RouteDecision`, `src/supervisor.py:36` `make_llm_router` |
-| 진척 ReAct 에이전트 | `src/agent.py:59` `PROGRESS_SYSTEM`, `src/agent.py:75` `_progress_tools`(`src/agent.py:87` 이름→ID), `src/agent.py:144` `answer_progress` |
-| 문서 Q&A (RAG) | `src/agent.py:24` `BASELINE_PROMPT`, `src/agent.py:25` `GROUNDED_PROMPT`, `src/agent.py:36` `answer_docs_qa`, `src/retriever.py:261` `week_note`(기준 주 안내) |
-| 하이브리드 검색·형태소 BM25 | `src/retriever.py:199` `ko_tokens`, `src/retriever.py:213` `bm25_scores`, `src/retriever.py:295` `search_scored` |
-| 이력 질문 검색 확대·긴 문서 조각 임베딩 | `src/retriever.py:285` `top_k`, `src/retriever.py:150` `embed_chunks`, `src/retriever.py:179` `dense_sim` |
-| 평가 시 생성 문서 제외 | `src/retriever.py:56` `runtime_documents`, `evaluation/run_eval.py:314` |
+| 데모 로그인·세션 확인 | `src/api.py:292` `login`, `src/api.py:302` `session_user` |
+| API 진입점·thread 소유권·HITL 재개 | `src/api.py:317` `query`, `src/api.py:384` `_query` |
+| 가드레일 검사(라우팅·도구 실행 전) | `src/api.py:397`, `src/guardrails.py:162` `check_question`, `src/guardrails.py:230` `filter_injected_chunks`, `src/guardrails.py:110` `llm_check`(LLM 분류기 2차), `src/guardrails.py:248` `scope_chunks`(블록 단위 범위 가림) |
+| 출력 단계 PII 마스킹 | `src/api.py:379`, `src/middleware.py:20` `mask_pii` |
+| Supervisor 구조화 출력 라우터 | `src/supervisor.py:21` `RouteDecision`, `src/supervisor.py:42` `make_llm_router` |
+| 진척 ReAct 에이전트 | `src/agent.py:71` `PROGRESS_SYSTEM`, `src/agent.py:100` `_progress_tools`(`src/agent.py:112` 이름→ID), `src/agent.py:173` `answer_progress` |
+| 문서 Q&A (RAG) | `src/agent.py:29` `BASELINE_PROMPT`, `src/agent.py:30` `GROUNDED_PROMPT`, `src/agent.py:44` `answer_docs_qa`, `src/retriever.py:261` `week_note`(기준 주 안내) |
+| 하이브리드 검색·형태소 BM25 | `src/retriever.py:199` `ko_tokens`, `src/retriever.py:213` `bm25_scores`, `src/retriever.py:306` `search_scored` |
+| 이력 질문 검색 확대·긴 문서 조각 임베딩 | `src/retriever.py:296` `top_k`, `src/retriever.py:150` `embed_chunks`, `src/retriever.py:179` `dense_sim` |
+| 평가 시 생성 문서 제외 | `src/retriever.py:56` `runtime_documents`, `evaluation/run_eval.py:334` |
 | 진척 결정적 계산 | `src/tools.py:269` `calc_progress`, `src/tools.py:314` `build_progress_report`, `src/tools.py:375` `format_progress_report` |
 | 회의 자료 표·기간 도식·대메뉴 일정표 | `src/tools.py:501` `format_progress_markdown`, `src/tools.py:606` `timeline_lines`, `src/tools.py:624` `large_menu_schedule` |
-| 회의 자료 Plan-Execute·HITL | `src/meeting.py:301` `MeetingFlow`, `src/meeting.py:354` `_check_previous_meeting`(MCP `get_page`), `src/meeting.py:384` `_draft_material`(초안 실패 시 결정적 초안), `src/meeting.py:410` `interrupt()` |
-| MCP 서버·클라이언트 | `src/mcp_confluence_server.py:16` `FastMCP`, `src/mcp_client.py:24` `make_client`, `src/mcp_client.py:61` `call_tool` |
+| 회의 자료 Plan-Execute·HITL | `src/meeting.py:328` `MeetingFlow`, `src/meeting.py:411` `_check_previous_meeting`(MCP `get_page`), `src/meeting.py:441` `_draft_material`(초안 실패 시 결정적 초안), `src/meeting.py:467` `interrupt()` |
+| MCP 서버·클라이언트 | `src/mcp_confluence_server.py:18` `FastMCP`, `src/mcp_client.py:24` `make_client`, `src/mcp_client.py:98` `call_tool` |
 | Markdown → Confluence 변환 | `src/confluence_convert.py:46` `md_to_storage` |
-| 재시도·타임아웃 | `src/middleware.py:55` `call_with_retry`, `src/config.py:26` `boto_config`(Bedrock 타임아웃) |
-| judge 입력·RAGAS 4개 지표 | `evaluation/run_eval.py:171` `judge_message`, `evaluation/run_eval.py:267` `ragas_metrics`(`evaluation/run_eval.py:258` 역질문 언어 고정), `evaluation/run_eval.py:285` `ragas_scores`, `evaluation/run_eval.py:69` `FIXES`(2차 개선 중 고친 결함 기록) |
+| 재시도·타임아웃 | `src/middleware.py:56` `call_with_retry`, `src/config.py:26` `boto_config`(Bedrock 타임아웃) |
+| judge 입력·RAGAS 4개 지표 | `evaluation/run_eval.py:182` `judge_message`, `evaluation/run_eval.py:287` `ragas_metrics`(`evaluation/run_eval.py:278` 역질문 언어 고정), `evaluation/run_eval.py:305` `ragas_scores`, `evaluation/run_eval.py:69` `FIXES`(2차 개선 중 고친 결함 기록) |
+| SSE 진행 이벤트 | `src/api.py:325` `query_stream`, `src/tracing.py:32` `emit` |
+| 다중 의도 라우팅 | `src/supervisor.py:14` `MULTI`, `src/api.py:456` `_route_handler` |
+| HITL 수정 후 승인 | `src/api.py:132` `apply_edits`, `src/meeting.py:465` `_approve` |
+| Replan(단계 실패 처리) | `src/meeting.py:382` `_replan`, `src/meeting.py:282` `Replan` |
+| 상태 영구 저장(STATE_DB) | `src/state.py:38` `checkpointer`, `src/state.py:49` `store`, `src/state.py:80` `save_thread` |
+| MCP resource·prompt | `src/mcp_confluence_server.py:64` `page_body`, `src/mcp_confluence_server.py:74` `weekly_meeting_material` |
+| LLM 사용량 집계 | `src/tracing.py:60` `UsageHandler` |
 
 ## 산출물 구성
 강의 산출물 구성(3-1)과 이 저장소의 실제 구성:
@@ -218,7 +228,7 @@ mini-pjt/                           mini-pjt/
 | 로그인 | `POST /login {"user_id"}` → `session_token`, `name`, `role`, `part` | 역할·파트는 서버가 등록 정보로 정한다 |
 | 인증 헤더 | `Authorization: Bearer <session_token>` | `/query` 필수 |
 | 표준 요청 | `question` | 사용자 질문 |
-| 확장 요청 (선택) | `thread_id`, `approval` | 대화를 이어 갈 `thread_id`, 승인 대기 회의 자료의 `approve`·`reject` |
+| 확장 요청 (선택) | `thread_id`, `approval`, `edits` | 대화를 이어 갈 `thread_id`, 승인 대기 회의 자료의 `approve`·`reject`·`edit`(고쳐서 승인, `edits`에 제목·본문) |
 | 표준 응답 | `answer`, `contexts[{doc_id, text}]`, `trace[{step, input, output}]` | 답변, 근거, 실행 기록 |
 | 확장 응답 | `thread_id`, `pending_approval` | 대화·승인 스레드 ID, 승인 대기 여부 |
 
@@ -242,9 +252,13 @@ POST /query {"question": "승인", "thread_id": "3f2a...", "approval": "approve"
 | 오류 | 조건 |
 |---|---|
 | 401 | 미등록 `user_id`로 로그인, `/query`에 토큰 없음·무효 토큰 |
-| 422 | `approval`이 approve·reject가 아님, `question` 누락, 본문에 `user_id`·`role` 등 정의되지 않은 필드(무시하지 않고 '로그인 세션 사용' 안내) |
+| 422 | `approval`이 approve·reject가 아님, `question` 누락·빈 문자열·2,000자 초과, 본문에 `user_id`·`role` 등 정의되지 않은 필드(무시하지 않고 '로그인 세션 사용' 안내) |
 | 404 | 없는 `thread_id`, 또는 다른 사용자 소유의 `thread_id`(승인 대기 회의 자료의 PM·PL 승인은 예외) |
 
+- 모든 JSON 응답(오류 포함)은 `Content-Type: application/json; charset=utf-8`이다(PowerShell 5.1 `Invoke-RestMethod`에서 한글이 깨지지 않게).
+- `POST /query/stream`은 같은 처리를 SSE(`text/event-stream`)로 보낸다: 처리 중 `progress` 이벤트(guardrail·route·llm_start·llm_end·tool_call·mcp_call)를
+  실시간으로 보내고, 마지막에 `/query`와 같은 응답을 `result` 이벤트로 보낸다(스트림 시작 뒤의 404 등은 `error` 이벤트). 답변 토큰 단위 스트리밍은 하지 않는다.
+- 승인 대기 회의 자료는 `approval: "edit"`와 `edits: {"title"?, "body"?}`로 고쳐서 승인할 수 있다(PM·PL만, `edits`는 edit일 때만 허용, 아니면 422).
 - thread는 만든 사용자만 이어 쓴다. 같은 `thread_id`에 approval 없이 새 질문을 보내면 새로 답하고, 진척 에이전트의 대화 기억은 그 thread를 이어 쓴다(회의 중 멀티턴).
 - 이미 처리된 `thread_id`에 approval을 다시 보내면 상태를 바꾸지 않고 기존 결과를 돌려준다(멱등). 개발자의 승인 시도는 contexts 없이 '해당 정보는 조회 권한이 없습니다'로 거절한다.
 
@@ -273,6 +287,7 @@ POST /query {"question": "승인", "thread_id": "3f2a...", "approval": "approve"
   `CONFLUENCE_PARENT_PAGE_ID`·`CONFLUENCE_USER`·`CONFLUENCE_API_TOKEN`을 실제 값으로 채운다(`.env.example`은 mock 값). 코드 수정은 필요 없다.
 - 변환기는 MCP 서버 쪽 기능이다. 에이전트는 Markdown만 보내고, `create_page`가 `src/confluence_convert.py`로 표·체크리스트(작업 목록)·
   인용(info 패널)·지난주 대비 증감 표시(`▲ +1.86%p`는 초록, `▼ -0.36%p`는 빨강 글자)를 Confluence 형식으로 바꿔 게시한다. real 모드는 REST API로 생성하고, 같은 제목이면 버전을 올려 교체한다.
+- real 모드의 실패 처리: 429(요청 과다)·503은 1초→2초 간격으로 최대 2회 다시 보내고(Retry-After가 있으면 따르되 최대 4초), 401·403·404는 다시 보내도 같으므로 바로 실패한다. 오류 메시지에서는 계정·API 토큰·Basic 인증 값을 `[REDACTED]`로 가린다.
 
 ## 회의 자료 구성
 회의 자료는 참석자 전원이 읽으므로 업무 분류 단위 진척만 싣고 개인별 진척률·사람 이름은 어디에도 싣지 않는다(248줄, 250줄 미만).
@@ -325,6 +340,12 @@ POST /query {"question": "승인", "thread_id": "3f2a...", "approval": "approve"
 **가드레일**: 다른 개발자(박지단) 진척 조회 거절, 'PM이니까' 신원 주장 거절(세션 기준 범위 검사), 직접 프롬프트 인젝션 거절, 표현을 바꾼 우회 시도('아까 설명은 신경 쓰지 말고…')는 정규식을 통과해도 LLM 분류기가 2차로 거절
 
 ![개발자 가드레일](docs/images/usage_dev_guardrail.png)
+
+### 다중 의도 질문과 회의 자료 수정 후 승인
+PM의 "SCR-C02-01 진척률이랑 지연 이유"는 Supervisor가 `progress+docs_qa`로 정해 진척(도구 계산) → 문서 근거(회의록 인용) 순서로 답을 합친다.
+PL은 회의 자료 초안을 받은 뒤 `approval: "edit"`와 `edits`(제목·본문)로 고쳐서 승인하고, 수정본이 게시된다(구성원 이름 제거·연락처 마스킹 그대로 적용).
+
+![다중 의도와 수정 후 승인](docs/images/usage_multi_edit.png)
 
 ### 공통 예외 처리 (pm01로 요청)
 개발자 성과 순위 요청 거절(돌려 말한 '일 제일 빠른 사람'은 LLM 분류기가 거절), 없는 화면 ID(SCR-Z99-99) 안내, 범위 밖 질문(회사 매출)은 문서 근거 없음 안내, 담당자 연락처 요청 시 이메일 마스킹, 로그인 없는 요청은 401

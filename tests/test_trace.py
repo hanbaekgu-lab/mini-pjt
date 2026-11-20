@@ -172,3 +172,59 @@ def test_router_not_called_for_blocked_or_unauthenticated_and_not_cached():
         assert calls == ["커밋 규칙이 뭐야?"] * 2  # 같은 질문도 요청마다 라우팅 (실행 간 캐시 없음)
     finally:
         supervisor.set_llm_router(None)
+
+
+# --- 요청 단위 LLM 사용량(호출 수·지연시간·토큰) ---
+def _usage_llm(n):
+    from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
+    from langchain_core.messages import AIMessage
+    from src import tracing
+    msgs = [AIMessage("ok", usage_metadata={"input_tokens": 10, "output_tokens": 3, "total_tokens": 13}) for _ in range(n)]
+    return GenericFakeChatModel(messages=iter(msgs), callbacks=[tracing.USAGE_HANDLER])
+
+
+def test_usage_collected_across_worker_threads():
+    from src import middleware, tracing
+    llm = _usage_llm(2)
+    tok = tracing.start_usage()
+    llm.invoke("a")
+    middleware.call_with_retry(llm.invoke, "b", timeout=5)  # 작업 스레드에서 부른 호출도 같은 요청으로 집계
+    u = tracing.end_usage(tok)
+    assert u["llm_calls"] == 2 and u["input_tokens"] == 20 and u["output_tokens"] == 6 and u["latency_s"] >= 0
+
+
+def test_usage_outside_request_is_ignored_and_empty_request_returns_none():
+    from src import tracing
+    _usage_llm(1).invoke("x")  # 집계가 열리지 않은 호출은 무시
+    tok = tracing.start_usage()
+    assert tracing.end_usage(tok) is None
+
+
+def test_query_trace_ends_with_llm_usage_when_llm_called():
+    from fastapi.testclient import TestClient
+    from helpers import post_query
+    from src import api
+    llm = _usage_llm(1)
+    api.set_handler(lambda req, route: {"answer": llm.invoke(req.question).content, "contexts": [], "trace": [],
+                                        "pending_approval": False})
+    try:
+        d = post_query(TestClient(api.app), {"question": "이번 주 진척 알려줘", "user_id": "pm01"}).json()
+    finally:
+        api.set_handler(None)
+    last = d["trace"][-1]
+    assert last["step"] == "llm_usage" and last["output"]["llm_calls"] == 1 and last["output"]["input_tokens"] == 10
+
+
+def test_progress_events_from_llm_and_tools_reach_sink():
+    from src import agent, tracing
+    got = []
+    tok = tracing.start_events(lambda k, d: got.append((k, d)))
+    try:
+        _usage_llm(1).invoke("x")
+        agent._progress_tools("pm", "pm01", [])[0].invoke({})
+    finally:
+        tracing.end_events(tok)
+    kinds = [k for k, _ in got]
+    assert kinds[:2] == ["llm_start", "llm_end"] and ("tool_call", {"tool": "calc_progress"}) in got
+    tracing.emit("route", {"output": "x"})  # 수신자가 없으면 아무 일도 없다
+    assert len(got) == 3

@@ -18,22 +18,36 @@ thread는 만든 사용자(소유자)만 이어 쓴다. 예외로 승인 대기 
 """
 from __future__ import annotations
 
+import contextvars
+import json
+import queue
 import re
+import threading
 import uuid
 from typing import Callable, Literal, Optional
 
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ConfigDict
+from fastapi.responses import JSONResponse, StreamingResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from src import guardrails, mcp_client, meeting, middleware, retriever, supervisor, tools, tracing
+from src import guardrails, mcp_client, meeting, middleware, retriever, state, supervisor, tools, tracing
 
-app = FastAPI(title="weekly-progress-agent")
+STREAM_KEEPALIVE = 15.0  # SSE: 이 시간(초) 동안 이벤트가 없으면 keep-alive 주석을 보낸다
+MAX_QUESTION_CHARS = 2000  # 질문 길이 상한: 아주 긴 입력으로 프롬프트·비용을 부풀리는 요청을 422로 막는다
+
+
+class UTF8JSONResponse(JSONResponse):
+    """charset을 명시한 JSON 응답. PowerShell 5.1(Invoke-RestMethod) 같은 클라이언트에서 한글이 깨지지 않게 한다."""
+    media_type = "application/json; charset=utf-8"
+
+
+app = FastAPI(title="weekly-progress-agent", default_response_class=UTF8JSONResponse)
 
 # thread_id -> {"user_id"(소유자), "role", "route", "response", "epoch"(대화 기억 세대),
 #               승인 대기 회의 자료면 "draft", "status"(pending|approved|rejected), "decision"(승인 결과), "graph_thread"}
-THREADS: dict[str, dict] = {}
+THREADS: dict[str, dict] = state.load_threads()  # STATE_DB면 재시작 전 기록(승인 대기 포함)을 불러온다
 SESSIONS: dict[str, str] = {}  # session_token -> user_id (데모: 서버 메모리)
 
 
@@ -49,12 +63,28 @@ class LoginResponse(BaseModel):
     part: Optional[str] = None
 
 
+class DraftEdits(BaseModel):
+    """승인 대기 회의 자료를 고쳐서 승인할 때의 수정 내용 (approval=edit). 비운 항목은 초안 그대로 쓴다."""
+    model_config = ConfigDict(extra="forbid")
+    title: Optional[str] = Field(None, min_length=1, max_length=200)
+    body: Optional[str] = Field(None, min_length=1, max_length=60000)
+
+
 class QueryBody(BaseModel):
     """/query 본문: 표준 question + 선택 확장 필드. 신원(user_id·role)은 본문이 아니라 로그인 세션에서 온다."""
     model_config = ConfigDict(extra="forbid")
-    question: str
+    question: str = Field(min_length=1, max_length=MAX_QUESTION_CHARS)
     thread_id: Optional[str] = None
-    approval: Optional[Literal["approve", "reject"]] = None
+    approval: Optional[Literal["approve", "reject", "edit"]] = None
+    edits: Optional[DraftEdits] = None
+
+    @model_validator(mode="after")
+    def _edits_only_with_edit(self):
+        if self.approval == "edit" and (self.edits is None or (self.edits.title is None and self.edits.body is None)):
+            raise ValueError("approval=edit에는 edits.title 또는 edits.body가 필요합니다")
+        if self.edits is not None and self.approval != "edit":
+            raise ValueError("edits는 approval=edit일 때만 보냅니다")
+        return self
 
 
 class QueryRequest(BaseModel):
@@ -63,7 +93,9 @@ class QueryRequest(BaseModel):
     user_id: str
     role: Literal["pm", "pl", "developer"]
     thread_id: Optional[str] = None
-    approval: Optional[Literal["approve", "reject"]] = None
+    approval: Optional[Literal["approve", "reject", "edit"]] = None
+    edits: Optional[DraftEdits] = None
+    focus: Optional[str] = None  # 다중 의도에서 각 담당에게 주는 답변 범위 안내 (질문·검색어는 바꾸지 않는다)
 
 
 class QueryResponse(BaseModel):
@@ -97,9 +129,23 @@ def _meeting_draft(req: QueryRequest) -> dict:
     }
 
 
-def _publish_draft(draft: dict, approval: str) -> dict:
+def apply_edits(draft: dict, edits: DraftEdits | None) -> tuple[dict, list[str]]:
+    """PM·PL이 고친 제목·본문을 초안에 반영한다. 공용 자료 원칙에 따라 본문의 구성원 이름은 지운다(마스킹은 게시 단계).
+    (반영한 초안, 바뀐 항목 이름 목록)"""
+    if edits is None:
+        return draft, []
+    out, changed = dict(draft), []
+    if edits.title is not None:
+        out["title"], changed = edits.title.strip(), changed + ["title"]
+    if edits.body is not None:
+        out["body"], changed = meeting.strip_names(edits.body.strip()), changed + ["body"]
+    return out, changed
+
+
+def _publish_draft(draft: dict, approval: str, edits: DraftEdits | None = None) -> dict:
     """기본 핸들러용 승인 처리(LangGraph 없음). 응답에는 게시 결과와 최소 trace만 담는다."""
-    if approval != "approve":
+    draft, changed = apply_edits(draft, edits)
+    if approval not in ("approve", "edit"):
         return {"answer": "반려되어 게시하지 않았습니다.", "contexts": [],
                 "trace": [{"step": "hitl_reject", "input": draft["title"], "output": "not_published"}],
                 "pending_approval": False}
@@ -112,8 +158,11 @@ def _publish_draft(draft: dict, approval: str) -> dict:
         return {"answer": f"게시 실패(게시하지 않음): {e}", "contexts": [],
                 "trace": [{"step": "confluence_publish", "input": draft["title"], "output": f"error: {e}"}],
                 "pending_approval": True}
-    return {"answer": f"승인되어 Confluence에 게시했습니다: {page['page_id']} (이메일·전화번호 마스킹 적용 후 게시)", "contexts": [],
-            "trace": [{"step": "confluence_publish", "input": draft["title"], "output": page["page_id"]}],
+    head = "수정 내용을 반영해 승인되어" if changed else "승인되어"
+    return {"answer": f"{head} Confluence에 게시했습니다: {page['page_id']} (이메일·전화번호 마스킹 적용 후 게시)",
+            "contexts": [],
+            "trace": ([{"step": "hitl_edit", "input": "meeting_material", "output": ",".join(changed)}] if changed else [])
+            + [{"step": "confluence_publish", "input": draft["title"], "output": page["page_id"]}],
             "pending_approval": False}
 
 
@@ -125,15 +174,16 @@ def _resume(req: QueryRequest, saved: dict) -> dict:
     if saved.get("status") != "pending":  # 이미 처리됨: 기존 결과 그대로 (멱등)
         return saved["decision"]
     if saved.get("graph_thread") and _graph_resume is not None:  # LangGraph interrupt() 재개
-        out = _graph_resume(saved, req.approval)
+        out = _graph_resume(saved, req.approval, req.edits)
     else:
-        out = _publish_draft(saved["draft"], req.approval)
+        out = _publish_draft(saved["draft"], req.approval, req.edits)
     out = {**out, "contexts": [], "trace": [{"step": "guardrail", "input": "approval", "output": "allowed"},
                                             {"step": "supervisor_route", "input": "approval", "output": saved["route"]}]
            + out["trace"]}
     if out["pending_approval"] is False:
-        saved["status"] = "approved" if req.approval == "approve" else "rejected"
+        saved["status"] = "rejected" if req.approval == "reject" else "approved"  # edit = 고쳐서 승인
         saved["decision"] = out
+        state.save_thread(req.thread_id, saved)
     return out
 
 
@@ -204,10 +254,10 @@ def set_handler(fn: Callable[[QueryRequest, str], dict] | None) -> None:
     _handler = fn or _default_handler
 
 
-_graph_resume: Callable[[dict, str], dict] | None = None
+_graph_resume: Callable[..., dict] | None = None
 
 
-def set_graph_resume(fn: Callable[[dict, str], dict] | None) -> None:
+def set_graph_resume(fn: Callable[..., dict] | None) -> None:
     global _graph_resume
     _graph_resume = fn
 
@@ -222,9 +272,16 @@ async def _validation_error(request, exc: RequestValidationError):
     errors = exc.errors()
     if any(e.get("type") == "extra_forbidden" and e.get("loc", [None])[-1] in ("user_id", "role") for e in errors) \
             and request.url.path == "/query":
-        return JSONResponse(status_code=422, content={"detail": "신원은 본문이 아니라 로그인 세션으로 보냅니다: "
+        return UTF8JSONResponse(status_code=422, content={"detail": "신원은 본문이 아니라 로그인 세션으로 보냅니다: "
                                                                 "POST /login 후 Authorization: Bearer <session_token>"})
-    return JSONResponse(status_code=422, content={"detail": jsonable(errors)})
+    return UTF8JSONResponse(status_code=422, content={"detail": jsonable(errors)})
+
+
+@app.exception_handler(StarletteHTTPException)
+async def _http_error(request, exc: StarletteHTTPException):
+    """401·404 등도 charset을 명시한 JSON으로 돌려준다 (헤더는 그대로 유지, 예: WWW-Authenticate)."""
+    return UTF8JSONResponse(status_code=exc.status_code, content={"detail": exc.detail},
+                            headers=getattr(exc, "headers", None))
 
 
 def jsonable(errors: list) -> list:
@@ -260,8 +317,63 @@ def _developer_ids() -> set[str]:
 def query(body: QueryBody, authorization: Optional[str] = Header(default=None)) -> QueryResponse:
     user = session_user(authorization)
     req = QueryRequest(question=body.question, user_id=user["developer_id"], role=user["role"],
-                       thread_id=body.thread_id, approval=body.approval)
-    out, tid, route = _query(req)
+                       thread_id=body.thread_id, approval=body.approval, edits=body.edits)
+    return _respond(req)
+
+
+@app.post("/query/stream")
+def query_stream(body: QueryBody, authorization: Optional[str] = Header(default=None)):
+    """/query와 같은 처리를 하면서 진행 단계를 SSE(text/event-stream)로 바로바로 보낸다.
+
+    event: progress  {"kind": guardrail|route|llm_start|llm_end|tool_call|mcp_call, ...}  (처리 중 실시간)
+    event: result    /query 응답과 같은 JSON (answer·contexts·trace·thread_id·pending_approval)
+    event: error     {"status", "detail"}  (스트림 시작 뒤의 404 등)
+    인증(401)·본문 검증(422)은 스트림을 열기 전에 일반 HTTP 오류로 돌려준다. 답변 토큰 단위 스트리밍은 하지 않는다."""
+    user = session_user(authorization)
+    req = QueryRequest(question=body.question, user_id=user["developer_id"], role=user["role"],
+                       thread_id=body.thread_id, approval=body.approval, edits=body.edits)
+    q: queue.Queue = queue.Queue()
+
+    def work():
+        token = tracing.start_events(lambda kind, data: q.put(("progress", {"kind": kind, **data})))
+        try:
+            q.put(("result", _respond(req).model_dump()))
+        except HTTPException as e:
+            q.put(("error", {"status": e.status_code, "detail": e.detail}))
+        except Exception as e:  # noqa: BLE001
+            q.put(("error", {"status": 500, "detail": f"{type(e).__name__}: {e}"}))
+        finally:
+            tracing.end_events(token)
+            q.put(None)
+
+    threading.Thread(target=contextvars.copy_context().run, args=(work,), daemon=True).start()
+
+    def events():
+        while True:
+            try:
+                item = q.get(timeout=STREAM_KEEPALIVE)
+            except queue.Empty:
+                yield ": keep-alive\n\n"  # 긴 처리 중 연결 유지
+                continue
+            if item is None:
+                return
+            kind, data = item
+            yield f"event: {kind}\ndata: {json.dumps(middleware.mask_obj(data), ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(events(), media_type="text/event-stream; charset=utf-8",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+def _respond(req: QueryRequest) -> QueryResponse:
+    """/query·/query/stream 공통 처리: 질의 → LLM 사용량 → 출력 마스킹 → trace 기록."""
+    usage_token = tracing.start_usage()  # 이 요청의 LLM 호출 수·지연시간·토큰을 모은다
+    try:
+        out, tid, route = _query(req)
+    finally:
+        usage = tracing.end_usage(usage_token)
+    if usage:  # LLM을 부른 요청만 trace 끝에 사용량을 붙인다 (저장된 응답은 바꾸지 않게 새 리스트로)
+        out = {**out, "trace": list(out["trace"]) + [{"step": "llm_usage", "input": f"calls={usage['llm_calls']}",
+                                                      "output": usage}]}
     # 미들웨어: 모든 역할의 answer·contexts·trace에서 PII 마스킹 (출력 단계). thread_id는 무작위 hex 안의 숫자열이
     # 전화번호로 오인돼 가려지지 않게 마스킹 대상에서 뺀다.
     out = middleware.mask_obj(out)
@@ -286,17 +398,19 @@ def _query(req: QueryRequest) -> tuple[dict, str, str]:
     llm_trace = None
     if not blocked:  # 정규식·범위 검사를 통과한 질문만 LLM 분류기로 2차 판정
         blocked, llm_trace = guardrails.llm_check(req.question)
+    tracing.emit("guardrail", {"output": "refused" if blocked else "passed"})
     if blocked:  # 도구·핸들러·라우팅 전에 코드 계층에서 차단
         out = {"answer": blocked["answer"], "contexts": [], "trace": blocked["trace"], "pending_approval": False}
         _save(tid, req, "guardrail", out)
         return out, tid, "guardrail"
     route = supervisor.route(req.question)
+    tracing.emit("route", {"output": route})
     head = [{"step": "guardrail", "input": "question", "output": "passed"}] + ([llm_trace] if llm_trace else []) \
         + [{"step": "supervisor_route", "input": req.question, "output": route}]
     epoch = (saved or {}).get("epoch", 0)
     memory_key = tid if epoch == 0 else f"{tid}#{epoch}"
     try:
-        out = middleware.call_with_retry(_handler, req.model_copy(update={"thread_id": memory_key}), route,
+        out = middleware.call_with_retry(_route_handler, req.model_copy(update={"thread_id": memory_key}), route,
                                          timeout=middleware.LLM_TIMEOUT)
     except middleware.CallFailed as e:  # LLM/도구 호출 실패: 오류 명시, 게시 없음
         if e.timed_out:  # 타임아웃 뒤에도 돌고 있을 수 있는 작업과 대화 기억이 섞이지 않게 다음 요청은 새 기억 키를 쓴다
@@ -312,11 +426,49 @@ def _query(req: QueryRequest) -> tuple[dict, str, str]:
     rec["epoch"] = epoch
     if draft:
         rec.update(draft=draft, status="pending", graph_thread=graph_thread)
+    state.save_thread(tid, rec)
     return out, tid, route
+
+
+MULTI_LABEL = {"progress": "진척", "docs_qa": "문서 근거"}
+# 다중 의도에서는 역할을 나눈다: 진척 담당은 수치만, 문서 담당은 이유·결정·조치만 답해 서로의 몫을 추측하거나 '근거 없음'으로 채우지 않게 한다
+MULTI_HINT = {"progress": "이 질문의 진척 수치·현황(진척률·남은 MM·지연 화면 목록) 부분만 답한다. 지연 이유·회의 결정·조치는 "
+                          "다른 담당이 문서 근거로 답하므로 건너뛴다.",
+              "docs_qa": "이 질문의 지연 이유·회의 결정·조치 부분만 문서 근거로 답한다. 진척률·남은 MM·지연 화면 목록 같은 진척 현황은 "
+                         "다른 담당이 답하므로 언급하지 않고 건너뛴다(그 부분을 '근거 없음'으로 답하지 않는다)."}
+
+
+def _drop_no_answer(text: str) -> str:
+    """다중 의도 문서 답변에서 '근거 없음' 문장(범위 밖인 진척 부분)과 그 소제목을 걷어낸다. 다른 내용이 없으면 그대로 둔다."""
+    from src.agent import NO_ANSWER
+    if NO_ANSWER not in text or not text.replace(NO_ANSWER, "").strip(" #\n"):
+        return text
+    out: list[str] = []
+    for b in text.split("\n\n"):
+        if b.strip() == NO_ANSWER:
+            if out and out[-1].lstrip().startswith("#"):  # 비게 된 소제목도 뺀다
+                out.pop()
+            continue
+        out.append(b)
+    return "\n\n".join(out).strip() or text
+
+
+def _route_handler(req: QueryRequest, route: str) -> dict:
+    """라우팅 결과대로 담당 핸들러를 부른다. 다중 의도(progress+docs_qa)면 진척 → 문서 순서로 차례로 불러 합친다
+    (가드레일·범위 검사는 질문 전체에 대해 이미 끝났다)."""
+    if route != supervisor.MULTI:
+        return _handler(req, route)
+    parts = [(r, _handler(req.model_copy(update={"focus": MULTI_HINT.get(r)}), r)) for r in route.split("+")]
+    parts = [(r, {**o, "answer": _drop_no_answer(o["answer"])} if r == "docs_qa" else o) for r, o in parts]
+    answer = "\n\n".join(f"[{MULTI_LABEL[r]}]\n{o['answer']}" for r, o in parts)
+    trace = [t for r, o in parts for t in [{"step": "multi_intent", "input": r, "output": "start"}] + list(o.get("trace", []))]
+    return {"answer": answer, "contexts": [c for _, o in parts for c in o.get("contexts", [])], "trace": trace,
+            "pending_approval": False}
 
 
 def _save(tid: str, req: QueryRequest, route: str, out: dict) -> dict:
     """thread 기록. 같은 thread의 새 질문은 응답만 바꾸고, 승인 대기 중인 회의 자료(draft)는 유지한다."""
     rec = THREADS.setdefault(tid, {"user_id": req.user_id, "role": req.role})
     rec.update(route=route, response=out)
+    state.save_thread(tid, rec)
     return rec

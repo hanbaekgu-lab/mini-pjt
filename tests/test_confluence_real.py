@@ -134,3 +134,50 @@ def test_converter_renders_rule_before_publish_footer():
     s = md_to_storage(meeting.with_footer("## 액션아이템\n- [ ] 일"))
     assert "<hr />" in s and "<p>---</p>" not in s
     assert s.endswith(f"<p>{meeting.PUBLISH_FOOTER}</p>")
+
+
+class _HTTPErr:
+    """정해진 순서로 HTTP 오류를 낸 뒤 성공 응답을 돌려주는 urlopen 대체."""
+
+    def __init__(self, codes, ok=None):
+        self.codes, self.ok, self.calls = list(codes), ok or {"results": []}, 0
+
+    def __call__(self, req, timeout=None):
+        import urllib.error
+        self.calls += 1
+        if self.codes:
+            code = self.codes.pop(0)
+            raise urllib.error.HTTPError(req.full_url, code, "err", {}, None)
+        return _Resp(self.ok)
+
+
+def test_real_retries_rate_limit_with_backoff(real_env, monkeypatch):
+    http, slept = _HTTPErr([429, 503]), []
+    monkeypatch.setattr("urllib.request.urlopen", http)
+    monkeypatch.setattr(confluence, "_sleep", slept.append)
+    assert confluence.search_pages("회의") == []
+    assert http.calls == 3 and slept == [1, 2]  # 1초 → 2초 백오프 후 성공
+
+
+@pytest.mark.parametrize("code", [401, 403])
+def test_real_auth_errors_fail_fast_without_leaking_secrets(real_env, monkeypatch, code):
+    http, slept = _HTTPErr([code]), []
+    monkeypatch.setattr("urllib.request.urlopen", http)
+    monkeypatch.setattr(confluence, "_sleep", slept.append)
+    with pytest.raises(confluence.ConfluenceHTTPError) as ei:
+        confluence.search_pages("회의")
+    msg = str(ei.value)
+    assert http.calls == 1 and slept == [] and str(code) in msg  # 재시도 없음
+    assert "mock-token" not in msg and "mock-user@example.com" not in msg
+
+
+def test_real_get_missing_page_returns_none(real_env, monkeypatch):
+    monkeypatch.setattr("urllib.request.urlopen", _HTTPErr([404]))
+    assert confluence.get_page("999") is None
+
+
+def test_redact_removes_token_user_and_basic_value():
+    s = {"CONFLUENCE_API_TOKEN": "tok-123", "CONFLUENCE_USER": "me@example.com"}
+    basic = base64.b64encode(b"me@example.com:tok-123").decode()
+    out = confluence.redact(f"auth Basic {basic} user me@example.com token tok-123", s)
+    assert "tok-123" not in out and "me@example.com" not in out and basic not in out

@@ -75,3 +75,9 @@ def test_reports_state_numbers():
         for label in ("faithfulness", "context recall", "context precision", "answer relevancy"):
             assert f"| {label}(설명형) |" in t
 
+
+
+def test_round2_report_has_category_table_and_case_changes():
+    t = (EV / "round2_report.md").read_text(encoding="utf-8")
+    assert "## 유형별 통과" in t and "| guardrail |" in t
+    assert "## 1차 대비 케이스 변화" in t and "악화(1차 PASS → 2차 FAIL)" in t

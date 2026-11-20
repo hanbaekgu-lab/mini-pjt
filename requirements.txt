@@ -10,6 +10,7 @@ langchain-aws==1.9.2
 langgraph==1.2.20
 langgraph-checkpoint==4.3.1
 langgraph-prebuilt==1.1.1
+langgraph-checkpoint-sqlite==3.1.3   # 영구 저장(SqliteSaver·SqliteStore): STATE_DB를 지정하면 재시작해도 승인 대기 유지
 langsmith==0.14.17
 
 # RAG (BM25는 직접 구현, 형태소 분석만 kiwipiepy. langchain-community는 ragas가 의존성으로 설치)

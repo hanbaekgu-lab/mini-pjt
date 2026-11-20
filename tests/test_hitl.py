@@ -98,3 +98,21 @@ def test_pl_can_approve_pm_draft():
     tid = pending()
     assert post(user_id="pl01", role="pl", thread_id=tid, approval="approve").json()["pending_approval"] is False
     assert len(confluence.list_pages()) == 1
+
+
+# --- 수정 후 승인 (approval=edit) ---
+@pytest.mark.parametrize("extra", [{"approval": "edit"}, {"approval": "edit", "edits": {}},
+                                   {"approval": "approve", "edits": {"body": "x"}}])
+def test_edit_requires_edits_and_edits_require_edit(extra):
+    tid = pending()
+    assert post(question="승인", thread_id=tid, **extra).status_code == 422
+    assert confluence.list_pages() == []
+
+
+def test_edit_publishes_edited_body_with_names_removed():
+    tid = pending()
+    d = post(question="고쳐서 승인", thread_id=tid, approval="edit",
+             edits={"body": "## 결정사항\n- 김메시 담당 화면 우선 처리\n\n## 액션아이템\n- [ ] 일정 재확인"}).json()
+    assert d["pending_approval"] is False and "수정 내용을 반영해" in d["answer"]
+    body = confluence.get_page(confluence.list_pages()[0])["body"]
+    assert "일정 재확인" in body and "김메시" not in body

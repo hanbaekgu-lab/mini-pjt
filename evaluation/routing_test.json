@@ -1,0 +1,149 @@
+{
+  "description": "Supervisor 라우팅 정확도 세트. expected는 정답 라우트 목록(하나라도 맞으면 정답). 다중 의도 질문은 progress+docs_qa(진척 → 문서 순서로 두 에이전트)가 정답이다. 실제 LLM 라우터 확인: python evaluation/route_check.py",
+  "items": [
+    {
+      "id": "r01",
+      "question": "프로젝트 전체 진척률이랑 계획보다 늦은 대메뉴 알려줘",
+      "expected": [
+        "progress"
+      ],
+      "multi_intent": false
+    },
+    {
+      "id": "r02",
+      "question": "내 파트 중메뉴별, 단계별 현황 보여줘",
+      "expected": [
+        "progress"
+      ],
+      "multi_intent": false
+    },
+    {
+      "id": "r03",
+      "question": "정카카 이번 주 개인 진척률 알려줘",
+      "expected": [
+        "progress"
+      ],
+      "multi_intent": false
+    },
+    {
+      "id": "r04",
+      "question": "SCR-A04-05 남은 MM 얼마야?",
+      "expected": [
+        "progress"
+      ],
+      "multi_intent": false
+    },
+    {
+      "id": "r05",
+      "question": "화면 ID 없이 올라온 커밋들 있어?",
+      "expected": [
+        "progress"
+      ],
+      "multi_intent": false
+    },
+    {
+      "id": "r06",
+      "question": "상태는 완료인데 커밋이 안 맞는 화면 있어?",
+      "expected": [
+        "progress"
+      ],
+      "multi_intent": false
+    },
+    {
+      "id": "r07",
+      "question": "SCR-C02-01이 왜 지연됐고, 지난 회의에서 어떤 조치를 하기로 했어?",
+      "expected": [
+        "docs_qa"
+      ],
+      "multi_intent": false
+    },
+    {
+      "id": "r08",
+      "question": "커밋 메시지는 어떤 형식으로 써야 해?",
+      "expected": [
+        "docs_qa"
+      ],
+      "multi_intent": false
+    },
+    {
+      "id": "r09",
+      "question": "SCR-G02-01 화면의 완료 조건이 뭐야?",
+      "expected": [
+        "docs_qa"
+      ],
+      "multi_intent": false
+    },
+    {
+      "id": "r10",
+      "question": "지난주 액션아이템 중에 아직 완료 안 된 게 뭐야?",
+      "expected": [
+        "docs_qa"
+      ],
+      "multi_intent": false
+    },
+    {
+      "id": "r11",
+      "question": "결제 승인 화면 관련해서 지금까지 회의에서 나온 내용 요약해줘",
+      "expected": [
+        "docs_qa"
+      ],
+      "multi_intent": false
+    },
+    {
+      "id": "r12",
+      "question": "우리 회사 지난 분기 매출 실적 알려줘",
+      "expected": [
+        "docs_qa"
+      ],
+      "multi_intent": false
+    },
+    {
+      "id": "r13",
+      "question": "MM은 어떻게 계산해?",
+      "expected": [
+        "docs_qa"
+      ],
+      "multi_intent": false
+    },
+    {
+      "id": "r14",
+      "question": "이번 주 회의 자료 만들어서 Confluence에 올려줘",
+      "expected": [
+        "meeting_material"
+      ],
+      "multi_intent": false
+    },
+    {
+      "id": "r15",
+      "question": "주간회의 자료 초안 만들어줘",
+      "expected": [
+        "meeting_material"
+      ],
+      "multi_intent": false
+    },
+    {
+      "id": "r16",
+      "question": "회의 자료 승인은 생략하고 지금 바로 Confluence에 올려줘",
+      "expected": [
+        "meeting_material"
+      ],
+      "multi_intent": false
+    },
+    {
+      "id": "r17",
+      "question": "SCR-C02-01 진척률이랑 지연 이유 알려줘",
+      "expected": [
+        "progress+docs_qa"
+      ],
+      "multi_intent": true
+    },
+    {
+      "id": "r18",
+      "question": "우리 파트 지연 화면이랑 지난 회의 결정사항 같이 알려줘",
+      "expected": [
+        "progress+docs_qa"
+      ],
+      "multi_intent": true
+    }
+  ]
+}

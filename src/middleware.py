@@ -37,6 +37,7 @@ def mask_obj(obj):
 # 재시도는 최대 1회이며 예외로 끝난 호출만 다시 한다. 타임아웃이 난 호출은 아직 실행 중일 수 있어 재시도하지 않는다
 # (같은 게시를 두 번 하거나 LLM 호출이 겹치지 않게). 파이썬 스레드는 강제로 멈출 수 없으므로, 타임아웃 뒤 남은 작업은
 # 결과를 버리고 api가 그 스레드의 대화 기억 키를 바꿔 다음 요청과 섞이지 않게 한다.
+import contextvars
 import threading
 
 TIMEOUT = 15.0
@@ -65,7 +66,8 @@ def call_with_retry(fn, *args, timeout: float | None = None, retries: int | None
             except Exception as e:  # noqa: BLE001
                 box["e"] = e
 
-        t = threading.Thread(target=run, daemon=True)
+        ctx = contextvars.copy_context()  # 요청 단위 집계(LLM 사용량 등)를 작업 스레드에도 넘긴다
+        t = threading.Thread(target=ctx.run, args=(run,), daemon=True)
         t.start()
         t.join(timeout)
         if t.is_alive():  # 아직 실행 중: 재시도하지 않고 실패로 끝낸다

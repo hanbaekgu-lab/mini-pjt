@@ -58,7 +58,46 @@ def _run(coro):
         return ex.submit(asyncio.run, coro).result()
 
 
+async def _aread_resource(uri: str) -> str:
+    async with make_client().session(SERVER) as session:
+        res = await session.read_resource(uri)
+    return "".join(getattr(c, "text", "") for c in res.contents)
+
+
+async def _aget_prompt(name: str, arguments: dict) -> str:
+    async with make_client().session(SERVER) as session:
+        res = await session.get_prompt(name, arguments)
+    return "".join(getattr(m.content, "text", "") for m in res.messages)
+
+
+async def list_resources_and_prompts() -> dict:
+    """서버가 노출한 resource(고정 URI·URI 템플릿)와 prompt 이름."""
+    async with make_client().session(SERVER) as session:
+        res, tpl, prm = (await session.list_resources(), await session.list_resource_templates(),
+                         await session.list_prompts())
+    return {"resources": [str(r.uri) for r in res.resources], "templates": [t.uriTemplate for t in tpl.resourceTemplates],
+            "prompts": [p.name for p in prm.prompts]}
+
+
+def read_resource(uri: str, timeout: float = TIMEOUT) -> str:
+    """MCP resource 읽기 (예: confluence://page/weekly_meeting_2026-11-16). 실패는 MCPError."""
+    try:
+        return _run(asyncio.wait_for(_aread_resource(uri), timeout))
+    except Exception as e:  # noqa: BLE001
+        raise MCPError(f"MCP resource 읽기 실패: {uri}: {type(e).__name__} {e}") from e
+
+
+def get_prompt(name: str, arguments: dict, timeout: float = TIMEOUT) -> str:
+    """MCP prompt 텍스트 (예: weekly_meeting_material). 실패는 MCPError."""
+    try:
+        return _run(asyncio.wait_for(_aget_prompt(name, arguments), timeout))
+    except Exception as e:  # noqa: BLE001
+        raise MCPError(f"MCP prompt 조회 실패: {name}: {type(e).__name__} {e}") from e
+
+
 def call_tool(name: str, arguments: dict, timeout: float = TIMEOUT):
+    from src import tracing
+    tracing.emit("mcp_call", {"tool": name})  # SSE 진행 이벤트 (수신자가 없으면 무시)
     try:
         return _run(asyncio.wait_for(_acall(name, arguments), timeout))
     except MCPError:

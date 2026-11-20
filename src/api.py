@@ -1,12 +1,14 @@
-"""POST /login(데모 로그인) + POST /query 질의 엔드포인트 (FastAPI).
+"""POST /login(데모 로그인) + POST /query 질의 + POST /query/stream(같은 처리의 SSE 진행 이벤트) 엔드포인트 (FastAPI).
 
 /login 요청: {"user_id"} → {"session_token", "name", "role", "part"}. SSO(OIDC 등) 자리에 들어갈 데모 로그인이다
 (비밀번호 없음, developers.json에 등록된 user_id만, 미등록은 401). 토큰은 서버 메모리에만 있어 재시작하면 다시 로그인한다.
-/query 요청: 표준 본문 {"question"} + 선택 확장 필드 thread_id(대화·승인 재개), approval(approve|reject).
+/query 요청: 표준 본문 {"question"} + 선택 확장 필드 thread_id(대화·승인 재개), approval(approve|reject|edit),
+edits(approval=edit일 때 고친 제목·본문). question은 공백만 있거나 2,000자를 넘으면 422다. 모든 JSON 응답은 charset=utf-8.
 신원은 `Authorization: Bearer <session_token>` 헤더의 로그인 세션에서만 정하고, 역할은 서버가 등록 정보로 정한다.
 본문에 user_id·role 등 정의되지 않은 필드가 오면 무시하지 않고 422로 거절한다(로그인 세션을 쓰라는 안내, 혼동 방지).
 응답: answer, contexts, trace (+ thread_id, pending_approval)
-처리 순서: 세션 확인(401) → thread 소유자 확인(404) → 승인 재개 또는 가드레일 → Supervisor 라우팅(요청당 1회) → 담당 에이전트
+처리 순서: 세션 확인(401) → thread 소유자 확인(404) → 승인 재개 또는 가드레일(정규식·범위 → LLM 분류기)
+→ Supervisor 라우팅(요청당 1회, 다중 의도면 진척 → 문서 순서로 두 담당) → 담당 에이전트
 → 출력 단계 PII 마스킹. 가드레일에 막힌 요청은 라우팅(LLM)하지 않는다. trace 순서: guardrail → supervisor_route → ...
 오류: 토큰 없음·무효 401, approval 값 오류·정의되지 않은 본문 필드 422, 없는 thread_id·다른 사용자의 thread_id 404.
 thread는 만든 사용자(소유자)만 이어 쓴다. 예외로 승인 대기 회의 자료는 PM·PL 누구나 승인·반려할 수 있고, 승인 응답에는

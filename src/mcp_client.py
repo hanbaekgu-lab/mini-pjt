@@ -1,6 +1,7 @@
 """Confluence MCP 서버(stdio) 호출 클라이언트 (langchain-mcp-adapters MultiServerMCPClient).
 
 나머지 코드는 동기 함수 call_tool(name, arguments)만 쓴다. 안에서 비동기 세션을 열어 도구 하나를 호출하고 닫는다.
+resource·prompt는 read_resource(uri)·get_prompt(name, args)로 읽는다.
 호출당 10초 대기(wait_for)이며, 바깥 타임아웃(15초)·재시도는 middleware.call_with_retry가 맡는다.
 """
 from __future__ import annotations

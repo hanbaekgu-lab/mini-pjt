@@ -1,4 +1,4 @@
-"""Supervisor 라우팅: progress | docs_qa | meeting_material.
+"""Supervisor 라우팅: progress | docs_qa | meeting_material | progress+docs_qa(다중 의도: 진척 수치와 문서 내용을 함께 묻는 질문).
 
 운영·평가: LLM 라우터 (LCEL: 프롬프트 | LLM.with_structured_output(Pydantic)).
 테스트·LLM 실패 시: 규칙 기반 라우팅으로 대체한다.

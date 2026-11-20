@@ -2,6 +2,7 @@
 
 요청 단위 LLM 사용량(호출 수·지연시간·토큰)은 콜백(UsageHandler)이 모아 trace 끝에 llm_usage 단계로 붙인다.
 요청마다 contextvar에 집계용 dict를 두므로 동시 요청끼리 섞이지 않는다(작업 스레드는 middleware가 컨텍스트를 복사해 넘긴다).
+/query/stream은 같은 방식으로 진행 이벤트 수신자를 등록하고, emit()이 가드레일·라우팅·LLM·도구 호출 단계를 바로 보낸다.
 """
 from __future__ import annotations
 

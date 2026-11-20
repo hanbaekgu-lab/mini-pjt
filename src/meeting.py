@@ -2,6 +2,8 @@
 
 - build_meeting_material(): LLM 없는 결정적 초안 (테스트·기본 핸들러용)
 - MeetingFlow: Plan-Execute LangGraph (계획 → 실행 단계들 → interrupt() 승인 → MCP 게시)
+  단계가 실패하면 Replan(retry·skip·abort, 재시도 1회·필수 단계 건너뛰기 금지)으로 처리하고, 중단되면 승인 대기 없이 끝낸다.
+  승인은 approve·reject 외에 고친 제목·본문으로 승인(edit)할 수 있다(구성원 이름은 지운다).
   장기 메모리(LangGraph Store)에는 주차별 회의 스냅샷(진척·이슈·액션아이템)을 저장한다. Store가 비어 있으면
   지난 회의 기록(data/fixtures/meeting_history.json)으로 초기화하고, 게시 후에는 이번 주 스냅샷을 저장해 다음 주에 쓴다.
 - 회의 자료 구성: 안내 → 일정 대비 진척 → 지난주 대비 변화 → 대메뉴별 → 중메뉴별 → 단계별 → 이슈 추적 →

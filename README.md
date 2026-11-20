@@ -32,11 +32,11 @@ LLM 호출이 실패하면 규칙 기반 라우팅으로 대체한다.
 ![주간 진척 보고 에이전트 아키텍처](docs/images/architecture.svg)
 
 1. `POST /login`(데모 로그인) → 세션 토큰. `POST /query` → 세션 확인(토큰 없음·무효 401) → thread 소유권 확인(404) → 가드레일(범위·인젝션·순위)을 라우팅·도구 실행 전에 검사. 인젝션·순위는 정규식 → LLM 분류기 순서로 판정(요청당 LLM 1회 추가)
-2. 가드레일을 통과한 요청만 Supervisor가 진척 / 문서 Q&A / 회의 자료 중 하나로 라우팅(요청당 LLM 1회)
+2. 가드레일을 통과한 요청만 Supervisor가 진척 / 문서 Q&A / 회의 자료 중 하나로 라우팅(요청당 LLM 1회). 진척 수치와 문서 내용을 함께 묻는 질문은 진척 → 문서 순서로 두 담당을 부르고 답을 합친다
    - **진척**: ReAct 에이전트가 요청자 범위로 고정된 도구로 계산하고, 도구 결과를 답변 끝에 그대로 붙인다
    - **문서 Q&A**: 검색 → 간접 인젝션 줄 제외·범위 밖 진척 수치 가림 → 답변(2차는 근거 인용)
-   - **회의 자료**: Plan-Execute 그래프가 진척 수집 → 지난주 회의 확인(장기 메모리·회의록) → 초안 → `interrupt()` 승인 대기 → 승인 시 MCP `create_page`로 게시
-3. 출력 단계에서 PII 마스킹(answer·contexts·trace), trace 기록
+   - **회의 자료**: Plan-Execute 그래프가 진척 수집 → 지난주 회의 확인(장기 메모리·회의록) → 초안 → `interrupt()` 승인 대기 → 승인(또는 고쳐서 승인) 시 MCP `create_page`로 게시. 단계가 실패하면 Replan으로 다시 시도·건너뛰기·중단을 정한다. `STATE_DB`를 주면 승인 대기 상태가 재시작 뒤에도 남는다
+3. 출력 단계에서 PII 마스킹(answer·contexts·trace), trace 기록(LLM 사용량 포함). `POST /query/stream`은 같은 처리의 진행 단계를 SSE로 실시간 전송
 
 ## 실행 방법
 Python 3.14, 가상환경 `.venv`. 모든 명령은 저장소 루트에서 실행한다. `run.sh`는 Linux/macOS bash와 Windows Git Bash에서 같이 쓴다(`.venv/Scripts`와 `.venv/bin` 자동 판별).

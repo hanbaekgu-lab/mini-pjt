@@ -3,6 +3,7 @@
 - CONFLUENCE_MODE=fake (기본): 로컬 폴더(CONFLUENCE_DIR)에 Markdown을 쓴다. 변환 결과 미리보기(.storage.xml)도 함께 저장한다.
 - CONFLUENCE_MODE=real: 실제 Confluence REST API(v1)에 저장 형식(storage)으로 게시한다.
   주소·스페이스·인증 정보는 .env에서만 읽는다(.env.example의 mock 값을 실제 값으로 교체).
+  429·503은 짧게 기다렸다 최대 2회 다시 보내고 401·403·404는 바로 실패하며, 오류 메시지에서 인증 정보를 가린다.
 같은 제목/page_id로 다시 create_page 하면 기존 페이지를 교체한다(중복 없음).
 """
 from __future__ import annotations

@@ -210,7 +210,7 @@ acceptance_criteria:
   expected_artifacts:
   - tests/test_trace.py
 - description: 게시된 회의 자료가 Confluence에서 읽기 쉬운 형태로 등록된다. 진척 현황은 일정 대비·지난주 대비·대메뉴별·중메뉴별·단계별·지연 화면 표와 진행 막대로 보이고(개인별 진척률 없음)
-    지난주 대비 증가는 초록, 감소는 빨강 글자로, 액션아이템은 체크리스트로 보인다. MCP 서버가 Markdown을 Confluence 저장 형식(표·작업 목록·info 패널)으로 변환해 게시하며,
+    실적 진척률·완료 화면·단계 같은 진척 지표의 지난주 대비 증가는 초록(▲), 감소는 빨강(▼) 글자로(계획 진척률·남은 공수·지연 화면 수는 좋고 나쁨이 반대이거나 없어 색 없이 부호만), 액션아이템은 체크리스트로 보인다. MCP 서버가 Markdown을 Confluence 저장 형식(표·작업 목록·info 패널)으로 변환해 게시하며,
     CONFLUENCE_MODE=real에서는 .env의 주소·스페이스·인증 정보로 REST API에 생성(같은 제목은 버전 증가로 교체)하고, 설정이 빠지면
     값 노출 없이 누락된 변수 이름만 알린다. 게시 파일명은 영문 weekly_meeting_<기준 주 시작일>이다
   semantic_ac_key: ac_fa1ee002cb65f5e1
@@ -313,6 +313,56 @@ acceptance_criteria:
   - src/tools.py
   - src/confluence_convert.py
   - data/fixtures/make_fixtures.py
+- description: 입력과 응답이 견고하다. 빈 질문·2,000자 초과 질문은 422이고, 401·422를 포함한 모든 JSON 응답이 charset=utf-8을 명시하며(401의 WWW-Authenticate 헤더 유지), 가드레일은 검사 전 입력을 정규화해(NFKC·보이지 않는 문자 제거·공백 정리) 전각 문자나 zero-width 문자로 정규식을 피하는 인젝션을 막고 '커밋 규칙 무시하면' 같은 정상 표현은 통과시킨다. evaluation/guard_probe.json의 정상 문구는 정규식 단계에서 하나도 막히지 않는다
+  semantic_ac_key: ac_f08db1d6ffd79313
+  verify_command: python -m pytest -q tests/test_api.py tests/test_guardrails.py
+  expected_artifacts:
+  - src/api.py
+  - src/guardrails.py
+  - evaluation/guard_probe.json
+- description: 정규식·범위 검사를 통과한 질문만 구조화 출력 LLM 분류기(injection·person_ranking·ok)가 라우팅 전에 2차 판정한다. 표현을 바꾼 인젝션과 돌려 말한 사람 비교는 거절하고, 통과하면 trace에 llm_classifier passed가 남으며, 분류기 호출이 실패하면 막지 않고 통과시키되(fail-open) 오류를 trace에 남긴다. 분류기는 데이터 범위를 판단하지 않는다
+  semantic_ac_key: ac_a19ca96ff67f3896
+  verify_command: python -m pytest -q tests/test_guardrails.py
+  expected_artifacts:
+  - src/guardrails.py
+  - src/api.py
+  - evaluation/guard_probe.py
+- description: 진척 에이전트와 Confluence 호출이 안전하게 실패한다. 진척 도구는 인자 스키마로 화면 ID 형식을 검증해 틀리면 LLM이 고쳐 다시 호출하고, 이름으로 받은 개발자를 ID로 바꾼 뒤 범위를 검사하며, 한 실행의 도구 호출은 8회·그래프 단계는 25회로 제한되어 넘으면 도구 계산 결과만 답한다. Confluence real 모드는 429·503을 1초→2초로 최대 2회 다시 보내고 401·403은 바로 실패하며, 오류 메시지에 계정·API 토큰·Basic 인증 값이 남지 않고, 없는 페이지 조회는 None이다
+  semantic_ac_key: ac_10e2e4891276a85e
+  verify_command: python -m pytest -q tests/test_agent_llm.py tests/test_confluence_real.py
+  expected_artifacts:
+  - src/agent.py
+  - src/confluence.py
+- description: 회의 자료 승인 흐름이 실무 상황을 견딘다. PM·PL은 approval=edit와 edits(title·body)로 초안을 고쳐 승인할 수 있고(edit에는 edits가 필수, edits는 edit일 때만 허용, 아니면 422), 고친 본문도 구성원 이름은 지우고 연락처는 가린 뒤 게시하며 수정본의 액션아이템이 다음 주 스냅샷이 된다. 회의 자료 단계가 실패하면 Replan이 retry·skip·abort를 정하되 재시도는 1회, 필수 단계(진척 수집·초안)는 건너뛸 수 없고, 중단되면 승인 대기 없이 오류를 알린다. STATE_DB를 지정하면 승인 대기 상태·회의 스냅샷·thread 기록이 SQLite에 남아 재시작 후 다시 로그인해 승인할 수 있고, 지정하지 않으면 메모리를 쓴다
+  semantic_ac_key: ac_ddab112baf7a8869
+  verify_command: python -m pytest -q tests/test_hitl.py tests/test_agent_llm.py
+  expected_artifacts:
+  - src/api.py
+  - src/meeting.py
+  - src/state.py
+- description: 처리 과정을 실시간·정량으로 볼 수 있다. POST /query/stream은 같은 처리를 SSE로 보내 처리 중 progress 이벤트(guardrail·route·llm_start·llm_end·tool_call·mcp_call)와 마지막 result 이벤트(/query와 같은 응답, PII 마스킹)를 보내고, 인증·검증 오류는 스트림 전에 401·422, 스트림 뒤의 404는 error 이벤트다. LLM을 부른 요청의 trace 끝에는 llm_usage(호출 수·지연시간·입출력 토큰)가 요청 단위로 붙는다. MCP 서버는 tool 외에 resource(confluence://pages, confluence://page/{page_id})와 prompt(weekly_meeting_material, 회의 자료 섹션 순서와 같음)를 노출한다
+  semantic_ac_key: ac_9dc83423d9900e1c
+  verify_command: python -m pytest -q tests/test_api.py tests/test_trace.py tests/test_mcp_confluence.py
+  expected_artifacts:
+  - src/api.py
+  - src/tracing.py
+  - src/mcp_confluence_server.py
+  - src/mcp_client.py
+- description: 진척 수치와 문서 내용을 함께 묻는 질문은 Supervisor가 progress+docs_qa로 정해 진척 → 문서 근거 순서로 두 에이전트를 부르고 답·근거·trace를 합친다. 질문(검색어)은 바꾸지 않고 각 담당에 답변 범위만 알리며, 문서 쪽 답의 범위 밖 '근거 없음' 문장은 걷어낸다. 회의 자료 요청은 묶지 않는다. evaluation/routing_test.json(다중 의도 포함 18건)으로 규칙 라우터 정확도 80% 이상을 확인하고 실제 LLM 라우터는 evaluation/route_check.py로 확인한다
+  semantic_ac_key: ac_b76c096d2f16b554
+  verify_command: python -m pytest -q tests/test_agent_llm.py tests/test_eval_pipeline.py
+  expected_artifacts:
+  - src/supervisor.py
+  - src/api.py
+  - evaluation/routing_test.json
+  - evaluation/route_check.py
+- description: 2차 답변의 근거와 평가 측정이 정확하다. '지난주·지난 회의' 질문은 기준 정보를 근거(contexts)로도 검색 문서 뒤에 돌려주고, 이력 요약 질문은 회의록을 우선해 5건까지 검색하며, 긴 문서는 3,000자 이하 조각으로 임베딩한다. grounded 프롬프트(1차 baseline 제외)는 액션아이템 상태를 문서 표기 그대로 쓰고, 두 가지 이상 묻는 질문은 각 부분을 질문의 대상·핵심어로 시작해 답하되 목록·표 형식은 유지한다. RAGAS answer relevancy의 역질문은 응답과 같은 언어로 만들고, 리포트는 유형별 통과와 1차 대비 개선·악화 케이스를 보인다
+  semantic_ac_key: ac_8c6e2e5c09f9ed89
+  verify_command: python -m pytest -q tests/test_agent_llm.py tests/test_retriever.py tests/test_eval_pipeline.py tests/test_eval_reports.py
+  expected_artifacts:
+  - src/agent.py
+  - src/retriever.py
+  - evaluation/run_eval.py
 assumptions:
 - 테스트 파일은 tests/ 아래 두며 실제 파일명은 작업자가 바꿀 수 있음
 - API 서버는 FastAPI로 구현하고 기능 테스트는 TestClient와 mock LLM을 써서 API 키 없이 실행함. 평가(evaluation/)만 실제 LLM을
@@ -462,12 +512,12 @@ exit_conditions:
   criteria: 버그로 분류해 수정될 때까지 평가 개선 작업을 중단함
 metadata:
   seed_id: seed_50f7c51da60d
-  version: 1.13.0
+  version: 1.14.0
   created_at: '2026-11-18T07:26:15.837365Z'
   revised_at: '2026-11-20'
-  revision_note: 'refinement pass 13 — 설계 확장: MCP resource(confluence://pages, confluence://page/{page_id})와 prompt(weekly_meeting_material), POST /query/stream(SSE 진행 이벤트 + 최종 응답), HITL 수정 후 승인(approval=edit, edits.title·body, 이름 제거·연락처 마스킹), 회의 자료 단계 실패 시 Replan(retry·skip·abort, 재시도 1회·필수 단계 건너뛰기 금지), STATE_DB를 주면 SqliteSaver·SqliteStore·thread 기록 영구 저장(재시작 후 승인 가능), 다중 의도 라우팅(progress+docs_qa를 진척 → 문서 순서로), grounded 프롬프트에 두 가지 이상 묻는 질문은 각 부분을 질문의 대상·핵심어로 시작해 답하는 규칙(목록·표 형식 유지) (pass 12 — 품질·안정성: 질문 길이 상한(2,000자)과 빈 질문 422, 모든 JSON 응답에 charset=utf-8, 가드레일 입력 정규화(NFKC·보이지 않는 문자 제거), 진척 도구 인자 스키마(화면 ID 형식)와 쓰지 말 것 설명, 도구 호출 상한(8회)·recursion_limit(25), Confluence real 모드 실패 유형별 재시도(429·503 백오프, 401·403·404 즉시 실패)와 인증 정보 가림; 평가 보강: 정상·공격 판정 세트(guard_probe), 라우팅 정확도 세트(route_check), 리포트 유형별 통과·1차 대비 개선/악화 케이스, trace의 llm_usage(호출 수·지연·토큰) (pass 11 — 근거 완전성과 답변 정확도: 지난주·지난 회의 질문은 기준 정보를 근거(contexts)로도 돌려주고(검색 문서 뒤), grounded 프롬프트에 액션아이템·결정사항의 완료·미완료 상태를 문서 표기 그대로 쓰는 규칙 추가 (pass 10 — 가드레일 보완: 정규식을 통과한 질문은 구조화 출력 LLM 분류기(injection·person_ranking·ok)가 2차 판정(LLM 실패 시 통과, 범위는 세션·도구가 강제), 표현을 바꾼 인젝션 정규식 추가, 문서 근거의 범위 밖 수치를 문단 단위로 가림, 게시 꼬리말 공용화와 Confluence 변환기 구분선 지원 (pass 9 — 사용 예시 캡처를 로그인 세션 방식으로 재촬영하며 발견한 결함 수정: 게시된 긴 회의 자료가 Titan 입력 한도를 넘어 문서 Q&A가 실패하던 문제(문단 조각 임베딩·최대 유사도), 진척 도구가 LLM이 넘긴 개발자 이름을 ID로 바꾸지 않던 문제(이름→ID 변환 후 범위 검사); 평가 개선: RAGAS ResponseRelevancy 역질문을 응답과 같은 언어로 생성(영어 역질문으로 언어 간 유사도를 재던 측정 결함, 1차는 저장 답변으로 answer_relevancy만 재채점), 이력 요약 질문은 회의록 우선·5건 검색(filter 레버), 게시 꼬리말·승인 응답에 마스킹 안내, 초안 안내문 시제 정정, Bedrock 클라이언트 타임아웃·재시도 명시 (pass 8 — 2차 평가 실패 분석 반영: 문서 Q&A에 코드가 정한 기준 주·지난주 회의록 ID를 [기준 정보]로 전달(filter 레버, LLM이 날짜를 몰라 지난주 회의록을 근거로 쓰지 못하던 결함)과 해당 주 회의록 우선, 진척 보고서 미연결 커밋에 작성자 이름·이메일(출력 단계 마스킹, 요청자 범위, 회의 자료는 제외), 게시 꼬리말을 공용 자료 안내로 정정, 1차 대비 지표 표와 고친 결함을 리포트에 기록 (pass 7 — 로그인 세션(POST /login, Bearer 토큰, 본문 user_id·role 422), thread 소유권·승인 응답 최소화, 가드레일 뒤 라우팅(요청당 1회), 1차 baseline 정의 고정·judge 입력(answer 전문·압축 trace)·케이스별 기억 초기화, 가드레일 오탐 정리·간접 인젝션 줄 단위 제외·파트 진척, MCP 타임아웃·단일 게시, 회의 자료 CRUD·복잡도·공수 열과 기간 도식·대메뉴 일정표 (pass 6 — 평가 시 생성 문서 제외(EVAL_EXCLUDE_GENERATED), RAGAS 4개 지표(context_precision·answer_relevancy
+  revision_note: 'refinement pass 14 — pass 9~13 기능을 검증하는 인수 조건 7개 추가(입력·응답 견고성, LLM 분류기, 진척·Confluence 안전한 실패, 수정 후 승인·Replan·영구 저장, SSE·사용량·MCP resource/prompt, 다중 의도, 근거·평가 측정) (pass 13 — 설계 확장: MCP resource(confluence://pages, confluence://page/{page_id})와 prompt(weekly_meeting_material), POST /query/stream(SSE 진행 이벤트 + 최종 응답), HITL 수정 후 승인(approval=edit, edits.title·body, 이름 제거·연락처 마스킹), 회의 자료 단계 실패 시 Replan(retry·skip·abort, 재시도 1회·필수 단계 건너뛰기 금지), STATE_DB를 주면 SqliteSaver·SqliteStore·thread 기록 영구 저장(재시작 후 승인 가능), 다중 의도 라우팅(progress+docs_qa를 진척 → 문서 순서로), grounded 프롬프트에 두 가지 이상 묻는 질문은 각 부분을 질문의 대상·핵심어로 시작해 답하는 규칙(목록·표 형식 유지) (pass 12 — 품질·안정성: 질문 길이 상한(2,000자)과 빈 질문 422, 모든 JSON 응답에 charset=utf-8, 가드레일 입력 정규화(NFKC·보이지 않는 문자 제거), 진척 도구 인자 스키마(화면 ID 형식)와 쓰지 말 것 설명, 도구 호출 상한(8회)·recursion_limit(25), Confluence real 모드 실패 유형별 재시도(429·503 백오프, 401·403·404 즉시 실패)와 인증 정보 가림; 평가 보강: 정상·공격 판정 세트(guard_probe), 라우팅 정확도 세트(route_check), 리포트 유형별 통과·1차 대비 개선/악화 케이스, trace의 llm_usage(호출 수·지연·토큰) (pass 11 — 근거 완전성과 답변 정확도: 지난주·지난 회의 질문은 기준 정보를 근거(contexts)로도 돌려주고(검색 문서 뒤), grounded 프롬프트에 액션아이템·결정사항의 완료·미완료 상태를 문서 표기 그대로 쓰는 규칙 추가 (pass 10 — 가드레일 보완: 정규식을 통과한 질문은 구조화 출력 LLM 분류기(injection·person_ranking·ok)가 2차 판정(LLM 실패 시 통과, 범위는 세션·도구가 강제), 표현을 바꾼 인젝션 정규식 추가, 문서 근거의 범위 밖 수치를 문단 단위로 가림, 게시 꼬리말 공용화와 Confluence 변환기 구분선 지원 (pass 9 — 사용 예시 캡처를 로그인 세션 방식으로 재촬영하며 발견한 결함 수정: 게시된 긴 회의 자료가 Titan 입력 한도를 넘어 문서 Q&A가 실패하던 문제(문단 조각 임베딩·최대 유사도), 진척 도구가 LLM이 넘긴 개발자 이름을 ID로 바꾸지 않던 문제(이름→ID 변환 후 범위 검사); 평가 개선: RAGAS ResponseRelevancy 역질문을 응답과 같은 언어로 생성(영어 역질문으로 언어 간 유사도를 재던 측정 결함, 1차는 저장 답변으로 answer_relevancy만 재채점), 이력 요약 질문은 회의록 우선·5건 검색(filter 레버), 게시 꼬리말·승인 응답에 마스킹 안내, 초안 안내문 시제 정정, Bedrock 클라이언트 타임아웃·재시도 명시 (pass 8 — 2차 평가 실패 분석 반영: 문서 Q&A에 코드가 정한 기준 주·지난주 회의록 ID를 [기준 정보]로 전달(filter 레버, LLM이 날짜를 몰라 지난주 회의록을 근거로 쓰지 못하던 결함)과 해당 주 회의록 우선, 진척 보고서 미연결 커밋에 작성자 이름·이메일(출력 단계 마스킹, 요청자 범위, 회의 자료는 제외), 게시 꼬리말을 공용 자료 안내로 정정, 1차 대비 지표 표와 고친 결함을 리포트에 기록 (pass 7 — 로그인 세션(POST /login, Bearer 토큰, 본문 user_id·role 422), thread 소유권·승인 응답 최소화, 가드레일 뒤 라우팅(요청당 1회), 1차 baseline 정의 고정·judge 입력(answer 전문·압축 trace)·케이스별 기억 초기화, 가드레일 오탐 정리·간접 인젝션 줄 단위 제외·파트 진척, MCP 타임아웃·단일 게시, 회의 자료 CRUD·복잡도·공수 열과 기간 도식·대메뉴 일정표 (pass 6 — 평가 시 생성 문서 제외(EVAL_EXCLUDE_GENERATED), RAGAS 4개 지표(context_precision·answer_relevancy
     ≥ 0.80 추가), 파일 위치 정리(evaluation/test_queries.csv, docs/spec, docs/images, docs/course), Dockerfile·run.sh, 공식 MCP SDK(fastmcp +
-    langchain-mcp-adapters), kiwipiepy 형태소 BM25, 진척 에이전트 후속 질문 도구 재호출 (pass 5 — 회의 자료에 일정 대비 진척(경과율·계획·실적·차이·상태)·지난주 대비 증감(▲/▼, Confluence 초록/빨강)·이슈 추적(안정 ID, 해결·미해결·신규)·지난주 액션아이템 이행 추가, 지난주 스냅샷 fixture와 장기 메모리 스냅샷 저장, 화면 정의서 등 팀 공용 문서는 모든 역할이 열람, PL 파트 보고에 중메뉴별 추가 (pass 4 — 신원은 세션 기준(문구 기반 권한 상승 거절 제거, 범위 밖 요청만 거절, 역할 불일치 403)·회의 자료는 참석자 전원 공유라 업무 분류 단위 진척만(개인별 진척률 제거)·개인 진척은 PM·PL 요청 시에만 (pass 3 — 도메인 재설계: 플랫폼 전환 1년·대/중/소메뉴 화면 170개(SCR ID)·화면별 4단계·팀 10명(PM 1·PL 2·개발자 7)·역할 pm|pl|developer(PL 본인 파트 범위, PM·PL 승인)·결정적 fixture 생성기·메뉴별 집계 회의 자료 (pass 2 — 회의 자료 표 양식, 영문 page_id, 실제 Confluence 전환용 .env 설정·REST 어댑터, MCP 서버 측 Markdown→Confluence 변환기, 가짜 인물·이메일 규칙, 리전 비하드코딩 반영 (pass 1: 인터뷰 이후 사용자 결정 + QA 제안 4건))))))))))))'
+    langchain-mcp-adapters), kiwipiepy 형태소 BM25, 진척 에이전트 후속 질문 도구 재호출 (pass 5 — 회의 자료에 일정 대비 진척(경과율·계획·실적·차이·상태)·지난주 대비 증감(▲/▼, Confluence 초록/빨강)·이슈 추적(안정 ID, 해결·미해결·신규)·지난주 액션아이템 이행 추가, 지난주 스냅샷 fixture와 장기 메모리 스냅샷 저장, 화면 정의서 등 팀 공용 문서는 모든 역할이 열람, PL 파트 보고에 중메뉴별 추가 (pass 4 — 신원은 세션 기준(문구 기반 권한 상승 거절 제거, 범위 밖 요청만 거절, 역할 불일치 403)·회의 자료는 참석자 전원 공유라 업무 분류 단위 진척만(개인별 진척률 제거)·개인 진척은 PM·PL 요청 시에만 (pass 3 — 도메인 재설계: 플랫폼 전환 1년·대/중/소메뉴 화면 170개(SCR ID)·화면별 4단계·팀 10명(PM 1·PL 2·개발자 7)·역할 pm|pl|developer(PL 본인 파트 범위, PM·PL 승인)·결정적 fixture 생성기·메뉴별 집계 회의 자료 (pass 2 — 회의 자료 표 양식, 영문 page_id, 실제 Confluence 전환용 .env 설정·REST 어댑터, MCP 서버 측 Markdown→Confluence 변환기, 가짜 인물·이메일 규칙, 리전 비하드코딩 반영 (pass 1: 인터뷰 이후 사용자 결정 + QA 제안 4건)))))))))))))'
   ambiguity_score: 0.139
   gate_forced: false
   interview_id: interview_20261118_060344

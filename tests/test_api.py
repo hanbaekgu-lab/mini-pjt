@@ -159,7 +159,7 @@ def test_handler_gets_thread_as_memory_key():
 
 
 # --- 입력 길이 상한, 응답 charset ---
-@pytest.mark.parametrize("q", ["", "가" * (api.MAX_QUESTION_CHARS + 1)])
+@pytest.mark.parametrize("q", ["", "   ", "\n\t ", "가" * (api.MAX_QUESTION_CHARS + 1)])
 def test_empty_or_too_long_question_is_422(q):
     r = ask(question=q)
     assert r.status_code == 422

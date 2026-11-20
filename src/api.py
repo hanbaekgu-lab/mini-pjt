@@ -30,7 +30,7 @@ from fastapi import FastAPI, Header, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, StreamingResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from src import guardrails, mcp_client, meeting, middleware, retriever, state, supervisor, tools, tracing
 
@@ -77,6 +77,13 @@ class QueryBody(BaseModel):
     thread_id: Optional[str] = None
     approval: Optional[Literal["approve", "reject", "edit"]] = None
     edits: Optional[DraftEdits] = None
+
+    @field_validator("question")
+    @classmethod
+    def _not_blank(cls, v: str) -> str:
+        if not v.strip():  # 공백·줄바꿈만 있는 질문도 빈 질문으로 본다 (422)
+            raise ValueError("question이 비어 있습니다")
+        return v
 
     @model_validator(mode="after")
     def _edits_only_with_edit(self):

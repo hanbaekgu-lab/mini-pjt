@@ -252,7 +252,7 @@ POST /query {"question": "승인", "thread_id": "3f2a...", "approval": "approve"
 | 오류 | 조건 |
 |---|---|
 | 401 | 미등록 `user_id`로 로그인, `/query`에 토큰 없음·무효 토큰 |
-| 422 | `approval`이 approve·reject가 아님, `question` 누락·빈 문자열·2,000자 초과, 본문에 `user_id`·`role` 등 정의되지 않은 필드(무시하지 않고 '로그인 세션 사용' 안내) |
+| 422 | `approval`이 approve·reject가 아님, `question` 누락·빈 문자열(공백만 포함)·2,000자 초과, 본문에 `user_id`·`role` 등 정의되지 않은 필드(무시하지 않고 '로그인 세션 사용' 안내) |
 | 404 | 없는 `thread_id`, 또는 다른 사용자 소유의 `thread_id`(승인 대기 회의 자료의 PM·PL 승인은 예외) |
 
 - 모든 JSON 응답(오류 포함)은 `Content-Type: application/json; charset=utf-8`이다(PowerShell 5.1 `Invoke-RestMethod`에서 한글이 깨지지 않게).
